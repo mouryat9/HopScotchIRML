@@ -1,0 +1,176 @@
+{
+  "meta": {
+    "id": "worldview_continuum_v1",
+    "title": "Worldview Continuum Survey — Where do you sit?",
+    "version": "1.0.1"
+  },
+  "worldviews": [
+    { "id": "positivist", "label": "Positivist", "range": [0, 4] },
+    { "id": "post_positivist", "label": "Post-Positivist", "range": [5, 8] },
+    { "id": "constructivist", "label": "Constructivist", "range": [9, 12] },
+    { "id": "transformative", "label": "Transformative", "range": [10, 18] },
+    { "id": "pragmatist", "label": "Pragmatist", "range": [20, 60] }
+  ],
+  "questions": [
+    {
+      "id": "q_quantified_observe",
+      "text": "I prefer studying things that can be quantified by directly observing and measuring them.",
+      "type": "mcq",
+      "options": ["Agree", "Disagree"],
+      "required": true,
+      "scoring": { "Agree": { "positivist": 1 }, "Disagree": {} }
+    },
+    {
+      "id": "q_positive_change",
+      "text": "I believe all research should create positive change in the world.",
+      "type": "mcq",
+      "options": ["Agree", "Disagree"],
+      "required": true,
+      "scoring": { "Agree": { "transformative": 4 }, "Disagree": {} }
+    },
+    {
+      "id": "q_hypotheses_bias",
+      "text": "I like working with hypotheses, but also believe errors or bias in research happen and should be considered.",
+      "type": "mcq",
+      "options": ["Agree", "Disagree"],
+      "required": true,
+      "scoring": { "Agree": { "post_positivist": 2 }, "Disagree": {} }
+    },
+    {
+      "id": "q_answer_question_any_method",
+      "text": "The most important thing to me is answering the research question, no matter what method I need to use.",
+      "type": "mcq",
+      "options": ["Agree", "Disagree"],
+      "required": true,
+      "scoring": { "Agree": { "pragmatist": 5 }, "Disagree": {} }
+    },
+    {
+      "id": "q_focus_real_world",
+      "text": "I believe research should only focus on helping to solve real-world problems.",
+      "type": "mcq",
+      "options": ["Agree", "Disagree"],
+      "required": true,
+      "scoring": { "Agree": { "pragmatist": 5 }, "Disagree": {} }
+    },
+    {
+      "id": "q_reality_shared_experiences",
+      "text": "I believe reality isn’t just discovered—it’s shaped through shared experiences.",
+      "type": "mcq",
+      "options": ["Agree", "Disagree"],
+      "required": true,
+      "scoring": { "Agree": { "constructivist": 3 }, "Disagree": {} }
+    },
+    {
+      "id": "q_interest_feelings",
+      "text": "I’m interested in how people feel about a research topic.",
+      "type": "mcq",
+      "options": ["Agree", "Disagree"],
+      "required": true,
+      "scoring": { "Agree": { "constructivist": 3 }, "Disagree": {} }
+    },
+    {
+      "id": "q_fix_unfair_give_voice",
+      "text": "I want my research to help fix something unfair or give a voice to people who aren’t often heard.",
+      "type": "mcq",
+      "options": ["Agree", "Disagree"],
+      "required": true,
+      "scoring": { "Agree": { "transformative": 5 }, "Disagree": {} }
+    },
+    {
+      "id": "q_not_philosophy_answers",
+      "text": "I’m not focused on the philosophy behind the research method—I care more about getting answers to research questions.",
+      "type": "mcq",
+      "options": ["Agree", "Disagree"],
+      "required": true,
+      "scoring": { "Agree": { "pragmatist": 5 }, "Disagree": {} }
+    },
+    {
+      "id": "q_many_perspectives_valid",
+      "text": "I think people understand the world in different ways, and many perspectives can be valid.",
+      "type": "mcq",
+      "options": ["Agree", "Disagree"],
+      "required": true,
+      "scoring": { "Agree": { "constructivist": 3 }, "Disagree": {} }
+    },
+    {
+      "id": "q_cant_know_everything_but_close",
+      "text": "I know we can’t know everything for sure, but we can get close using careful research methods.",
+      "type": "mcq",
+      "options": ["Agree", "Disagree"],
+      "required": true,
+      "scoring": { "Agree": { "post_positivist": 2 }, "Disagree": {} }
+    },
+    {
+      "id": "q_somewhat_subjective",
+      "text": "I believe research can be somewhat subjective, even when we try to be objective.",
+      "type": "mcq",
+      "options": ["Agree", "Disagree"],
+      "required": true,
+      "scoring": { "Agree": { "constructivist": 2 }, "Disagree": {} }
+    },
+    {
+      "id": "q_interviews_over_surveys",
+      "text": "I’d rather use interviews or observations than surveys with fixed responses.",
+      "type": "mcq",
+      "options": ["Agree", "Disagree"],
+      "required": true,
+      "scoring": { "Agree": { "constructivist": 3 }, "Disagree": {} }
+    },
+    {
+      "id": "q_interested_social_cultural_political",
+      "text": "I’m interested in social, cultural, or political issues and how to make a difference through research.",
+      "type": "mcq",
+      "options": ["Agree", "Disagree"],
+      "required": true,
+      "scoring": { "Agree": { "transformative": 4 }, "Disagree": {} }
+    },
+    {
+      "id": "q_numerical_data_prove",
+      "text": "I like using numerical data to prove how something works.",
+      "type": "mcq",
+      "options": ["Agree", "Disagree"],
+      "required": true,
+      "scoring": { "Agree": { "positivist": 1 }, "Disagree": {} }
+    },
+    {
+      "id": "q_one_true_answer_experiments",
+      "text": "I believe there’s one true answer, and we can discover it with the right experiments.",
+      "type": "mcq",
+      "options": ["Agree", "Disagree"],
+      "required": true,
+      "scoring": { "Agree": { "positivist": 1 }, "Disagree": {} }
+    },
+    {
+      "id": "q_mixing_methods_whatever_best",
+      "text": "I like mixing research methods—surveys, interviews, observations—whatever works best.",
+      "type": "mcq",
+      "options": ["Agree", "Disagree"],
+      "required": true,
+      "scoring": { "Agree": { "pragmatist": 5 }, "Disagree": {} }
+    },
+    {
+      "id": "q_value_evidence_question_limits",
+      "text": "I value evidence but also question the limits of what we can really know.",
+      "type": "mcq",
+      "options": ["Agree", "Disagree"],
+      "required": true,
+      "scoring": { "Agree": { "post_positivist": 3 }, "Disagree": {} }
+    },
+    {
+      "id": "q_repeatable_same_results",
+      "text": "I believe that if others repeat my research, they should be able to get the same results.",
+      "type": "mcq",
+      "options": ["Agree", "Disagree"],
+      "required": true,
+      "scoring": { "Agree": { "positivist": 1 }, "Disagree": {} }
+    },
+    {
+      "id": "q_collaboration_with_communities",
+      "text": "Collaboration and partnerships with communities are essential for meaningful and impactful research.",
+      "type": "mcq",
+      "options": ["Agree", "Disagree"],
+      "required": true,
+      "scoring": { "Agree": { "transformative": 4 }, "Disagree": {} }
+    }
+  ]
+}
