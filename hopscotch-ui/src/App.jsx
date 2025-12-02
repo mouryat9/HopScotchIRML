@@ -31,6 +31,7 @@ const API = {
     return r.json();
   },
 
+  // old non-stream endpoint (kept just in case you still need it somewhere)
   async chatSend(session_id, message) {
     const r = await fetch(`${this.base}/chat/send`, {
       method: "POST",
@@ -39,6 +40,34 @@ const API = {
     });
     if (!r.ok) throw new Error(`chatSend ${r.status}: ${await r.text()}`);
     return r.json();
+  },
+
+  // NEW: streaming endpoint wrapper
+  async chatSendStream(session_id, message, onDelta) {
+    const r = await fetch(`${this.base}/chat/send_stream`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ session_id, message }),
+    });
+
+    // If backend fell back to normal JSON (survey still running),
+    // just return that JSON so we can handle it the old way.
+    const contentType = r.headers.get("content-type") || "";
+    if (contentType.includes("application/json")) {
+      const data = await r.json();
+      return { mode: "json", data };
+    }
+
+    // Otherwise, stream text chunks
+    const reader = r.body.getReader();
+    const decoder = new TextDecoder();
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      const chunk = decoder.decode(value);
+      if (chunk && onDelta) onDelta(chunk);
+    }
+    return { mode: "stream" };
   },
 };
 
@@ -74,10 +103,7 @@ function SourceCard({ source, text }) {
       </div>
       <div className="source-card__text">{expanded ? text : short}</div>
       {text.length > 380 && (
-        <button
-          className="link-btn"
-          onClick={() => setExpanded((e) => !e)}
-        >
+        <button className="link-btn" onClick={() => setExpanded((e) => !e)}>
           {expanded ? "Show less" : "Show more"}
         </button>
       )}
@@ -86,7 +112,7 @@ function SourceCard({ source, text }) {
 }
 
 /**
- * Tries to split the assistant message into:
+ * Split the assistant message into:
  * - main explanation (Markdown)
  * - "Quick references from our notes" → rendered as source cards
  */
@@ -200,8 +226,9 @@ function ChatBox({ sessionId }) {
   }, [sessionId]);
 
   useEffect(() => {
-    if (scrollRef.current)
+    if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
   }, [history]);
 
   // ---------- survey quick options ----------
@@ -214,12 +241,51 @@ function ChatBox({ sessionId }) {
   async function send(forcedText) {
     const msg = (forcedText ?? input).trim();
     if (!msg || !sessionId || sending) return;
+
     setSending(true);
     if (!forcedText) setInput("");
     setErr("");
+
+    // 1) Optimistically add user + empty assistant bubble for streaming
+    let assistantIndex = null;
+    setHistory((prev) => {
+      const newHistory = [
+        ...prev,
+        { role: "user", content: msg },
+        { role: "assistant", content: "" },
+      ];
+      assistantIndex = newHistory.length - 1;
+      return newHistory;
+    });
+
     try {
-      const res = await API.chatSend(sessionId, msg);
-      setHistory(res.history || []);
+      const res = await API.chatSendStream(sessionId, msg, (delta) => {
+        // 2) On each streamed chunk, append to the last assistant message
+        if (assistantIndex == null) return;
+        setHistory((prev) => {
+          const copy = [...prev];
+          if (!copy[assistantIndex]) return copy;
+          copy[assistantIndex] = {
+            ...copy[assistantIndex],
+            content: (copy[assistantIndex].content || "") + delta,
+          };
+          return copy;
+        });
+      });
+
+      if (res.mode === "json") {
+        // Survey still running (backend returned JSON instead of stream)
+        setHistory(res.data.history || []);
+      } else {
+        // Optional: once streaming is done, sync from backend so we keep
+        // a consistent server-side history (including references, etc.)
+        try {
+          const h = await API.history(sessionId);
+          setHistory(h.history || []);
+        } catch {
+          // ignore if fails; we at least have streamed content
+        }
+      }
     } catch (e) {
       console.error(e);
       setErr("Send failed. Check backend logs / Network tab.");
@@ -245,17 +311,31 @@ function ChatBox({ sessionId }) {
     <div className="chat-wrap">
       <div className="chat-head">
         <div className="chat-title">Assistant Chat</div>
-        <div className="chat-hint">Tutor-style answers • cites notes below</div>
+        <div className="chat-hint">
+          Tutor-style answers • cites notes below
+        </div>
       </div>
 
       <div className="chat-body" ref={scrollRef}>
         {history.length === 0 && (
           <div className="chat-empty">
-            Ask me anything about your research worldview or let’s start the short survey.
+            Ask me anything about your research worldview or let’s start the
+            short survey.
           </div>
         )}
-        {history.map((t, i) => <ChatBubble key={i} turn={t} />)}
+        {history.map((t, i) => (
+          <ChatBubble key={i} turn={t} />
+        ))}
       </div>
+
+      {/* Typing / streaming indicator */}
+      {sending && (
+        <div className="typing-indicator">
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+      )}
 
       {/* Quick survey options, when present */}
       {surveyOptions.length > 0 && (
@@ -453,7 +533,7 @@ export default function App() {
               <div className="badge">Starting session…</div>
             ) : (
               <>
-                <ChatBox sessionId={sessionId} step={activeStep} />
+                <ChatBox sessionId={sessionId} />
                 {status && (
                   <div className="badge" style={{ marginTop: 8 }}>
                     {status}
@@ -468,8 +548,9 @@ export default function App() {
         <aside className="hop-resources">
           <h3>IRML Resources and Links for Step {activeStep}</h3>
           <ul>
-            {(resourcesByStep[activeStep] ??
-              [{ label: "Add links in code", href: "#" }]).map((r, i) => (
+            {(resourcesByStep[activeStep] ?? [
+              { label: "Add links in code", href: "#" },
+            ]).map((r, i) => (
               <li key={i}>
                 <a href={r.href}>{r.label}</a>
               </li>

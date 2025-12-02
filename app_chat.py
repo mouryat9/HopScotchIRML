@@ -4,7 +4,8 @@ Hopscotch IRML - chat-first backend with survey-as-conversation.
 Flow:
 - /session          -> create session
 - /chat/history     -> get full chat history
-- /chat/send        -> main chat endpoint
+- /chat/send        -> main chat endpoint (non-streaming)
+- /chat/send_stream -> optional streaming endpoint
 
 Chat behaviour:
 - If worldview survey is NOT finished:
@@ -34,6 +35,7 @@ import logging
 import requests
 from fastapi import FastAPI, HTTPException, Body, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 # -------------------------------------------------
@@ -64,9 +66,12 @@ except Exception:
 
 # Optional pdfminer fallback (used only if installed)
 try:
-    from pdfminer.high_level import extract_text as pdfminer_extract_text  # type: ignore
+    from pdfminer_high_level import extract_text as pdfminer_extract_text  # type: ignore
 except Exception:
-    pdfminer_extract_text = None
+    try:
+        from pdfminer.high_level import extract_text as pdfminer_extract_text  # type: ignore
+    except Exception:
+        pdfminer_extract_text = None
 
 EMBED_MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
 EMBED_DIM = 384  # for the model above
@@ -88,12 +93,14 @@ _raw_docs_cache: Optional[List[Dict[str, str]]] = None  # for keyword fallback
 
 # -------------------------------------------------
 # Worldview continuum bands (total-score based ONLY)
+#   You can tweak these ranges; logic just picks the band
+#   whose [min, max] contains the final total score.
 # -------------------------------------------------
 CONTINUUM_BANDS = [
     {"id": "positivist",      "label": "Positivist",      "min": 0,  "max": 4},
     {"id": "post_positivist", "label": "Post Positivist", "min": 5,  "max": 8},
     {"id": "constructivist",  "label": "Constructivist",  "min": 9,  "max": 12},
-    {"id": "transformative",  "label": "Transformative",  "min": 10, "max": 18},
+    {"id": "transformative",  "label": "Transformative",  "min": 13, "max": 19},
     {"id": "pragmatist",      "label": "Pragmatist",      "min": 20, "max": 60},
 ]
 
@@ -186,10 +193,10 @@ def load_survey_from_disk() -> Dict[str, Any]:
         )
 
 
-def compute_total_score(answers, survey_data):
+def compute_total_score(answers, survey_data) -> int:
     """
-    NEW SCORING RULE:
-    - If user answers Agree → add points
+    YOUR RULE:
+    - If user answers Agree → add points from the question's "scoring" map
     - If user answers Disagree → add 0
     """
     qspec_by_id = {q["id"]: q for q in survey_data.get("questions", [])}
@@ -330,6 +337,7 @@ def _build_index():
         return
 
     texts = [c["text"] for c in chunks]
+    _ensure_embedder()
     vecs = _embedder.encode(
         texts, convert_to_numpy=True, normalize_embeddings=True
     )
@@ -415,13 +423,15 @@ def _startup_rag():
 # ============================================================
 # LLM call (Ollama)
 # ============================================================
-def call_llm(
-    worldview_profile: str, user_msg: str, passages: List[Dict[str, Any]]
-) -> str:
+def build_ollama_payload(
+    worldview_profile: str,
+    user_msg: str,
+    passages: List[Dict[str, Any]],
+    stream: bool = False,
+) -> Dict[str, Any]:
     """
-    Calls llama3.1:8b on Ollama and asks it to:
-    - answer in 2–4 short paragraphs or bullets
-    - then list quick references with a fixed marker that the UI parses
+    Shared helper to build the Ollama chat payload.
+    Set stream=True when you want chunked responses, False for normal JSON.
     """
     ctx_blocks = []
     for i, p in enumerate(passages):
@@ -449,9 +459,9 @@ def call_llm(
         f"{ctx_text}"
     )
 
-    payload = {
+    return {
         "model": LLM_MODEL,
-        "stream": False,
+        "stream": stream,
         "options": {
             "temperature": LLM_TEMP,
         },
@@ -462,11 +472,20 @@ def call_llm(
         ],
     }
 
+
+def call_llm(
+    worldview_profile: str, user_msg: str, passages: List[Dict[str, Any]]
+) -> str:
+    """
+    Non-streaming call (used by /chat/send).
+    """
+    payload = build_ollama_payload(worldview_profile, user_msg, passages, stream=False)
+
     try:
         resp = requests.post(OLLAMA_URL, json=payload, timeout=120)
         resp.raise_for_status()
         data = resp.json()
-        # Ollama's /api/chat returns {"message": {"role":"assistant","content":"..."}}
+        # Ollama /api/chat returns {"message": {"role":"assistant","content":"..."}}
         return (
             data.get("message", {}).get("content", "").strip()
             or "I couldn't generate a response."
@@ -559,8 +578,6 @@ def _handle_survey_turn(
         return None
 
     # 3) We are mid-survey: treat this message as the answer to the current question
-    questions = data.get("questions", [])
-    total_q = len(questions)
     if sess.survey_index >= total_q:
         # Safety guard: mark as done and let caller go to LLM
         sess.survey_done = True
@@ -618,6 +635,7 @@ def _handle_survey_turn(
     if sess.survey_index >= total_q:
         sess.survey_done = True
 
+        data = load_survey_from_disk()
         total_score = compute_total_score(sess.answers, data)
         sess.worldview_total = total_score
 
@@ -656,7 +674,7 @@ def _handle_survey_turn(
     return ChatHistoryResp(session_id=sess.id, history=history)
 
 
-# ---------------- Chat main endpoint ----------------
+# ---------------- Chat main endpoint (non-streaming) ----------------
 @app.post("/chat/send", response_model=ChatHistoryResp)
 def chat_send(req: ChatSendReq = Body(...)):
     sess = _require_session(req.session_id)
@@ -681,6 +699,70 @@ def chat_send(req: ChatSendReq = Body(...)):
 
     history.append(ChatTurn(role="assistant", content=answer))
     return ChatHistoryResp(session_id=req.session_id, history=history)
+
+
+# ---------------- Optional streaming endpoint ----------------
+@app.post("/chat/send_stream")
+def chat_send_stream(req: ChatSendReq = Body(...)):
+    """
+    Streaming variant of /chat/send.
+
+    - If the worldview survey is still running, we just reuse the normal survey
+      logic and return JSON (no streaming).
+    - Once the survey is done, we stream the LLM's answer chunk-by-chunk.
+    """
+    sess = _require_session(req.session_id)
+    history = _get_chat(sess)
+
+    user_msg = (req.message or "").strip()
+    if not user_msg:
+        raise HTTPException(status_code=400, detail="Empty message")
+
+    # store user turn
+    history.append(ChatTurn(role="user", content=user_msg))
+
+    # 1) Let the survey handler run first
+    survey_resp = _handle_survey_turn(sess, user_msg, history)
+    if survey_resp is not None:
+        # Survey still in progress or just finished -> return normal JSON
+        return survey_resp
+
+    # 2) Survey is done → stream LLM answer
+    worldview_profile = _render_worldview_profile(sess)
+    passages = _retrieve(user_msg, k=5)
+    payload = build_ollama_payload(worldview_profile, user_msg, passages, stream=True)
+
+    def event_stream():
+        assistant_text_parts: List[str] = []
+        try:
+            with requests.post(OLLAMA_URL, json=payload, stream=True) as resp:
+                resp.raise_for_status()
+                for line in resp.iter_lines(decode_unicode=True):
+                    if not line:
+                        continue
+                    # Ollama streaming sends a JSON object per line
+                    try:
+                        data = json.loads(line)
+                    except Exception:
+                        continue
+
+                    delta = data.get("message", {}).get("content", "")
+                    if not delta:
+                        continue
+
+                    assistant_text_parts.append(delta)
+                    # yield raw text chunks; frontend will accumulate
+                    yield delta
+        except Exception as e:
+            logger.exception("LLM stream failed: %s", e)
+            yield "\n[Error streaming from model]\n"
+
+        # When streaming is done, persist the full assistant message to history
+        full_text = "".join(assistant_text_parts).strip()
+        if full_text:
+            history.append(ChatTurn(role="assistant", content=full_text))
+
+    return StreamingResponse(event_stream(), media_type="text/plain")
 
 
 # ---------------- RAG utilities ----------------
