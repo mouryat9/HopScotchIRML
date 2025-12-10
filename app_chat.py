@@ -126,15 +126,16 @@ class SessionData(BaseModel):
     answers: Dict[str, Any] = Field(default_factory=dict)
     chat: List[ChatTurn] = Field(default_factory=list)
 
-    # LLM-driven survey state
-    survey_index: int = 0          # 0-based index into questions
-    survey_started: bool = False   # has the LLM already asked Q1?
-    survey_done: bool = False      # finished all questions?
+    survey_index: int = 0
+    survey_started: bool = False
+    survey_done: bool = False
 
-    # derived worldview (set after survey completes)
-    worldview_band: Optional[str] = None   # e.g., "pragmatist"
-    worldview_label: Optional[str] = None  # human label
-    worldview_total: Optional[int] = None  # numeric total
+    worldview_band: Optional[str] = None
+    worldview_label: Optional[str] = None
+    worldview_total: Optional[int] = None
+
+    # 🔹 NEW: arbitrary notes/data per step (1–9)
+    step_notes: Dict[str, Any] = Field(default_factory=dict)
 
 
 class SessionCreateResponse(BaseModel):
@@ -517,6 +518,36 @@ def get_chat_history(session_id: str = Query(...)):
     sess = _require_session(session_id)
     history = _get_chat(sess)
     return ChatHistoryResp(session_id=session_id, history=history)
+
+class StepDataReq(BaseModel):
+    session_id: str
+    step: int
+    data: Dict[str, Any]
+
+
+class StepDataResp(BaseModel):
+    session_id: str
+    step: int
+    data: Dict[str, Any]
+
+
+@app.post("/step/save", response_model=StepDataResp)
+def save_step_data(req: StepDataReq):
+    sess = _require_session(req.session_id)
+    key = str(req.step)
+    sess.step_notes[key] = req.data or {}
+    return StepDataResp(session_id=sess.id, step=req.step, data=sess.step_notes[key])
+
+
+@app.get("/step/get", response_model=StepDataResp)
+def get_step_data(
+    session_id: str = Query(...),
+    step: int = Query(...),
+):
+    sess = _require_session(session_id)
+    key = str(step)
+    data = sess.step_notes.get(key, {})
+    return StepDataResp(session_id=sess.id, step=step, data=data)
 
 
 # ---------------- Survey-as-conversation logic ----------------

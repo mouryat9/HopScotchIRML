@@ -32,6 +32,18 @@ body {
   font-weight: 400;
 }
 
+/* Make all headings use Open Sans bold as well */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: "Open Sans", system-ui, -apple-system, "Segoe UI", Roboto,
+    Ubuntu, Cantarell, Arial, "Noto Sans", sans-serif;
+  font-weight: 700;
+}
+
 /* page padding */
 .hop-wrap {
   padding: 12px 16px 24px;
@@ -39,63 +51,105 @@ body {
 
 /* ===== Header bar ===== */
 .hop-header {
-  height: 64px;
+  height: 72px;
   border: 1px solid var(--border);
   border-radius: 12px;
   margin-bottom: 12px;
   padding: 8px 14px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center; /* center the logo/title block */
   background: #fff;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
+  position: relative; /* so we can pin the right block */
 }
 
 .hop-header__left {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
 }
 
 .hop-logo {
-  height: 42px;
+  height: 56px; /* bigger logo */
   width: auto;
   display: block;
 }
 
 /* App title – heavier weight */
 .hop-app-title {
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 700;
   color: var(--ink);
 }
 
+/* Right header area pinned to the right edge,
+   while the logo/title remain visually centered */
 .hop-header__right {
   display: flex;
   align-items: center;
   gap: 10px;
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
 }
 
-/* ===== 3-pane shell ===== */
+/* ============================
+   OLD 3-COLUMN SHELL (kept if needed elsewhere)
+=============================== */
+
 .hop-shell {
   display: grid;
-  grid-template-columns: 200px minmax(720px, 1fr) 280px; /* sidebar | main | right */
-  gap: 16px;
-  padding: 12px 8px;
+  grid-template-columns: 1fr 1fr; /* 50/50 split */
+  gap: 20px;
   width: 100%;
-  max-width: none;
-  margin: 0;
   align-items: start;
+  margin-top: 10px;
 }
 
-/* ===== Sidebar ===== */
+/* Left panel (Genially embed – older version kept if used) */
+.genially-frame-wrapper {
+  width: 100%;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 14px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+.genially-embed {
+  width: 100%;
+  height: 700px;   /* ← Bigger, usable size */
+  border: none;
+  border-radius: 16px;
+  background: #000;
+}
+
+/* Step + Chat column */
+.hop-main {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+}
+
+/* Make it stack vertically on smaller screens */
+@media (max-width: 1100px) {
+  .hop-shell {
+    grid-template-columns: 1fr; /* Single column */
+  }
+}
+
+
+/* ===== Sidebar (now holds the clickable diagram) ===== */
 .hop-sidebar {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-/* Step buttons look like mini-headings */
+/* (old step buttons kept in case you ever reuse them) */
 .step-btn {
   border: 1px solid var(--border);
   background: var(--pill);
@@ -111,6 +165,122 @@ body {
   outline: 2px solid #111827;
   background: #111827;
   color: #fff;
+}
+
+/* ===== Step diagram in left panel ===== */
+
+.step-diagram-wrap {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 12px;
+  background: #ffffff;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.step-diagram {
+  position: relative;
+  width: 100%;
+  max-width: 950px;
+  /* keeps the same proportions as your PNG (approx 2000x734) */
+  aspect-ratio: 2000 / 734;
+}
+
+.step-diagram img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none; /* clicks go to hotspots, not the image */
+  border-radius: 12px;
+}
+
+/* transparent clickable regions */
+.step-hotspot {
+  position: absolute;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+  /* make them still keyboard-focusable */
+}
+
+.step-hotspot:focus-visible {
+  outline: 2px solid #111827;
+  outline-offset: 2px;
+}
+
+/* subtle highlight ring for the active step */
+.step-hotspot.active {
+  box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.45);
+  border-radius: 24px;
+}
+
+/* Approximate positions in percentages (tweak as needed) */
+.step-hotspot.step-1 {
+  left: 2%;
+  top: 5%;
+  width: 23%;
+  height: 40%;
+}
+
+.step-hotspot.step-2 {
+  left: 2%;
+  top: 53%;
+  width: 23%;
+  height: 40%;
+}
+
+.step-hotspot.step-3 {
+  left: 27%;
+  top: 28%;
+  width: 23%;
+  height: 48%;
+}
+
+.step-hotspot.step-4 {
+  left: 38%;
+  top: 4%;
+  width: 23%;
+  height: 40%;
+}
+
+.step-hotspot.step-5 {
+  left: 38%;
+  top: 52%;
+  width: 23%;
+  height: 40%;
+}
+
+.step-hotspot.step-6 {
+  left: 58%;
+  top: 28%;
+  width: 23%;
+  height: 48%;
+}
+
+.step-hotspot.step-7 {
+  left: 70%;
+  top: 2%;
+  width: 23%;
+  height: 40%;
+}
+
+.step-hotspot.step-8 {
+  left: 70%;
+  top: 52%;
+  width: 23%;
+  height: 40%;
+}
+
+.step-hotspot.step-9 {
+  left: 84%;
+  top: 4%;
+  width: 15%;
+  height: 88%;
 }
 
 /* ===== Main column ===== */
@@ -162,6 +332,7 @@ body {
   background: #f9fafb;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   color: #1f2937;
+  font-size: 14px;
 }
 
 .hop-resources:hover {
@@ -202,26 +373,6 @@ body {
   font-weight: 500;
 }
 
-.btn.dark {
-  background: linear-gradient(135deg, #111827, #4f46e5);
-  color: #f9fafb;
-  border-radius: 999px;
-  padding: 0.45rem 1.2rem;
-  font-size: 0.9rem;
-  border: none;
-  box-shadow: 0 5px 14px rgba(79, 70, 229, 0.45);
-}
-
-.btn.dark:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 7px 18px rgba(79, 70, 229, 0.65);
-}
-
-.btn.dark:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
 .badge {
   font-size: 12px;
   color: var(--muted);
@@ -238,11 +389,22 @@ body {
 /* ===== Responsive ===== */
 @media (max-width: 1280px) {
   .hop-shell {
-    grid-template-columns: 200px 1fr; /* sidebar + main */
+    grid-template-columns: 1fr 280px; /* diagram+main stack, then right column */
+  }
+
+  .hop-sidebar {
+    grid-column: 1 / -1;
+    order: 1;
+  }
+
+  .hop-main {
+    grid-column: 1 / -1;
+    order: 2;
   }
 
   .hop-resources {
     grid-column: 1 / -1; /* stack below main */
+    order: 3;
   }
 }
 
@@ -577,3 +739,220 @@ body {
     opacity: 1;
   }
 }
+
+/* centered step diagram under header */
+.step-diagram-wrap {
+  max-width: 1200px;
+  margin: 12px auto 4px;
+  display: flex;
+  justify-content: center;
+}
+
+.step-diagram {
+  position: relative;
+  width: 100%;
+  max-width: 1150px;
+}
+
+.step-diagram img {
+  width: 100%;
+  display: block;
+}
+
+/* transparent clickable areas on blobs */
+/* transparent clickable areas on blobs */
+.step-hotspot {
+  position: absolute;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+/* hotspot positions */
+.step-hotspot.step-1 {
+  left: 2%;
+  top: 8%;
+  width: 14%;
+  height: 40%;
+}
+
+.step-hotspot.step-2 {
+  left: 2%;
+  top: 53%;
+  width: 14%;
+  height: 40%;
+}
+
+.step-hotspot.step-3 {
+  left: 18%;
+  top: 30%;
+  width: 14%;
+  height: 40%;
+}
+
+.step-hotspot.step-4 {
+  left: 33%;
+  top: 8%;
+  width: 14%;
+  height: 40%;
+}
+
+.step-hotspot.step-5 {
+  left: 33%;
+  top: 53%;
+  width: 14%;
+  height: 40%;
+}
+
+.step-hotspot.step-6 {
+  left: 49%;
+  top: 30%;
+  width: 14%;
+  height: 40%;
+}
+
+.step-hotspot.step-7 {
+  left: 65%;
+  top: 8%;
+  width: 14%;
+  height: 40%;
+}
+
+.step-hotspot.step-8 {
+  left: 65%;
+  top: 53%;
+  width: 14%;
+  height: 40%;
+}
+
+.step-hotspot.step-9 {
+  left: 81%;
+  top: 17%;
+  width: 17%;
+  height: 70%;
+}
+
+
+/* optional outline when active (for debugging / focus) */
+.step-hotspot {
+  outline: none !important;
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  -webkit-tap-highlight-color: transparent; /* mobile Safari tap flash */
+}
+
+.step-hotspot:focus,
+.step-hotspot:active,
+.step-hotspot:focus-visible {
+  outline: none !important;
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.step-hotspot:hover {
+  outline: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+
+
+/* ===== New 2-column layout under the step diagram ===== */
+
+.hop-layout {
+  display: grid;
+  /* 🔹 50/50 split that scales with the window */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+  padding: 12px 8px;
+  width: 100%;
+  align-items: flex-start;
+}
+
+.hop-left-panel {
+  /* left side: Genially embed */
+}
+
+.hop-right-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Responsive: stack on small screens */
+@media (max-width: 1024px) {
+  .hop-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ===== Embedded Genially card ===== */
+
+.embed-card {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  background: #ffffff;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05);
+}
+
+.embed-title {
+  margin: 0 0 8px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+/* 🔹 Bigger, tall “phone-style” frame */
+.embed-frame-wrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 9 / 16;        /* tall phone */
+  max-height: 720px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #f3f4f6;
+}
+
+.embed-frame-wrap iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+.embed-placeholder {
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+
+.step-heading {
+  font-size: 22px;
+  font-weight: 700;
+  margin: 0 0 4px;
+  color: #003366; /* deeper blue, like in the mockups */
+}
+
+.step-subheading {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 4px 0 6px;
+  color: #003366;
+}
+
+.step-text {
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 0 0 8px;
+}
+
+.step-save-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 4px 0 8px;
+}
+
