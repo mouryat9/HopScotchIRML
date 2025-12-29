@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { API } from "./api";
 
 /**
@@ -14,14 +14,14 @@ const STEP_TITLES = {
  * Direction paragraphs (top card) for steps 1–3
  */
 const STEP_DIRECTIONS = {
-  1: `This step will help you reflect on your paradigmatic positioning as a researcher (worldview). 
-The interactive resource on the left side panel will help you learn about the different worldviews you can bring 
+  1: `This step will help you reflect on your paradigmatic positioning as a researcher (worldview).
+The interactive resource on the left side panel will help you learn about the different worldviews you can bring
 as a researcher to your studies.`,
-  2: `In this second step, you will define and narrow down your research topic and goals (personal, practical, and intellectual) 
-that will be driving the study you are proposing. The interactive resource on the left will help you refine your topic 
+  2: `In this second step, you will define and narrow down your research topic and goals (personal, practical, and intellectual)
+that will be driving the study you are proposing. The interactive resource on the left will help you refine your topic
 as well as the goals of your proposed study.`,
-  3: `The third step focuses on your literature review. You will identify topical research — previous studies in your field that 
-help justify the relevance of your research topic — and define the theoretical frameworks that support your proposed research. 
+  3: `The third step focuses on your literature review. You will identify topical research — previous studies in your field that
+help justify the relevance of your research topic — and define the theoretical frameworks that support your proposed research.
 To guide you through this process, please explore the interactive resource on the left pane.`,
 };
 
@@ -29,18 +29,19 @@ To guide you through this process, please explore the interactive resource on th
  * Default empty shapes for each step's data
  */
 const EMPTY_STEP_DATA = {
-  1: {
-    worldview: "",
-  },
-  2: {
-    topic: "",
-    goals: "",
-  },
-  3: {
-    topicalResearch: "",
-    theoreticalFrameworks: "",
-  },
+  1: { worldview: "" },
+  2: { topic: "", goals: "" },
+  3: { topicalResearch: "", theoreticalFrameworks: "" },
 };
+
+// ---- If your backend expects worldview_id, map dropdown values to those ids
+const WORLDVIEW_IDS = new Set([
+  "positivist",
+  "post_positivist",
+  "constructivist",
+  "transformative",
+  "pragmatist",
+]);
 
 /**
  * Main wrapper – chooses which step layout to render.
@@ -49,9 +50,12 @@ const EMPTY_STEP_DATA = {
  *  - sessionId: string | null   (used for saving/loading)
  */
 export default function StepDetails({ step, sessionId }) {
-  const [data, setData] = useState(EMPTY_STEP_DATA[step] || {});
+  const baseShape = useMemo(() => EMPTY_STEP_DATA[step] || {}, [step]);
+
+  const [data, setData] = useState(baseShape);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
+  const [worldviewStatus, setWorldviewStatus] = useState(""); // Step 1 only
 
   // Load data whenever step or session changes
   useEffect(() => {
@@ -59,8 +63,8 @@ export default function StepDetails({ step, sessionId }) {
 
     async function load() {
       setSaveError("");
-      const base = EMPTY_STEP_DATA[step] || {};
-      setData(base);
+      setWorldviewStatus("");
+      setData(baseShape);
 
       if (!sessionId) return;
 
@@ -68,7 +72,7 @@ export default function StepDetails({ step, sessionId }) {
         const res = await API.getStepData(sessionId, step);
         if (!cancelled) {
           setData({
-            ...base,
+            ...baseShape,
             ...(res.data || {}),
           });
         }
@@ -84,36 +88,59 @@ export default function StepDetails({ step, sessionId }) {
     return () => {
       cancelled = true;
     };
-  }, [step, sessionId]);
+  }, [step, sessionId, baseShape]);
 
   // helper to update + save
   const updateField = (field, value) => {
     setData((prev) => {
       const next = { ...prev, [field]: value };
+
       if (sessionId) {
         setSaving(true);
         setSaveError("");
+
         API.saveStepData({
           session_id: sessionId,
           step,
           data: next,
         })
-          .then(() => {
-            setSaving(false);
-          })
+          .then(() => setSaving(false))
           .catch((err) => {
             console.error("Failed to save step data", err);
             setSaving(false);
             setSaveError("Auto-save failed. Check your connection.");
           });
       }
+
       return next;
     });
   };
 
+  // Step 1: when worldview changes, also tell backend to disable survey and set worldview
+  const onWorldviewChange = async (newValue) => {
+    updateField("worldview", newValue);
+
+    setWorldviewStatus("");
+    setSaveError("");
+
+    if (!sessionId) return;
+
+    // Only call backend if it’s a real worldview id (ignore "" and "unsure")
+    if (!WORLDVIEW_IDS.has(newValue)) return;
+
+    try {
+      // You must add this method in api.js (see below)
+      await API.setWorldview(sessionId, newValue);
+      setWorldviewStatus("Worldview saved — you can start chatting now (survey disabled).");
+    } catch (e) {
+      console.error("Failed to set worldview on backend", e);
+      setSaveError("Worldview save failed. Check backend logs.");
+    }
+  };
+
   const title = STEP_TITLES[step] || `Step ${step}`;
 
-  // Route to specific layouts
+  // ---------------- Step 1 ----------------
   if (step === 1) {
     return (
       <div className="step-details">
@@ -138,10 +165,12 @@ export default function StepDetails({ step, sessionId }) {
           <select
             className="input"
             value={data.worldview || ""}
-            onChange={(e) => updateField("worldview", e.target.value)}
+            onChange={(e) => onWorldviewChange(e.target.value)}
             disabled={!sessionId}
           >
-            <option value="">Choose the worldview that best aligns with who you are</option>
+            <option value="">
+              Choose the worldview that best aligns with who you are
+            </option>
             <option value="positivist">Positivist</option>
             <option value="post_positivist">Post-positivist</option>
             <option value="constructivist">Constructivist</option>
@@ -149,6 +178,12 @@ export default function StepDetails({ step, sessionId }) {
             <option value="pragmatist">Pragmatist</option>
             <option value="unsure">I’m not sure yet</option>
           </select>
+
+          {worldviewStatus && (
+            <div className="badge" style={{ marginTop: 6 }}>
+              {worldviewStatus}
+            </div>
+          )}
 
           {saving && (
             <div className="badge" style={{ marginTop: 6 }}>
@@ -165,6 +200,7 @@ export default function StepDetails({ step, sessionId }) {
     );
   }
 
+  // ---------------- Step 2 ----------------
   if (step === 2) {
     return (
       <div className="step-details">
@@ -197,10 +233,7 @@ export default function StepDetails({ step, sessionId }) {
             disabled={!sessionId}
           />
 
-          <label
-            className="hop-desc"
-            style={{ display: "block", marginTop: 10 }}
-          >
+          <label className="hop-desc" style={{ display: "block", marginTop: 10 }}>
             Research goals
           </label>
           <textarea
@@ -227,6 +260,7 @@ export default function StepDetails({ step, sessionId }) {
     );
   }
 
+  // ---------------- Step 3 ----------------
   if (step === 3) {
     return (
       <div className="step-details">
@@ -259,10 +293,7 @@ export default function StepDetails({ step, sessionId }) {
             disabled={!sessionId}
           />
 
-          <label
-            className="hop-desc"
-            style={{ display: "block", marginTop: 10 }}
-          >
+          <label className="hop-desc" style={{ display: "block", marginTop: 10 }}>
             Theoretical frameworks
           </label>
           <textarea
@@ -270,9 +301,7 @@ export default function StepDetails({ step, sessionId }) {
             rows={3}
             placeholder="Please describe your theoretical frameworks…"
             value={data.theoreticalFrameworks || ""}
-            onChange={(e) =>
-              updateField("theoreticalFrameworks", e.target.value)
-            }
+            onChange={(e) => updateField("theoreticalFrameworks", e.target.value)}
             disabled={!sessionId}
           />
 
@@ -291,7 +320,7 @@ export default function StepDetails({ step, sessionId }) {
     );
   }
 
-  // Generic fallback for steps 4–9 for now
+  // ---------------- Steps 4–9 fallback ----------------
   return (
     <div className="step-details">
       <section className="hop-card">
@@ -315,6 +344,7 @@ export default function StepDetails({ step, sessionId }) {
           onChange={(e) => updateField("notes", e.target.value)}
           disabled={!sessionId}
         />
+
         {saving && (
           <div className="badge" style={{ marginTop: 6 }}>
             Saving…

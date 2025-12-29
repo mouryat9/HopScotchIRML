@@ -424,12 +424,9 @@ def _startup_rag():
 # ============================================================
 # LLM call (Ollama)
 # ============================================================
-def build_ollama_payload(
-    worldview_profile: str,
-    user_msg: str,
-    passages: List[Dict[str, Any]],
-    stream: bool = False,
-) -> Dict[str, Any]:
+
+def build_ollama_payload(worldview_profile, step_context, user_msg, passages, stream=False):
+
     """
     Shared helper to build the Ollama chat payload.
     Set stream=True when you want chunked responses, False for normal JSON.
@@ -442,45 +439,37 @@ def build_ollama_payload(
     ctx_text = "\n\n".join(ctx_blocks) if ctx_blocks else "No matching passages."
 
     system_msg = (
-        "You are a gentle research-methods tutor helping students understand research paradigms "
-        "(positivist, post-positivist, constructivist, transformative, pragmatist) and how these "
-        "relate to their own worldview.\n\n"
+        "You are a gentle research-methods tutor helping students scaffold their research design.\n\n"
         "Always:\n"
         "- Use a calm, encouraging tone.\n"
-        "- Answer in at most 3 short paragraphs OR a few bullet points.\n"
-        "- Use the user's worldview summary when explaining.\n"
-        "- Use the context snippets only as support; do NOT quote long passages.\n"
-        "- At the end, append a section exactly titled '**Quick references from our notes:**' "
-        "followed by bullet points of the form '- *filename.pdf*: short 1–2 sentence summary'."
+        "- Ask 1–2 helpful clarifying questions if needed.\n"
+        "- Give actionable suggestions.\n"
+        "- Keep answers concise.\n"
+        "- Use the student's worldview + step inputs when guiding them.\n"
+        "- At the end, append '**Quick references from our notes:**' with 2–5 bullets.\n"
     )
 
-    worldview_msg = (
-        f"Here is the user's survey-based worldview profile:\n\n{worldview_profile}\n\n"
-        "You also have access to some snippets from our IRML resources:\n\n"
-        f"{ctx_text}"
+    context_msg = (
+        f"Student context:\n{worldview_profile}\n\n"
+        f"Step inputs:\n{step_context}\n\n"
+        f"IRML resource snippets:\n{ctx_text}"
     )
 
     return {
         "model": LLM_MODEL,
         "stream": stream,
-        "options": {
-            "temperature": LLM_TEMP,
-        },
+        "options": {"temperature": LLM_TEMP},
         "messages": [
             {"role": "system", "content": system_msg},
-            {"role": "assistant", "content": worldview_msg},
+            {"role": "assistant", "content": context_msg},
             {"role": "user", "content": user_msg},
         ],
     }
 
-
-def call_llm(
-    worldview_profile: str, user_msg: str, passages: List[Dict[str, Any]]
-) -> str:
-    """
-    Non-streaming call (used by /chat/send).
-    """
-    payload = build_ollama_payload(worldview_profile, user_msg, passages, stream=False)
+def call_llm(worldview_profile: str, step_context: str, user_msg: str, passages: List[Dict[str, Any]]) -> str:
+    
+    payload = build_ollama_payload(worldview_profile, step_context, user_msg, passages, stream=False)
+    
 
     try:
         resp = requests.post(OLLAMA_URL, json=payload, timeout=120)
@@ -549,8 +538,73 @@ def get_step_data(
     data = sess.step_notes.get(key, {})
     return StepDataResp(session_id=sess.id, step=step, data=data)
 
+class WorldviewSetReq(BaseModel):
+    session_id: str
+    worldview_id: str  # "positivist" | "post_positivist" | "constructivist" | "transformative" | "pragmatist"
+
+class WorldviewSetResp(BaseModel):
+    session_id: str
+    worldview_id: str
+    worldview_label: str
+
+
+WORLDVIEW_LABELS = {
+    "positivist": "Positivist",
+    "post_positivist": "Post Positivist",
+    "constructivist": "Constructivist",
+    "transformative": "Transformative",
+    "pragmatist": "Pragmatist",
+}
+
+
+@app.post("/worldview/set", response_model=WorldviewSetResp)
+def set_worldview(req: WorldviewSetReq):
+    sess = _require_session(req.session_id)
+
+    wid = (req.worldview_id or "").strip()
+    if wid not in WORLDVIEW_LABELS:
+        raise HTTPException(status_code=400, detail="Invalid worldview_id")
+
+    # ✅ IMPORTANT: disable survey mode completely for this session
+    sess.survey_started = True
+    sess.survey_done = True
+    sess.survey_index = 0
+    sess.answers = {}
+
+    # Set worldview on session (what the LLM will see)
+    sess.worldview_band = wid
+    sess.worldview_label = WORLDVIEW_LABELS[wid]
+    sess.worldview_total = None
+
+    # Also store into step 1 notes so you can use it later
+    sess.step_notes["1"] = {**(sess.step_notes.get("1") or {}), "worldview_id": wid}
+
+    return WorldviewSetResp(
+        session_id=sess.id,
+        worldview_id=wid,
+        worldview_label=sess.worldview_label,
+    )
 
 # ---------------- Survey-as-conversation logic ----------------
+
+def _render_step_context(sess: SessionData) -> str:
+    s1 = (sess.step_notes or {}).get("1") or {}
+    s2 = (sess.step_notes or {}).get("2") or {}
+
+    worldview = (s1.get("worldview") or "").strip()
+    topic = (s2.get("topic") or "").strip()
+    goals = (s2.get("goals") or "").strip()
+
+    lines = []
+    if worldview:
+        lines.append(f"Step 1 selected worldview: {worldview}")
+    if topic:
+        lines.append(f"Step 2 research topic: {topic}")
+    if goals:
+        lines.append(f"Step 2 research goals: {goals}")
+
+    return "\n".join(lines) if lines else "No step inputs saved yet."
+
 def _handle_survey_turn(
     sess: SessionData,
     user_msg: str,
@@ -718,15 +772,18 @@ def chat_send(req: ChatSendReq = Body(...)):
     # store user turn
     history.append(ChatTurn(role="user", content=user_msg))
 
-    # 1) If survey not finished, let the survey handler run
-    survey_resp = _handle_survey_turn(sess, user_msg, history)
-    if survey_resp is not None:
-        return survey_resp
+    # ✅ Only run survey if user has NOT already set worldview
+    if not sess.survey_done and not sess.worldview_label:
+        survey_resp = _handle_survey_turn(sess, user_msg, history)
+        if survey_resp is not None:
+            return survey_resp
 
     # 2) Otherwise, normal LLM + RAG chat using worldview and resources
     worldview_profile = _render_worldview_profile(sess)
+    step_context = _render_step_context(sess)
     passages = _retrieve(user_msg, k=5)
-    answer = call_llm(worldview_profile, user_msg, passages)
+    answer = call_llm(worldview_profile, step_context, user_msg, passages)
+
 
     history.append(ChatTurn(role="assistant", content=answer))
     return ChatHistoryResp(session_id=req.session_id, history=history)
@@ -752,16 +809,18 @@ def chat_send_stream(req: ChatSendReq = Body(...)):
     # store user turn
     history.append(ChatTurn(role="user", content=user_msg))
 
-    # 1) Let the survey handler run first
-    survey_resp = _handle_survey_turn(sess, user_msg, history)
-    if survey_resp is not None:
-        # Survey still in progress or just finished -> return normal JSON
-        return survey_resp
+    # Only run survey if user has NOT already set worldview
+    if not sess.survey_done and not sess.worldview_label:
+        survey_resp = _handle_survey_turn(sess, user_msg, history)
+        if survey_resp is not None:
+            return survey_resp
 
     # 2) Survey is done → stream LLM answer
     worldview_profile = _render_worldview_profile(sess)
+    step_context = _render_step_context(sess)
     passages = _retrieve(user_msg, k=5)
-    payload = build_ollama_payload(worldview_profile, user_msg, passages, stream=True)
+    payload = build_ollama_payload(worldview_profile, step_context, user_msg, passages, stream=True)
+
 
     def event_stream():
         assistant_text_parts: List[str] = []
