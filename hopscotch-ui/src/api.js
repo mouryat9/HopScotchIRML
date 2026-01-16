@@ -36,14 +36,14 @@ export const API = {
   },
 
   async setWorldview(session_id, worldview_id) {
-  const res = await fetch(`${API_BASE}/worldview/set`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ session_id, worldview_id }),
-  });
-  if (!res.ok) throw new Error("Failed to set worldview");
-  return res.json();
-},
+    const res = await fetch(`${API_BASE}/worldview/set`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ session_id, worldview_id }),
+    });
+    if (!res.ok) throw new Error("Failed to set worldview");
+    return res.json();
+  },
 
 
   // Save step-specific data
