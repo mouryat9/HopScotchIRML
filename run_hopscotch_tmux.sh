@@ -1,37 +1,102 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
 
-# -------------------------------
-# CONFIGURATION
-# -------------------------------
+# =========================
+# CONFIG (EDIT IF NEEDED)
+# =========================
 SESSION="hopscotch"
-ENV_PATH="$HOME/hopscotchenv"           # path to your Python venv
-SERVER_DIR="$HOME/hopscotch"            # directory with app.py
-UI_DIR="$HOME/hopscotch/hopscotch-ui"   # directory with your React app
-API_PORT=8000
-UI_PORT=5173
 
-# -------------------------------
-# Create / attach to tmux session
-# -------------------------------
-tmux has-session -t $SESSION 2>/dev/null
-if [ $? != 0 ]; then
-  echo "Creating new tmux session: $SESSION"
-  tmux new-session -d -s $SESSION
+# Your repo root (contains app_chat.py, app.py, hopscotch-ui/)
+ROOT="$HOME/hopscotch"
 
-  # --------- Window 1: Backend (FastAPI) ---------
-  tmux rename-window -t $SESSION:0 'backend'
-  tmux send-keys -t $SESSION "cd $SERVER_DIR" C-m
-  tmux send-keys -t $SESSION "source $ENV_PATH/bin/activate" C-m
-  tmux send-keys -t $SESSION "uvicorn app:app --reload --port $API_PORT" C-m
+# Your python venv folder (from your screenshot tree)
+VENV="$ROOT/hopscotchenv"
 
-  # --------- Window 2: Frontend (Vite) ----------
-  tmux new-window -t $SESSION -n 'frontend'
-  tmux send-keys -t $SESSION:1 "cd $UI_DIR" C-m
-  tmux send-keys -t $SESSION:1 "npm run dev -- --host" C-m
+BACKEND_HOST="0.0.0.0"
+BACKEND_PORT="8000"
+
+FRONTEND_HOST="0.0.0.0"
+FRONTEND_PORT="5173"
+
+# logs for cloudflare URLs
+CF_BACK_LOG="$ROOT/cloudflared_backend.log"
+CF_UI_LOG="$ROOT/cloudflared_ui.log"
+
+# =========================
+# HELPERS
+# =========================
+activate_venv="source \"$VENV/bin/activate\""
+
+# If tmux session already exists, attach and exit
+if tmux has-session -t "$SESSION" 2>/dev/null; then
+  echo "[INFO] tmux session '$SESSION' already running. Attaching..."
+  tmux attach -t "$SESSION"
+  exit 0
 fi
 
-# -------------------------------
-# Attach to the session
-# -------------------------------
-echo "Attaching to tmux session: $SESSION"
-tmux attach -t $SESSION
+# sanity checks
+if [ ! -d "$ROOT" ]; then
+  echo "[ERROR] ROOT folder not found: $ROOT"
+  exit 1
+fi
+if [ ! -f "$VENV/bin/activate" ]; then
+  echo "[ERROR] venv activate not found: $VENV/bin/activate"
+  echo "        Fix VENV path in this script."
+  exit 1
+fi
+if [ ! -d "$ROOT/hopscotch-ui" ]; then
+  echo "[ERROR] UI folder not found: $ROOT/hopscotch-ui"
+  exit 1
+fi
+
+# =========================
+# START TMUX LAYOUT (2x2)
+# =========================
+tmux new-session -d -s "$SESSION" -c "$ROOT"
+
+# split into 4 panes
+tmux split-window -h -t "$SESSION"         # pane 1 right
+tmux split-window -v -t "$SESSION:0.0"     # pane 2 bottom-left
+tmux split-window -v -t "$SESSION:0.1"     # pane 3 bottom-right
+
+# Pane indexes:
+# 0 = top-left
+# 1 = top-right
+# 2 = bottom-left
+# 3 = bottom-right
+
+# =========================
+# PANE 0: OLLAMA CHECK + WARMUP
+# =========================
+tmux send-keys -t "$SESSION:0.0" "echo '== OLLAMA =='; ollama ps || true; echo; echo 'If Ollama is already running, do NOT run serve again.'; echo 'Warming model...'; ollama pull llama3.1:8b; ollama run llama3.1:8b 'ready' --keepalive 60m" C-m
+
+# =========================
+# PANE 1: BACKEND (FASTAPI)
+# =========================
+tmux send-keys -t "$SESSION:0.1" "cd \"$ROOT\" && $activate_venv && python -V && echo 'Starting backend...' && uvicorn app_chat:app --host $BACKEND_HOST --port $BACKEND_PORT --reload" C-m
+
+# =========================
+# PANE 2: FRONTEND (VITE)
+# =========================
+tmux send-keys -t "$SESSION:0.2" "cd \"$ROOT/hopscotch-ui\" && echo 'Starting UI...' && npm install && npm run dev -- --host $FRONTEND_HOST --port $FRONTEND_PORT" C-m
+
+# =========================
+# PANE 3: CLOUDFLARED (BACKEND + UI) WITH LOGS
+# =========================
+tmux send-keys -t "$SESSION:0.3" "echo 'Starting Cloudflare tunnels...'; rm -f \"$CF_BACK_LOG\" \"$CF_UI_LOG\"; \
+cloudflared tunnel --url http://127.0.0.1:$BACKEND_PORT --logfile \"$CF_BACK_LOG\" --loglevel info & \
+sleep 2; \
+cloudflared tunnel --url http://127.0.0.1:$FRONTEND_PORT --logfile \"$CF_UI_LOG\" --loglevel info & \
+sleep 2; \
+echo; echo 'Backend tunnel URL (if ready):'; grep -oE 'https://[a-zA-Z0-9.-]+\\.trycloudflare\\.com' \"$CF_BACK_LOG\" | tail -n 1 || true; \
+echo 'UI tunnel URL (if ready):'; grep -oE 'https://[a-zA-Z0-9.-]+\\.trycloudflare\\.com' \"$CF_UI_LOG\" | tail -n 1 || true; \
+echo; echo 'To re-print URLs later:'; \
+echo \"  grep -oE 'https://[a-zA-Z0-9.-]+\\\\.trycloudflare\\\\.com' $CF_BACK_LOG | tail -n 1\"; \
+echo \"  grep -oE 'https://[a-zA-Z0-9.-]+\\\\.trycloudflare\\\\.com' $CF_UI_LOG | tail -n 1\"; \
+echo; echo 'Keeping this pane alive...'; tail -f \"$CF_BACK_LOG\" \"$CF_UI_LOG\"" C-m
+
+# make panes readable
+tmux select-layout -t "$SESSION" tiled
+
+# attach
+tmux attach -t "$SESSION"
