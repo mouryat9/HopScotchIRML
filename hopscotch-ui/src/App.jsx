@@ -124,10 +124,11 @@ function StepDiagram({ activeStep, onStepChange }) {
           {col.steps.map((stepNum) => {
             const card = STEP_CARDS[stepNum - 1];
             const isActive = activeStep === stepNum;
+            const isCompleted = stepNum < activeStep;
             return (
               <button
                 key={stepNum}
-                className={`hop-step-card${isActive ? " hop-step-card--active" : ""}`}
+                className={`hop-step-card${isActive ? " hop-step-card--active" : ""}${isCompleted ? " hop-step-card--completed" : ""}`}
                 style={{
                   "--card-color": card.color,
                   animationDelay: `${ci * 0.07}s`,

@@ -82,7 +82,16 @@ h1, h2, h3, h4, h5, h6 {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: var(--hop-bg);
+  background: linear-gradient(
+    135deg,
+    #FAFBFC 0%,
+    #F0F4FD 25%,
+    #F5FBF0 50%,
+    #EEF2FD 75%,
+    #FAFBFC 100%
+  );
+  background-size: 400% 400%;
+  animation: ambientBgShift 20s ease infinite;
 }
 
 .hop-content {
@@ -117,6 +126,7 @@ h1, h2, h3, h4, h5, h6 {
   height: 48px;
   width: auto;
   display: block;
+  animation: gentleFloat 4s ease-in-out infinite;
 }
 
 .hop-app-title {
@@ -243,7 +253,7 @@ h1, h2, h3, h4, h5, h6 {
   border-color: var(--hop-blue);
   color: var(--hop-white);
   box-shadow: 0 0 0 4px rgba(71, 118, 230, 0.18);
-  animation: scaleIn 0.25s ease-out;
+  animation: dotPulseRing 2.5s ease-in-out infinite;
 }
 
 .step-progress__dot--completed {
@@ -260,7 +270,14 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .step-progress__line--completed {
-  background: var(--hop-green);
+  background: linear-gradient(
+    90deg,
+    var(--hop-green) 0%,
+    var(--hop-green-light) 50%,
+    var(--hop-green) 100%
+  );
+  background-size: 200% 100%;
+  animation: lineShimmer 4s linear infinite;
 }
 
 /* ========================================================
@@ -275,6 +292,35 @@ h1, h2, h3, h4, h5, h6 {
   max-width: 1200px;
   margin: 8px auto 12px;
   padding: 20px 16px;
+  position: relative;
+}
+
+.hop-diagram::before {
+  content: "";
+  position: absolute;
+  top: 8px;
+  left: 12px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgba(71, 118, 230, 0.12);
+  animation: floatUpDown 5s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.hop-diagram::after {
+  content: "";
+  position: absolute;
+  bottom: 8px;
+  right: 16px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(109, 179, 63, 0.12);
+  animation: floatLeftRight 6s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 0;
 }
 
 /* Each column: either a pair (two stacked) or single (one centered) */
@@ -348,13 +394,14 @@ h1, h2, h3, h4, h5, h6 {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
 }
 
-/* Active step: ring + scale */
+/* Active step: ring + scale + breathing glow */
 .hop-step-card--active {
   transform: translateY(-2px) scale(1.05);
   box-shadow:
     0 0 0 3px #fff,
     0 0 0 6px var(--card-color),
     0 8px 24px rgba(0, 0, 0, 0.2);
+  animation: cardBreathGlow 3s ease-in-out infinite;
 }
 
 .hop-step-card--active:hover {
@@ -718,8 +765,27 @@ select.input:focus {
   align-items: baseline;
   justify-content: space-between;
   gap: 0.75rem;
-  padding-bottom: 0.5rem;
-  border-bottom: 2px solid var(--hop-border-light);
+  padding-bottom: 0.6rem;
+  position: relative;
+}
+
+.chat-head::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    var(--hop-border-light),
+    var(--hop-blue-light),
+    var(--hop-green-light),
+    var(--hop-border-light)
+  );
+  background-size: 200% 100%;
+  animation: borderGradientSlide 6s linear infinite;
+  border-radius: 1px;
 }
 
 .chat-title {
@@ -993,6 +1059,7 @@ select.input:focus {
   height: 6px;
   border-radius: 999px;
   background: var(--hop-blue-light);
+  box-shadow: 0 0 6px rgba(71, 118, 230, 0.4);
   animation: hop-typing 1s infinite ease-in-out;
 }
 
@@ -1584,4 +1651,154 @@ select.input:focus {
 
 .teacher-table tr:hover td {
   background: var(--hop-bg);
+}
+
+/* ========================================================
+   Ambient Animations (keyframes)
+   ======================================================== */
+
+/* Background gradient cycle */
+@keyframes ambientBgShift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Active step card breathing glow */
+@keyframes cardBreathGlow {
+  0%, 100% {
+    box-shadow:
+      0 0 0 3px #fff,
+      0 0 0 6px var(--card-color),
+      0 8px 24px rgba(0, 0, 0, 0.2);
+  }
+  50% {
+    box-shadow:
+      0 0 0 3px #fff,
+      0 0 0 8px var(--card-color),
+      0 8px 28px rgba(0, 0, 0, 0.25),
+      0 0 20px rgba(71, 118, 230, 0.15);
+  }
+}
+
+/* Completed card shimmer sweep */
+@keyframes shimmerSweep {
+  0%   { transform: translateX(-100%) rotate(25deg); }
+  100% { transform: translateX(200%) rotate(25deg); }
+}
+
+.hop-step-card--completed::after {
+  content: "";
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 40%;
+  height: 200%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.12) 50%,
+    transparent 100%
+  );
+  animation: shimmerSweep 6s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Active progress dot pulse ring */
+@keyframes dotPulseRing {
+  0%, 100% {
+    box-shadow: 0 0 0 4px rgba(71, 118, 230, 0.18);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(71, 118, 230, 0.08);
+  }
+}
+
+/* Completed progress line shimmer */
+@keyframes lineShimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* Floating decorative particles */
+@keyframes floatUpDown {
+  0%, 100% { transform: translateY(0px); }
+  50%      { transform: translateY(-12px); }
+}
+
+@keyframes floatLeftRight {
+  0%, 100% { transform: translateX(0px); }
+  50%      { transform: translateX(10px); }
+}
+
+/* Chat header gradient underline */
+@keyframes borderGradientSlide {
+  0%   { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+
+/* Logo gentle float */
+@keyframes gentleFloat {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-2px); }
+}
+
+/* ========================================================
+   Reduced Motion: disable ambient/continuous animations
+   ======================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .hop-wrap {
+    animation: none;
+    background: var(--hop-bg);
+  }
+
+  .hop-step-card--active {
+    animation: none;
+  }
+
+  .hop-step-card--completed::after {
+    animation: none;
+    display: none;
+  }
+
+  .step-progress__dot--active {
+    animation: none;
+  }
+
+  .step-progress__line--completed {
+    animation: none;
+    background: var(--hop-green);
+  }
+
+  .hop-diagram::before,
+  .hop-diagram::after {
+    animation: none;
+    display: none;
+  }
+
+  .chat-head::after {
+    animation: none;
+  }
+
+  .hop-logo {
+    animation: none;
+  }
+
+  .hop-step-card {
+    animation-duration: 0.01s;
+  }
+
+  .step-details .hop-card {
+    animation-duration: 0.01s;
+  }
+
+  .embed-card {
+    animation-duration: 0.01s;
+  }
+
+  .typing-indicator span {
+    box-shadow: none;
+  }
 }
