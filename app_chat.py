@@ -33,10 +33,18 @@ import json
 import logging
 
 import requests
-from fastapi import FastAPI, HTTPException, Body, Query
+from fastapi import FastAPI, HTTPException, Body, Query, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
+
+from auth import hash_password, verify_password, create_access_token, get_current_user
+from database import (
+    ensure_indexes, find_user_by_email, create_user,
+    find_session, create_session_doc, update_session,
+    get_sessions_for_user, get_all_student_sessions,
+    get_latest_session_for_user,
+)
 
 # -------------------------------------------------
 # Paths
@@ -164,6 +172,9 @@ class SessionData(BaseModel):
     # for mixed-methods students: which methodology they chose at Step 4
     chosen_methodology: Optional[str] = None
 
+    # current step the student is working on (1-9)
+    active_step: int = 1
+
 
 class SessionCreateResponse(BaseModel):
     session_id: str
@@ -193,19 +204,48 @@ app.add_middleware(
 )
 
 # ============================================================
-# In-memory DB
-# ============================================================
-DB: Dict[str, SessionData] = {}
-
-
-# ============================================================
 # Helpers: sessions, survey
 # ============================================================
 def _require_session(session_id: str) -> SessionData:
-    sess = DB.get(session_id)
-    if not sess:
+    """Load a session from MongoDB and return it as a SessionData model."""
+    doc = find_session(session_id)
+    if not doc:
         raise HTTPException(status_code=404, detail="Session not found")
-    return sess
+    chat_turns = [ChatTurn(**t) for t in (doc.get("chat") or [])]
+    return SessionData(
+        id=doc["session_id"],
+        created_at=doc.get("created_at", ""),
+        answers=doc.get("answers", {}),
+        chat=chat_turns,
+        survey_index=doc.get("survey_index", 0),
+        survey_started=doc.get("survey_started", False),
+        survey_done=doc.get("survey_done", False),
+        worldview_band=doc.get("worldview_band"),
+        worldview_label=doc.get("worldview_label"),
+        worldview_total=doc.get("worldview_total"),
+        step_notes=doc.get("step_notes", {}),
+        resolved_path=doc.get("resolved_path"),
+        chosen_methodology=doc.get("chosen_methodology"),
+        active_step=doc.get("active_step", 1),
+    )
+
+
+def _persist_session(sess: SessionData):
+    """Write the current SessionData back to MongoDB."""
+    update_session(sess.id, {
+        "answers": sess.answers,
+        "chat": [t.dict() for t in sess.chat],
+        "survey_index": sess.survey_index,
+        "survey_started": sess.survey_started,
+        "survey_done": sess.survey_done,
+        "worldview_band": sess.worldview_band,
+        "worldview_label": sess.worldview_label,
+        "worldview_total": sess.worldview_total,
+        "step_notes": sess.step_notes,
+        "resolved_path": sess.resolved_path,
+        "chosen_methodology": sess.chosen_methodology,
+        "active_step": sess.active_step,
+    })
 
 
 def load_survey_from_disk() -> Dict[str, Any]:
@@ -489,7 +529,8 @@ def _retrieve(query: str, k: int = 5) -> List[Dict[str, Any]]:
 
 
 @app.on_event("startup")
-def _startup_rag():
+def _startup():
+    ensure_indexes()
     _build_index()
     load_paths_config()
 
@@ -651,21 +692,101 @@ def call_llm(worldview_profile: str, step_context: str, user_msg: str,
 
 
 # ============================================================
+# Auth endpoints
+# ============================================================
+
+class RegisterReq(BaseModel):
+    email: str
+    password: str
+    name: str
+    role: str  # "student" or "teacher"
+
+
+class LoginReq(BaseModel):
+    email: str
+    password: str
+
+
+class AuthResp(BaseModel):
+    token: str
+    email: str
+    name: str
+    role: str
+
+
+@app.post("/auth/register", response_model=AuthResp)
+def register(req: RegisterReq):
+    if req.role not in ("student", "teacher"):
+        raise HTTPException(status_code=400, detail="Role must be 'student' or 'teacher'")
+    if find_user_by_email(req.email):
+        raise HTTPException(status_code=409, detail="Email already registered")
+    pw_hash = hash_password(req.password)
+    create_user(req.email, pw_hash, req.role, req.name)
+    token = create_access_token({"sub": req.email})
+    return AuthResp(token=token, email=req.email, name=req.name, role=req.role)
+
+
+@app.post("/auth/login", response_model=AuthResp)
+def login(req: LoginReq):
+    user = find_user_by_email(req.email)
+    if not user or not verify_password(req.password, user["password_hash"]):
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+    token = create_access_token({"sub": req.email})
+    return AuthResp(token=token, email=req.email, name=user["name"], role=user["role"])
+
+
+@app.get("/auth/me")
+def get_me(user: dict = Depends(get_current_user)):
+    return {"email": user["email"], "name": user["name"], "role": user["role"]}
+
+
+# ============================================================
 # Routes
 # ============================================================
 @app.post("/session", response_model=SessionCreateResponse)
-def create_session():
+def create_session(user: dict = Depends(get_current_user)):
     sid = str(uuid.uuid4())
-    sess = SessionData(
-        id=sid,
-        created_at=datetime.utcnow().isoformat(),
-    )
-    DB[sid] = sess
+    user_id = str(user["_id"])
+    create_session_doc(sid, user_id)
     return SessionCreateResponse(session_id=sid)
 
 
+class SessionResumeResponse(BaseModel):
+    session_id: Optional[str] = None
+    active_step: int = 1
+    found: bool = False
+
+
+@app.get("/session/resume", response_model=SessionResumeResponse)
+def resume_session(user: dict = Depends(get_current_user)):
+    """Return the user's most recent session if one exists."""
+    user_id = str(user["_id"])
+    doc = get_latest_session_for_user(user_id)
+    if not doc:
+        return SessionResumeResponse(found=False)
+    return SessionResumeResponse(
+        session_id=doc["session_id"],
+        active_step=doc.get("active_step", 1),
+        found=True,
+    )
+
+
+class UpdateStepReq(BaseModel):
+    session_id: str
+    active_step: int
+
+
+@app.post("/session/update_step")
+def update_active_step(req: UpdateStepReq, user: dict = Depends(get_current_user)):
+    """Save the student's current active step to the session."""
+    sess = _require_session(req.session_id)
+    sess.active_step = req.active_step
+    _persist_session(sess)
+    return {"ok": True}
+
+
 @app.get("/chat/history", response_model=ChatHistoryResp)
-def get_chat_history(session_id: str = Query(...)):
+def get_chat_history(session_id: str = Query(...), user: dict = Depends(get_current_user)):
     sess = _require_session(session_id)
     history = _get_chat(sess)
     return ChatHistoryResp(session_id=session_id, history=history)
@@ -683,10 +804,11 @@ class StepDataResp(BaseModel):
 
 
 @app.post("/step/save", response_model=StepDataResp)
-def save_step_data(req: StepDataReq):
+def save_step_data(req: StepDataReq, user: dict = Depends(get_current_user)):
     sess = _require_session(req.session_id)
     key = str(req.step)
     sess.step_notes[key] = req.data or {}
+    _persist_session(sess)
     return StepDataResp(session_id=sess.id, step=req.step, data=sess.step_notes[key])
 
 
@@ -694,6 +816,7 @@ def save_step_data(req: StepDataReq):
 def get_step_data(
     session_id: str = Query(...),
     step: int = Query(...),
+    user: dict = Depends(get_current_user),
 ):
     sess = _require_session(session_id)
     key = str(step)
@@ -720,14 +843,14 @@ WORLDVIEW_LABELS = {
 
 
 @app.post("/worldview/set", response_model=WorldviewSetResp)
-def set_worldview(req: WorldviewSetReq):
+def set_worldview(req: WorldviewSetReq, user: dict = Depends(get_current_user)):
     sess = _require_session(req.session_id)
 
     wid = (req.worldview_id or "").strip()
     if wid not in WORLDVIEW_LABELS:
         raise HTTPException(status_code=400, detail="Invalid worldview_id")
 
-    # ✅ IMPORTANT: disable survey mode completely for this session
+    # IMPORTANT: disable survey mode completely for this session
     sess.survey_started = True
     sess.survey_done = True
     sess.survey_index = 0
@@ -746,6 +869,7 @@ def set_worldview(req: WorldviewSetReq):
     wv_to_path = paths_cfg.get("worldview_to_path", {})
     sess.resolved_path = wv_to_path.get(wid, None)
 
+    _persist_session(sess)
     return WorldviewSetResp(
         session_id=sess.id,
         worldview_id=wid,
@@ -772,6 +896,7 @@ class StepConfigResp(BaseModel):
 def get_step_config(
     session_id: str = Query(...),
     step: int = Query(...),
+    user: dict = Depends(get_current_user),
 ):
     """Return the path-resolved configuration for a given step."""
     sess = _require_session(session_id)
@@ -862,7 +987,7 @@ class SetMethodologyResp(BaseModel):
 
 
 @app.post("/step/set_methodology", response_model=SetMethodologyResp)
-def set_methodology(req: SetMethodologyReq):
+def set_methodology(req: SetMethodologyReq, user: dict = Depends(get_current_user)):
     """For mixed-methods students: set the primary methodology chosen at Step 4."""
     sess = _require_session(req.session_id)
     if sess.resolved_path != "mixed":
@@ -888,6 +1013,7 @@ def set_methodology(req: SetMethodologyReq):
     s4["chosen_methodology"] = meth
     sess.step_notes["4"] = s4
 
+    _persist_session(sess)
     return SetMethodologyResp(session_id=sess.id, chosen_methodology=meth)
 
 
@@ -1098,7 +1224,7 @@ def _handle_survey_turn(
 
 # ---------------- Chat main endpoint (non-streaming) ----------------
 @app.post("/chat/send", response_model=ChatHistoryResp)
-def chat_send(req: ChatSendReq = Body(...)):
+def chat_send(req: ChatSendReq = Body(...), user: dict = Depends(get_current_user)):
     sess = _require_session(req.session_id)
     history = _get_chat(sess)
 
@@ -1109,10 +1235,11 @@ def chat_send(req: ChatSendReq = Body(...)):
     # store user turn
     history.append(ChatTurn(role="user", content=user_msg))
 
-    # ✅ Only run survey if user has NOT already set worldview
+    # Only run survey if user has NOT already set worldview
     if not sess.survey_done and not sess.worldview_label:
         survey_resp = _handle_survey_turn(sess, user_msg, history)
         if survey_resp is not None:
+            _persist_session(sess)
             return survey_resp
 
     # 2) Otherwise, normal LLM + RAG chat using worldview and resources
@@ -1127,12 +1254,13 @@ def chat_send(req: ChatSendReq = Body(...)):
     )
 
     history.append(ChatTurn(role="assistant", content=answer))
+    _persist_session(sess)
     return ChatHistoryResp(session_id=req.session_id, history=history)
 
 
 # ---------------- Optional streaming endpoint ----------------
 @app.post("/chat/send_stream")
-def chat_send_stream(req: ChatSendReq = Body(...)):
+def chat_send_stream(req: ChatSendReq = Body(...), user: dict = Depends(get_current_user)):
     """
     Streaming variant of /chat/send.
 
@@ -1154,6 +1282,7 @@ def chat_send_stream(req: ChatSendReq = Body(...)):
     if not sess.survey_done and not sess.worldview_label:
         survey_resp = _handle_survey_turn(sess, user_msg, history)
         if survey_resp is not None:
+            _persist_session(sess)
             return survey_resp
 
     # 2) Survey is done -> stream LLM answer
@@ -1167,6 +1296,8 @@ def chat_send_stream(req: ChatSendReq = Body(...)):
         chat_history=history,
     )
 
+    # Capture session_id for persistence inside the generator
+    session_id = sess.id
 
     def event_stream():
         assistant_text_parts: List[str] = []
@@ -1176,7 +1307,6 @@ def chat_send_stream(req: ChatSendReq = Body(...)):
                 for line in resp.iter_lines(decode_unicode=True):
                     if not line:
                         continue
-                    # Ollama streaming sends a JSON object per line
                     try:
                         data = json.loads(line)
                     except Exception:
@@ -1187,18 +1317,34 @@ def chat_send_stream(req: ChatSendReq = Body(...)):
                         continue
 
                     assistant_text_parts.append(delta)
-                    # yield raw text chunks; frontend will accumulate
                     yield delta
         except Exception as e:
             logger.exception("LLM stream failed: %s", e)
             yield "\n[Error streaming from model]\n"
 
-        # When streaming is done, persist the full assistant message to history
+        # When streaming is done, persist the full assistant message
         full_text = "".join(assistant_text_parts).strip()
         if full_text:
             history.append(ChatTurn(role="assistant", content=full_text))
+        _persist_session(sess)
 
     return StreamingResponse(event_stream(), media_type="text/plain")
+
+
+# ---------------- Teacher dashboard ----------------
+
+@app.get("/teacher/students")
+def teacher_students(user: dict = Depends(get_current_user)):
+    if user.get("role") != "teacher":
+        raise HTTPException(status_code=403, detail="Teachers only")
+    sessions = get_all_student_sessions()
+    # Serialize ObjectId fields for JSON
+    for s in sessions:
+        s.pop("_id", None)
+        s.pop("user_oid", None)
+        if "user" in s:
+            s["user"].pop("_id", None)
+    return {"sessions": sessions}
 
 
 # ---------------- RAG utilities ----------------
