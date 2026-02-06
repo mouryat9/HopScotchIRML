@@ -1,0 +1,231 @@
+{
+  "meta": {
+    "id": "hopscotch_paths_v1",
+    "version": "1.0.0",
+    "description": "Worldview-to-methodology path mapping for steps 4-9"
+  },
+
+  "worldview_to_path": {
+    "positivist": "quantitative",
+    "post_positivist": "quantitative",
+    "constructivist": "qualitative",
+    "transformative": "qualitative",
+    "pragmatist": "mixed"
+  },
+
+  "paths": {
+    "quantitative": {
+      "label": "Quantitative",
+      "steps": {
+        "4": {
+          "title": "Step 4: How will I study it? (Quantitative Design)",
+          "directions": "Based on your positivist/post-positivist worldview, your methodology aligns with quantitative approaches. Select the research design that best fits your study.",
+          "field_type": "single_select",
+          "field_key": "design",
+          "options": [
+            {"id": "descriptive", "label": "Descriptive", "description": "Describes characteristics of a population or phenomenon."},
+            {"id": "correlational", "label": "Correlational", "description": "Examines relationships between two or more variables."},
+            {"id": "cross_sectional_survey", "label": "Cross-sectional Survey", "description": "Collects data from a population at a single point in time."},
+            {"id": "pre_experimental", "label": "Pre-experimental", "description": "Uses a single group with limited controls."},
+            {"id": "quasi_experimental", "label": "Quasi-experimental", "description": "Resembles experiments but lacks random assignment."},
+            {"id": "experimental", "label": "Experimental", "description": "Uses random assignment and control groups to test causality."}
+          ],
+          "llm_guidance": "Help the student choose a quantitative research design. Consider their topic, goals, and feasibility. Explain the tradeoffs between descriptive, correlational, cross-sectional survey, pre-experimental, quasi-experimental, and experimental designs. Ask clarifying questions about what they want to measure or test."
+        },
+        "5": {
+          "title": "Step 5: What is my research question? (Hypothesis)",
+          "directions": "Formulate your research question and hypothesis. Quantitative studies typically have a clear aim and a testable hypothesis.",
+          "field_type": "fields",
+          "fields": [
+            {"field_key": "research_aim", "label": "Research Aim", "type": "textarea", "placeholder": "State the aim of your study..."},
+            {"field_key": "hypothesis", "label": "Hypothesis", "type": "textarea", "placeholder": "State your testable hypothesis..."}
+          ],
+          "llm_guidance": "Help the student formulate a clear, testable research question and hypothesis aligned with their quantitative design. The hypothesis should be specific, measurable, and falsifiable. Guide them to connect their aim back to their topic and goals from Step 2."
+        },
+        "6": {
+          "title": "Step 6: What data will I collect? (Quantitative Collection)",
+          "directions": "Select your data collection method(s). These should align with your quantitative design.",
+          "field_type": "multi_select",
+          "field_key": "data_collection_methods",
+          "options": [
+            {"id": "experiments", "label": "Experiments"},
+            {"id": "questionnaires", "label": "Questionnaires"},
+            {"id": "surveys", "label": "Surveys"},
+            {"id": "systematic_observations", "label": "Systematic Observations"},
+            {"id": "instrumental_measurements", "label": "Instrumental Measurements"},
+            {"id": "other", "label": "Other"}
+          ],
+          "llm_guidance": "Help the student select appropriate quantitative data collection methods for their chosen design and research question. Explain how each method works and when it is most suitable. Consider sample size, feasibility, and alignment with their hypothesis."
+        },
+        "7": {
+          "title": "Step 7: How will I analyze the data? (Quantitative Analysis)",
+          "directions": "Select the analysis approach(es) you plan to use for your quantitative data.",
+          "field_type": "multi_select",
+          "field_key": "analysis_methods",
+          "options": [
+            {"id": "descriptive_stats", "label": "Descriptive Statistics", "description": "Central tendency, dispersion, relative position, distribution shape, frequencies"},
+            {"id": "inferential_stats", "label": "Inferential Statistics", "description": "Correlation, ANOVA, linear regression"},
+            {"id": "visualization", "label": "Data Visualization", "description": "Boxplots, tables, scatter plots, histograms, bar graphs"}
+          ],
+          "llm_guidance": "Help the student choose quantitative analysis techniques that match their design, data collection approach, and research question. Explain when to use descriptive vs inferential statistics. Suggest appropriate visualization techniques for their data type."
+        },
+        "8": {
+          "title": "Step 8: How will I ensure trustworthiness? (Validity & Reliability)",
+          "directions": "Consider how you will ensure your study produces valid and reliable evidence.",
+          "field_type": "multi_select",
+          "field_key": "trustworthiness_methods",
+          "options": [
+            {"id": "internal_validity", "label": "Internal Validity"},
+            {"id": "external_validity", "label": "External Validity"},
+            {"id": "generalizability", "label": "Generalizability (via sampling strategies)"},
+            {"id": "construct_validity", "label": "Construct Validity"},
+            {"id": "content_validity", "label": "Content Validity"}
+          ],
+          "llm_guidance": "Help the student understand validity and reliability concepts relevant to their quantitative study. Explain how internal validity ensures causal claims, external validity supports generalization, and construct/content validity ensure measurements are meaningful. Connect these to their specific design and methods."
+        },
+        "9": {
+          "title": "Step 9: How will I be ethical? (Integrity & Ethics)",
+          "directions": "Consider the ethical dimensions of your proposed research.",
+          "field_type": "multi_select",
+          "field_key": "ethics_considerations",
+          "options": [
+            {"id": "irb", "label": "IRB Approval"},
+            {"id": "respect_for_persons", "label": "Respect for Persons"},
+            {"id": "beneficence", "label": "Beneficence"},
+            {"id": "justice", "label": "Justice"}
+          ],
+          "llm_guidance": "Help the student plan for ethical research conduct. Cover IRB requirements, the Belmont principles (respect for persons, beneficence, justice), informed consent, confidentiality, and any special considerations for their specific study design and population."
+        }
+      }
+    },
+
+    "qualitative": {
+      "label": "Qualitative",
+      "steps": {
+        "4": {
+          "title": "Step 4: How will I study it? (Qualitative Design)",
+          "directions": "Based on your constructivist/transformative worldview, your methodology aligns with qualitative approaches. Select the research design that best fits your study.",
+          "field_type": "single_select",
+          "field_key": "design",
+          "options": [
+            {"id": "narrative", "label": "Narrative", "description": "Explores individual lived stories and experiences over time."},
+            {"id": "phenomenology", "label": "Phenomenology", "description": "Studies the essence of lived experience of a phenomenon."},
+            {"id": "phenomenography", "label": "Phenomenography", "description": "Explores the different ways people experience a phenomenon."},
+            {"id": "ethnography", "label": "Ethnography", "description": "Studies cultural groups through prolonged immersion and observation."},
+            {"id": "school_ethnography", "label": "School Ethnography", "description": "Ethnographic methods applied specifically to educational settings."},
+            {"id": "grounded_theory", "label": "Grounded Theory", "description": "Develops theory systematically from data through iterative analysis."},
+            {"id": "case_study", "label": "Case Study", "description": "In-depth investigation of a bounded case or multiple cases."},
+            {"id": "action_research", "label": "Action Research", "description": "Cyclical inquiry aimed at improving practice through reflection."},
+            {"id": "design_based_research", "label": "Design-Based Research", "description": "Iterative design and study of educational interventions."}
+          ],
+          "llm_guidance": "Help the student choose a qualitative research design. Consider their topic, goals, and context. Explain what each approach entails — narrative, phenomenology, phenomenography, ethnography, school ethnography, grounded theory, case study, action research, and design-based research. Ask about who they want to study and what they want to understand."
+        },
+        "5": {
+          "title": "Step 5: What is my research question? (Qualitative Issue)",
+          "directions": "Formulate your qualitative research question or central issue. Qualitative questions are typically open-ended and exploratory.",
+          "field_type": "fields",
+          "fields": [
+            {"field_key": "research_question", "label": "Research Question / Central Issue", "type": "textarea", "placeholder": "State your qualitative research question or central issue..."}
+          ],
+          "llm_guidance": "Help the student formulate an open-ended, exploratory qualitative research question aligned with their design. Qualitative questions typically start with 'How' or 'What' and seek to explore, describe, or understand rather than measure. Connect the question to their topic, goals, and chosen design."
+        },
+        "6": {
+          "title": "Step 6: What data will I collect? (Qualitative Collection)",
+          "directions": "Select your data collection method(s). These should align with your qualitative design.",
+          "field_type": "multi_select",
+          "field_key": "data_collection_methods",
+          "options": [
+            {"id": "interview", "label": "Interview"},
+            {"id": "field_notes", "label": "Field Notes"},
+            {"id": "document_analysis", "label": "Document Analysis"},
+            {"id": "images", "label": "Images"},
+            {"id": "focus_groups", "label": "Focus Groups"},
+            {"id": "surveys_open", "label": "Surveys (open-ended)"},
+            {"id": "observation_naturalistic", "label": "Observation (naturalistic)"},
+            {"id": "geo_narratives", "label": "Geo-narratives"},
+            {"id": "photo_elicitation", "label": "Photo-elicitation"},
+            {"id": "performance", "label": "Performance (Spoken Word, Poetry, Graffiti)"}
+          ],
+          "llm_guidance": "Help the student select appropriate qualitative data collection methods for their chosen design. Explain how interviews, field notes, document analysis, focus groups, observations, and other methods work. Consider what kind of data their design typically requires."
+        },
+        "7": {
+          "title": "Step 7: How will I analyze the data? (Qualitative Analysis)",
+          "directions": "Select the analysis approach(es) you plan to use for your qualitative data.",
+          "field_type": "multi_select",
+          "field_key": "analysis_methods",
+          "options": [
+            {"id": "coding", "label": "Coding (Open, Axial, Selective)"},
+            {"id": "memoing", "label": "Memoing"},
+            {"id": "data_saturation", "label": "Data Saturation"},
+            {"id": "content_analysis", "label": "Content Analysis (Quotations)"},
+            {"id": "thematic_analysis", "label": "Thematic Analysis"},
+            {"id": "triangulation", "label": "Triangulation"},
+            {"id": "co_occurrence", "label": "Co-occurrence Analysis (Table or Sankey Diagram)"},
+            {"id": "network_views", "label": "Network Views"}
+          ],
+          "llm_guidance": "Help the student choose qualitative analysis techniques appropriate for their design and data collection. Explain coding approaches (open, axial, selective), thematic analysis, content analysis, and how triangulation strengthens findings. Connect analysis choices back to their research question."
+        },
+        "8": {
+          "title": "Step 8: How will I ensure trustworthiness? (Qualitative Criteria)",
+          "directions": "Consider how you will ensure the trustworthiness of your qualitative study using Lincoln and Guba's criteria.",
+          "field_type": "multi_select",
+          "field_key": "trustworthiness_methods",
+          "options": [
+            {"id": "credibility", "label": "Credibility"},
+            {"id": "transferability", "label": "Transferability"},
+            {"id": "dependability", "label": "Dependability"},
+            {"id": "confirmability", "label": "Confirmability"}
+          ],
+          "llm_guidance": "Help the student understand trustworthiness criteria for qualitative research based on Lincoln and Guba's framework. Explain credibility (member checking, prolonged engagement), transferability (thick description), dependability (audit trail), and confirmability (reflexivity). Connect these to their specific study."
+        },
+        "9": {
+          "title": "Step 9: How will I be ethical? (Integrity & Ethics)",
+          "directions": "Consider the ethical dimensions of your proposed research.",
+          "field_type": "multi_select",
+          "field_key": "ethics_considerations",
+          "options": [
+            {"id": "irb", "label": "IRB Approval"},
+            {"id": "respect_for_persons", "label": "Respect for Persons"},
+            {"id": "beneficence", "label": "Beneficence"},
+            {"id": "justice", "label": "Justice"}
+          ],
+          "llm_guidance": "Help the student plan for ethical research conduct. Cover IRB requirements, the Belmont principles (respect for persons, beneficence, justice), informed consent, confidentiality, positionality, and any special considerations for qualitative research with human participants."
+        }
+      }
+    },
+
+    "mixed": {
+      "label": "Mixed Methods",
+      "steps": {
+        "4": {
+          "title": "Step 4: How will I study it? (Mixed Methods)",
+          "directions": "As a pragmatist, you can draw from both quantitative and qualitative approaches. Review both sets of designs below. The AI assistant will help you decide which approach best fits your study. You must select a primary methodology to proceed.",
+          "field_type": "methodology_decision",
+          "field_key": "design",
+          "methodology_choice_key": "chosen_methodology",
+          "llm_guidance": "The student is a pragmatist with a mixed-methods worldview. Present BOTH quantitative and qualitative design options. Help them decide which methodology best suits their specific topic, goals, and research question. Ask about their topic, what they want to learn, and whether they seek to measure/test (quantitative) or explore/understand (qualitative). Guide them to consider feasibility, their research context, and what kind of evidence they need. Once the student indicates a preference, confirm it clearly. The student must explicitly choose 'quantitative' or 'qualitative' as their primary methodology for the remaining steps."
+        },
+        "5": {
+          "inherits_from_chosen_methodology": true,
+          "llm_guidance_addendum": "Note: This student is a pragmatist who chose this methodology. Acknowledge their flexibility and pragmatic orientation."
+        },
+        "6": {
+          "inherits_from_chosen_methodology": true,
+          "llm_guidance_addendum": "Note: This student is a pragmatist who chose this methodology. They may benefit from knowing how the other methodology's data collection methods could complement their approach."
+        },
+        "7": {
+          "inherits_from_chosen_methodology": true,
+          "llm_guidance_addendum": "Note: This student is a pragmatist who chose this methodology. They may benefit from understanding how mixed-methods analysis could strengthen their findings."
+        },
+        "8": {
+          "inherits_from_chosen_methodology": true,
+          "llm_guidance_addendum": "Note: This student is a pragmatist who chose this methodology. Acknowledge that they may also consider criteria from the other paradigm."
+        },
+        "9": {
+          "inherits_from_chosen_methodology": true,
+          "llm_guidance_addendum": "Note: This student is a pragmatist who chose this methodology."
+        }
+      }
+    }
+  }
+}

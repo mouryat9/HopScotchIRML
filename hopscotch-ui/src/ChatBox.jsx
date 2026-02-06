@@ -120,7 +120,7 @@ function extractSurveyOptionsFromText(text) {
 
 /* ---------- Main chat component ---------- */
 
-export default function ChatBox({ sessionId }) {
+export default function ChatBox({ sessionId, activeStep, refreshKey, autoMessage, onAutoMessageSent }) {
   const [history, setHistory] = useState([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
@@ -145,7 +145,7 @@ export default function ChatBox({ sessionId }) {
     return () => {
       cancelled = true;
     };
-  }, [sessionId]);
+  }, [sessionId, refreshKey]);
 
   // Auto-scroll to bottom when history changes
   useEffect(() => {
@@ -154,6 +154,14 @@ export default function ChatBox({ sessionId }) {
     }
   }, [history]);
 
+  // Auto-send message triggered by parent (e.g. worldview selection)
+  useEffect(() => {
+    if (autoMessage && sessionId && !sending) {
+      send(autoMessage, { hideUserBubble: true });
+      if (onAutoMessageSent) onAutoMessageSent();
+    }
+  }, [autoMessage]);
+
   // Detect quick survey options
   const surveyOptions = useMemo(() => {
     const last = getLastAssistantTurn(history);
@@ -161,7 +169,7 @@ export default function ChatBox({ sessionId }) {
     return extractSurveyOptionsFromText(last.content || "");
   }, [history]);
 
-  async function send(forcedText) {
+  async function send(forcedText, opts = {}) {
     const msg = (forcedText ?? input).trim();
     if (!msg || !sessionId || sending) return;
 
@@ -169,13 +177,32 @@ export default function ChatBox({ sessionId }) {
     if (!forcedText) setInput("");
     setErr("");
 
-    // Optimistic user turn
-    setHistory((prev) => [...prev, { role: "user", content: msg }]);
+    // Optimistic user turn + empty assistant placeholder for streaming
+    // If hideUserBubble is set, only show the assistant placeholder
+    setHistory((prev) => [
+      ...prev,
+      ...(opts.hideUserBubble ? [] : [{ role: "user", content: msg }]),
+      { role: "assistant", content: "" },
+    ]);
 
     try {
-      const res = await API.chatSend(sessionId, msg);
-      // Backend returns full history; trust that as source of truth
-      setHistory(res.history || []);
+      const res = await API.chatSendStream(sessionId, msg, activeStep);
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let accumulated = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        accumulated += decoder.decode(value, { stream: true });
+        // Update the last (assistant) bubble in-place
+        const snap = accumulated;
+        setHistory((prev) => {
+          const updated = [...prev];
+          updated[updated.length - 1] = { role: "assistant", content: snap };
+          return updated;
+        });
+      }
     } catch (e) {
       console.error(e);
       setErr("Send failed. Check backend logs / Network tab.");
@@ -200,17 +227,19 @@ export default function ChatBox({ sessionId }) {
   return (
     <div className="chat-wrap">
       <div className="chat-head">
-        <div className="chat-title">Assistant Chat</div>
+        <div className="chat-title">Research Assistant</div>
         <div className="chat-hint">
-          We are here to help you scaffold your research design.
+          {activeStep
+            ? `Step ${activeStep} — We are here to help you scaffold your research design.`
+            : "We are here to help you scaffold your research design."}
         </div>
       </div>
 
       <div className="chat-body" ref={scrollRef}>
         {history.length === 0 && (
           <div className="chat-empty">
-            Ask me anything about your research worldview or let’s start the
-            short survey.
+            Welcome! I can help you scaffold your research design step by step.
+            Ask me anything or select a worldview above to get started.
           </div>
         )}
         {history.map((t, i) => (
@@ -252,7 +281,7 @@ export default function ChatBox({ sessionId }) {
           disabled={!sessionId || sending}
         />
         <button
-          className="btn dark"
+          className="btn btn--primary"
           onClick={() => send()}
           disabled={!input.trim() || sending || !sessionId}
         >
@@ -260,7 +289,7 @@ export default function ChatBox({ sessionId }) {
         </button>
       </div>
 
-      {err && <div className="badge" style={{ marginTop: 8 }}>{err}</div>}
+      {err && <div className="badge badge--error" style={{ marginTop: 8 }}>{err}</div>}
     </div>
   );
 }

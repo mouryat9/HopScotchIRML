@@ -27,6 +27,32 @@ CF_UI_LOG="$ROOT/cloudflared_ui.log"
 # =========================
 activate_venv="source \"$VENV/bin/activate\""
 
+# --- Port helpers ---
+# Returns 0 (true) if the port is free, 1 if in use.
+is_port_free() {
+  local port="$1"
+  if ss -tlnp "sport = :$port" 2>/dev/null | grep -q "LISTEN"; then
+    return 1  # in use
+  fi
+  return 0  # free
+}
+
+# Finds a free port starting from $1, trying up to 20 ports.
+# Prints the first available port to stdout.
+find_free_port() {
+  local port="$1"
+  local max_attempts=20
+  for (( i=0; i<max_attempts; i++ )); do
+    if is_port_free "$port"; then
+      echo "$port"
+      return 0
+    fi
+    port=$((port + 1))
+  done
+  echo ""
+  return 1
+}
+
 # If tmux session already exists, attach and exit
 if tmux has-session -t "$SESSION" 2>/dev/null; then
   echo "[INFO] tmux session '$SESSION' already running. Attaching..."
@@ -48,6 +74,37 @@ if [ ! -d "$ROOT/hopscotch-ui" ]; then
   echo "[ERROR] UI folder not found: $ROOT/hopscotch-ui"
   exit 1
 fi
+
+# =========================
+# PORT AVAILABILITY CHECKS
+# =========================
+echo "[INFO] Checking if required ports are free..."
+
+if ! is_port_free "$BACKEND_PORT"; then
+  old_port="$BACKEND_PORT"
+  BACKEND_PORT=$(find_free_port "$BACKEND_PORT")
+  if [ -z "$BACKEND_PORT" ]; then
+    echo "[ERROR] Could not find a free port for Backend (tried $old_port-$((old_port+19))). Exiting."
+    exit 1
+  fi
+  echo "[INFO] Backend port $old_port is busy -> using port $BACKEND_PORT instead."
+else
+  echo "[INFO] Backend port $BACKEND_PORT is free."
+fi
+
+if ! is_port_free "$FRONTEND_PORT"; then
+  old_port="$FRONTEND_PORT"
+  FRONTEND_PORT=$(find_free_port "$FRONTEND_PORT")
+  if [ -z "$FRONTEND_PORT" ]; then
+    echo "[ERROR] Could not find a free port for Frontend (tried $old_port-$((old_port+19))). Exiting."
+    exit 1
+  fi
+  echo "[INFO] Frontend port $old_port is busy -> using port $FRONTEND_PORT instead."
+else
+  echo "[INFO] Frontend port $FRONTEND_PORT is free."
+fi
+
+echo "[INFO] Launching with Backend=$BACKEND_PORT, Frontend=$FRONTEND_PORT"
 
 # =========================
 # START TMUX LAYOUT (2x2)

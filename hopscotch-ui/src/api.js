@@ -1,7 +1,8 @@
 // src/api.js
-// const API_BASE = "http://127.0.0.1:8000";
+const API_BASE = "http://127.0.0.1:8000";
 
-const API_BASE = "https://continues-organisations-leading-measurements.trycloudflare.com";
+// For Cloudflare tunnel (production):
+// const API_BASE = "https://your-tunnel-url.trycloudflare.com";
 
 
 export const API = {
@@ -25,11 +26,13 @@ export const API = {
   },
 
   // Non-streaming chat endpoint (matches /chat/send)
-  async chatSend(session_id, message) {
+  async chatSend(session_id, message, active_step = null) {
+    const body = { session_id, message };
+    if (active_step !== null) body.active_step = active_step;
     const res = await fetch(`${API_BASE}/chat/send`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ session_id, message }),
+      body: JSON.stringify(body),
     });
     if (!res.ok) {
       const text = await res.text();
@@ -69,5 +72,43 @@ export const API = {
     const res = await fetch(`${API_BASE}/step/get?` + params.toString());
     if (!res.ok) throw new Error("Failed to load step data");
     return res.json(); // { session_id, step, data }
+  },
+
+  // Get path-resolved step configuration (for steps 4-9)
+  async getStepConfig(session_id, step) {
+    const params = new URLSearchParams({
+      session_id,
+      step: String(step),
+    });
+    const res = await fetch(`${API_BASE}/step/config?` + params.toString());
+    if (!res.ok) throw new Error("Failed to load step config");
+    return res.json();
+  },
+
+  // Streaming chat endpoint — returns a ReadableStream of text chunks
+  async chatSendStream(session_id, message, active_step = null) {
+    const body = { session_id, message };
+    if (active_step !== null) body.active_step = active_step;
+    const res = await fetch(`${API_BASE}/chat/send_stream`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`chatSendStream failed: ${res.status} ${text}`);
+    }
+    return res; // caller reads res.body (ReadableStream)
+  },
+
+  // Set chosen methodology (mixed-methods Step 4 only)
+  async setMethodology(session_id, methodology) {
+    const res = await fetch(`${API_BASE}/step/set_methodology`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ session_id, methodology }),
+    });
+    if (!res.ok) throw new Error("Failed to set methodology");
+    return res.json();
   },
 };

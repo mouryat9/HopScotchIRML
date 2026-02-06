@@ -9,7 +9,41 @@ import StepDetails from "./StepDetails";
 const Btn = ({ className = "", ...p }) => (
   <button {...p} className={`btn ${className}`} />
 );
-const Chip = ({ children }) => <span className="badge">{children}</span>;
+const Chip = ({ variant, children }) => (
+  <span className={`badge${variant ? ` badge--${variant}` : ""}`}>
+    {children}
+  </span>
+);
+
+/* ----- Step labels for progress bar ----- */
+const STEP_LABELS = [
+  "Worldview", "Topic", "Literature", "Methodology", "Question",
+  "Data", "Analysis", "Trustworthiness", "Ethics",
+];
+
+function StepProgressBar({ activeStep, onStepChange }) {
+  return (
+    <nav className="step-progress" aria-label="Research steps">
+      {STEP_LABELS.map((label, i) => {
+        const num = i + 1;
+        const isActive = num === activeStep;
+        return (
+          <div className="step-progress__item" key={num}>
+            <button
+              className={`step-progress__dot${isActive ? " step-progress__dot--active" : ""}`}
+              onClick={() => onStepChange(num)}
+              aria-label={`Step ${num}: ${label}`}
+              title={label}
+            >
+              {num}
+            </button>
+            {num < 9 && <div className="step-progress__line" />}
+          </div>
+        );
+      })}
+    </nav>
+  );
+}
 
 /* ----- Genially URLs per step ----- */
 const STEP_GENIALLY = {
@@ -136,6 +170,8 @@ export default function App() {
   const [activeStep, setActiveStep] = useState(1);
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState("");
+  const [chatRefreshKey, setChatRefreshKey] = useState(0);
+  const [autoMessage, setAutoMessage] = useState(null);
 
   useEffect(() => {
     (async () => {
@@ -179,7 +215,7 @@ export default function App() {
           <div className="hop-app-title" />
         </div>
         <div className="hop-header__right">
-          <Chip>
+          <Chip variant={sessionId ? undefined : loading ? "neutral" : "error"}>
             {sessionId
               ? "Session active"
               : loading
@@ -189,6 +225,9 @@ export default function App() {
           <Btn onClick={resetSession}>New Session</Btn>
         </div>
       </header>
+
+      {/* Step progress bar */}
+      <StepProgressBar activeStep={activeStep} onStepChange={setActiveStep} />
 
       {/* Step diagram under header */}
       <StepDiagram activeStep={activeStep} onStepChange={setActiveStep} />
@@ -201,23 +240,21 @@ export default function App() {
 
         <section className="hop-right-panel">
           {/* Step-specific directions + inputs (saved in backend) */}
-          <StepDetails step={activeStep} sessionId={sessionId} />
+          <StepDetails step={activeStep} sessionId={sessionId} onChatRefresh={() => setChatRefreshKey((k) => k + 1)} onAutoSend={setAutoMessage} />
 
           {/* Assistant Chat */}
-          <section className="hop-wide">
-            {loading && !sessionId ? (
-              <div className="badge">Starting session…</div>
-            ) : (
-              <>
-                <ChatBox sessionId={sessionId} />
-                {status && (
-                  <div className="badge" style={{ marginTop: 8 }}>
-                    {status}
-                  </div>
-                )}
-              </>
-            )}
-          </section>
+          {loading && !sessionId ? (
+            <div className="badge badge--neutral">Starting session…</div>
+          ) : (
+            <>
+              <ChatBox sessionId={sessionId} activeStep={activeStep} refreshKey={chatRefreshKey} autoMessage={autoMessage} onAutoMessageSent={() => setAutoMessage(null)} />
+              {status && (
+                <div className="badge" style={{ marginTop: 8 }}>
+                  {status}
+                </div>
+              )}
+            </>
+          )}
         </section>
       </div>
     </div>

@@ -43,6 +43,7 @@ from pydantic import BaseModel, Field
 # -------------------------------------------------
 ROOT = Path(__file__).parent
 SURVEY_PATH = ROOT / "server" / "config" / "surveys" / "worldview_continuum.json"
+PATHS_PATH = ROOT / "server" / "config" / "paths" / "research_paths.json"
 
 DOCS_DIR = ROOT / "server" / "resources"
 INDEX_DIR = ROOT / "server" / "index"
@@ -82,14 +83,35 @@ logger = logging.getLogger("uvicorn.error")
 # Ollama / LLM config
 # -------------------------------------------------
 OLLAMA_URL = "http://127.0.0.1:11434/api/chat"
-LLM_MODEL = "llama3.1:8b"
-LLM_TEMP = 0.0
+LLM_MODEL = "qwen2.5:14b"
+LLM_TEMP = 0.4
 
 # runtime globals for RAG
 _embedder = None
 _faiss_index = None
 _chunks: List[Dict[str, Any]] = []  # [{"id": int, "text": str, "source": str}]
 _raw_docs_cache: Optional[List[Dict[str, str]]] = None  # for keyword fallback
+
+# runtime global for path config
+_paths_config: Dict[str, Any] = {}
+
+
+def load_paths_config() -> Dict[str, Any]:
+    """Load research_paths.json once and cache it."""
+    global _paths_config
+    if _paths_config:
+        return _paths_config
+    try:
+        with open(PATHS_PATH, "r", encoding="utf-8") as f:
+            _paths_config = json.load(f)
+    except FileNotFoundError:
+        logger.warning("Paths config not found at %s", PATHS_PATH)
+        _paths_config = {}
+    except json.JSONDecodeError as e:
+        logger.warning("Paths config JSON invalid: %s", e)
+        _paths_config = {}
+    return _paths_config
+
 
 # -------------------------------------------------
 # Worldview continuum bands (total-score based ONLY)
@@ -134,8 +156,13 @@ class SessionData(BaseModel):
     worldview_label: Optional[str] = None
     worldview_total: Optional[int] = None
 
-    # 🔹 NEW: arbitrary notes/data per step (1–9)
+    # arbitrary notes/data per step (1-9)
     step_notes: Dict[str, Any] = Field(default_factory=dict)
+
+    # resolved research path ("quantitative" | "qualitative" | "mixed")
+    resolved_path: Optional[str] = None
+    # for mixed-methods students: which methodology they chose at Step 4
+    chosen_methodology: Optional[str] = None
 
 
 class SessionCreateResponse(BaseModel):
@@ -145,6 +172,7 @@ class SessionCreateResponse(BaseModel):
 class ChatSendReq(BaseModel):
     session_id: str
     message: str
+    active_step: Optional[int] = None
 
 
 class ChatHistoryResp(BaseModel):
@@ -228,15 +256,59 @@ def compute_total_score(answers, survey_data) -> int:
     return total
 
 
+WORLDVIEW_DESCRIPTIONS = {
+    "positivist": (
+        "Positivist: Believes in an objective, knowable reality. Knowledge is gained through "
+        "observation, measurement, and empirical testing. Research should be value-free and "
+        "generalizable. Favours quantitative methods — experiments, surveys, statistical analysis. "
+        "The researcher remains detached and neutral."
+    ),
+    "post_positivist": (
+        "Post-Positivist: Acknowledges that reality exists but can only be imperfectly known. "
+        "All observation is fallible and theory-laden. Emphasises falsification, triangulation, "
+        "and critical multiplism. Uses primarily quantitative methods but recognises limitations "
+        "of absolute objectivity. The researcher strives for objectivity while acknowledging bias."
+    ),
+    "constructivist": (
+        "Constructivist (Interpretivist): Believes reality is socially constructed and that "
+        "multiple, equally valid realities exist. Knowledge is co-created between researcher "
+        "and participants. Values deep understanding of lived experiences, meaning-making, and "
+        "context. Favours qualitative methods — interviews, observations, narrative analysis. "
+        "The researcher is an active participant in the research process."
+    ),
+    "transformative": (
+        "Transformative: Centres issues of power, justice, and equity. Reality is shaped by "
+        "social, political, cultural, and economic forces. Research should serve marginalised "
+        "communities and promote social change. Uses qualitative and participatory methods. "
+        "The researcher is an advocate who collaborates with communities."
+    ),
+    "pragmatist": (
+        "Pragmatist: Focuses on 'what works' rather than committing to a single ontology. "
+        "The research question drives the choice of methods — quantitative, qualitative, or both. "
+        "Values practical consequences, real-world applicability, and problem-solving. "
+        "Embraces mixed methods and methodological flexibility. The researcher chooses approaches "
+        "based on the nature of the problem being studied."
+    ),
+}
+
+
 def _render_worldview_profile(sess: SessionData) -> str:
     """
-    Human-readable summary sent to the LLM after the survey.
+    Human-readable summary sent to the LLM with rich worldview context.
     """
     if not sess.survey_done:
-        return "Survey not finished yet."
-    band = sess.worldview_label or sess.worldview_band or "Unknown"
-    total = sess.worldview_total if sess.worldview_total is not None else "?"
-    return f"User worldview (survey-based): {band} (total score {total})."
+        return "The student has not yet selected a worldview."
+    band = sess.worldview_band or "unknown"
+    label = sess.worldview_label or band.replace("_", " ").title()
+    desc = WORLDVIEW_DESCRIPTIONS.get(band, "")
+    path = sess.resolved_path or "not yet determined"
+    parts = [f"Student's worldview: {label}"]
+    if sess.worldview_total is not None:
+        parts.append(f"Survey score: {sess.worldview_total}")
+    parts.append(f"Research methodology pathway: {path}")
+    if desc:
+        parts.append(f"Worldview description: {desc}")
+    return "\n".join(parts)
 
 
 def _get_chat(sess: SessionData) -> List[ChatTurn]:
@@ -419,14 +491,44 @@ def _retrieve(query: str, k: int = 5) -> List[Dict[str, Any]]:
 @app.on_event("startup")
 def _startup_rag():
     _build_index()
+    load_paths_config()
 
 
 # ============================================================
 # LLM call (Ollama)
 # ============================================================
 
-def build_ollama_payload(worldview_profile, step_context, user_msg, passages, stream=False):
+def _get_step_llm_guidance(sess: SessionData, active_step: Optional[int]) -> Optional[str]:
+    """Resolve the LLM guidance string for the given step from the paths config."""
+    if not active_step or active_step < 4:
+        return None
+    paths_cfg = load_paths_config()
+    resolved = sess.resolved_path
+    if not resolved:
+        return None
 
+    all_paths = paths_cfg.get("paths", {})
+    path_data = all_paths.get(resolved, {})
+    step_cfg = path_data.get("steps", {}).get(str(active_step), {})
+
+    # Handle mixed-methods inheritance for steps 5-9
+    if resolved == "mixed" and active_step >= 5 and step_cfg.get("inherits_from_chosen_methodology"):
+        chosen = sess.chosen_methodology
+        if not chosen:
+            return "The student has not yet chosen their primary methodology in Step 4."
+        inherited = all_paths.get(chosen, {}).get("steps", {}).get(str(active_step), {})
+        guidance = inherited.get("llm_guidance", "")
+        addendum = step_cfg.get("llm_guidance_addendum", "")
+        if addendum:
+            guidance = f"{guidance}\n{addendum}" if guidance else addendum
+        return guidance or None
+
+    return step_cfg.get("llm_guidance")
+
+
+def build_ollama_payload(worldview_profile, step_context, user_msg, passages,
+                         stream=False, active_step=None, step_llm_guidance=None,
+                         chat_history=None):
     """
     Shared helper to build the Ollama chat payload.
     Set stream=True when you want chunked responses, False for normal JSON.
@@ -439,15 +541,53 @@ def build_ollama_payload(worldview_profile, step_context, user_msg, passages, st
     ctx_text = "\n\n".join(ctx_blocks) if ctx_blocks else "No matching passages."
 
     system_msg = (
-        "You are a gentle research-methods tutor helping students scaffold their research design.\n\n"
-        "Always:\n"
-        "- Use a calm, encouraging tone.\n"
-        "- Ask 1–2 helpful clarifying questions if needed.\n"
-        "- Give actionable suggestions.\n"
-        "- Keep answers concise.\n"
-        "- Use the student's worldview + step inputs when guiding them.\n"
-        "- At the end, append '**Quick references from our notes:**' with 2–5 bullets.\n"
+        "You are a knowledgeable, supportive research-methods tutor embedded in the "
+        "Hopscotch IRML (Introductory Research Methods Learning) platform. You help "
+        "students scaffold their research design through a 9-step process.\n\n"
+
+        "THE 9 STEPS:\n"
+        "1. Who am I as a researcher? — Identify your worldview/paradigm (positivist, "
+        "post-positivist, constructivist, transformative, pragmatist). Your worldview "
+        "shapes your ontology (what is real), epistemology (how we know), axiology "
+        "(role of values), and methodology (how we study).\n"
+        "2. What am I wondering about? — Define your research topic and goals "
+        "(personal, practical, intellectual).\n"
+        "3. What do I already know? — Review topical research (prior studies) and "
+        "theoretical frameworks that support your study.\n"
+        "4. How will I study it? — Choose a research design/methodology aligned with "
+        "your worldview (quantitative, qualitative, or mixed).\n"
+        "5. What is my research question? — Formulate your research question "
+        "(quantitative: hypothesis; qualitative: open-ended central issue).\n"
+        "6. What data will I collect? — Select data collection methods that fit your "
+        "design.\n"
+        "7. How will I analyze the data? — Choose appropriate analysis techniques.\n"
+        "8. How will I ensure trustworthiness? — Address validity/reliability "
+        "(quantitative) or credibility/transferability/dependability/confirmability "
+        "(qualitative, Lincoln & Guba).\n"
+        "9. How will I be ethical? — Plan for IRB, Belmont principles (respect, "
+        "beneficence, justice), informed consent, and confidentiality.\n\n"
+
+        "YOUR APPROACH:\n"
+        "- Be substantive: explain concepts, give examples, and connect ideas to the "
+        "student's specific worldview and topic. Do NOT just ask questions back.\n"
+        "- When explaining a worldview, discuss its ontology, epistemology, axiology, "
+        "and methodology implications with concrete examples.\n"
+        "- Lead with helpful content first, then ask 1-2 follow-up questions to "
+        "deepen understanding.\n"
+        "- Use the student's previous step inputs (topic, goals, worldview, etc.) "
+        "to give personalised guidance rather than generic advice.\n"
+        "- Reference specific methodologies, frameworks, and scholars when relevant.\n"
+        "- Use a warm, encouraging tone — the student may be new to research.\n"
+        "- Keep responses focused but thorough (2-4 paragraphs typically).\n"
+        "- At the end, append '**Quick references from our notes:**' with 2-5 "
+        "bullets sourced from the IRML resource snippets provided.\n"
     )
+
+    # Inject step-specific guidance
+    if active_step:
+        system_msg += f"\nThe student is currently working on Step {active_step}.\n"
+        if step_llm_guidance:
+            system_msg += f"\nStep-specific instructions:\n{step_llm_guidance}\n"
 
     context_msg = (
         f"Student context:\n{worldview_profile}\n\n"
@@ -455,20 +595,42 @@ def build_ollama_payload(worldview_profile, step_context, user_msg, passages, st
         f"IRML resource snippets:\n{ctx_text}"
     )
 
+    # Build messages: system + context + conversation history + latest user msg
+    messages = [
+        {"role": "system", "content": system_msg},
+        {"role": "system", "content": context_msg},
+    ]
+
+    # Include recent conversation history (last 20 turns to stay within context)
+    if chat_history:
+        recent = chat_history[-20:]
+        for turn in recent:
+            # Skip the very last user message — we append it separately below
+            if turn is recent[-1] and turn.role == "user" and turn.content == user_msg:
+                continue
+            messages.append({"role": turn.role, "content": turn.content})
+
+    messages.append({"role": "user", "content": user_msg})
+
     return {
         "model": LLM_MODEL,
         "stream": stream,
         "options": {"temperature": LLM_TEMP},
-        "messages": [
-            {"role": "system", "content": system_msg},
-            {"role": "assistant", "content": context_msg},
-            {"role": "user", "content": user_msg},
-        ],
+        "messages": messages,
     }
 
-def call_llm(worldview_profile: str, step_context: str, user_msg: str, passages: List[Dict[str, Any]]) -> str:
-    
-    payload = build_ollama_payload(worldview_profile, step_context, user_msg, passages, stream=False)
+
+def call_llm(worldview_profile: str, step_context: str, user_msg: str,
+             passages: List[Dict[str, Any]],
+             active_step: Optional[int] = None,
+             step_llm_guidance: Optional[str] = None,
+             chat_history=None) -> str:
+
+    payload = build_ollama_payload(
+        worldview_profile, step_context, user_msg, passages,
+        stream=False, active_step=active_step, step_llm_guidance=step_llm_guidance,
+        chat_history=chat_history,
+    )
     
 
     try:
@@ -579,29 +741,204 @@ def set_worldview(req: WorldviewSetReq):
     # Also store into step 1 notes so you can use it later
     sess.step_notes["1"] = {**(sess.step_notes.get("1") or {}), "worldview_id": wid}
 
+    # Resolve research path from worldview
+    paths_cfg = load_paths_config()
+    wv_to_path = paths_cfg.get("worldview_to_path", {})
+    sess.resolved_path = wv_to_path.get(wid, None)
+
     return WorldviewSetResp(
         session_id=sess.id,
         worldview_id=wid,
         worldview_label=sess.worldview_label,
     )
 
+# ---------------- Step config + methodology endpoints ----------------
+
+class StepConfigResp(BaseModel):
+    step: int
+    path: Optional[str] = None
+    title: str = ""
+    directions: str = ""
+    field_type: Optional[str] = None
+    field_key: Optional[str] = None
+    options: Optional[List[Dict[str, Any]]] = None
+    fields: Optional[List[Dict[str, Any]]] = None
+    llm_guidance: Optional[str] = None
+    quantitative_options: Optional[List[Dict[str, Any]]] = None
+    qualitative_options: Optional[List[Dict[str, Any]]] = None
+
+
+@app.get("/step/config", response_model=StepConfigResp)
+def get_step_config(
+    session_id: str = Query(...),
+    step: int = Query(...),
+):
+    """Return the path-resolved configuration for a given step."""
+    sess = _require_session(session_id)
+    paths_cfg = load_paths_config()
+
+    # Steps 1-3 are handled entirely by the frontend
+    if step <= 3:
+        return StepConfigResp(step=step)
+
+    resolved = sess.resolved_path
+    if not resolved:
+        return StepConfigResp(
+            step=step,
+            title=f"Step {step}",
+            directions="Please complete Step 1 first and select your worldview.",
+        )
+
+    all_paths = paths_cfg.get("paths", {})
+    path_data = all_paths.get(resolved, {})
+    step_key = str(step)
+    step_cfg = path_data.get("steps", {}).get(step_key, {})
+
+    # Handle mixed-methods inheritance for Steps 5-9
+    if resolved == "mixed" and step >= 5 and step_cfg.get("inherits_from_chosen_methodology"):
+        chosen = sess.chosen_methodology
+        if not chosen:
+            return StepConfigResp(
+                step=step,
+                path="mixed",
+                title=f"Step {step}",
+                directions="Please complete Step 4 first and choose your primary methodology.",
+            )
+        # Resolve from the chosen methodology's path
+        inherited_cfg = all_paths.get(chosen, {}).get("steps", {}).get(step_key, {})
+        # Merge the llm_guidance_addendum from the mixed step config
+        guidance = inherited_cfg.get("llm_guidance", "")
+        addendum = step_cfg.get("llm_guidance_addendum", "")
+        if addendum:
+            guidance = f"{guidance}\n{addendum}" if guidance else addendum
+        return StepConfigResp(
+            step=step,
+            path="mixed",
+            title=inherited_cfg.get("title", f"Step {step}"),
+            directions=inherited_cfg.get("directions", ""),
+            field_type=inherited_cfg.get("field_type"),
+            field_key=inherited_cfg.get("field_key"),
+            options=inherited_cfg.get("options"),
+            fields=inherited_cfg.get("fields"),
+            llm_guidance=guidance or None,
+        )
+
+    # For mixed Step 4: include both option sets
+    quant_opts = None
+    qual_opts = None
+    if resolved == "mixed" and step == 4:
+        quant_opts = (
+            all_paths.get("quantitative", {})
+            .get("steps", {}).get("4", {}).get("options")
+        )
+        qual_opts = (
+            all_paths.get("qualitative", {})
+            .get("steps", {}).get("4", {}).get("options")
+        )
+
+    return StepConfigResp(
+        step=step,
+        path=resolved,
+        title=step_cfg.get("title", f"Step {step}"),
+        directions=step_cfg.get("directions", ""),
+        field_type=step_cfg.get("field_type"),
+        field_key=step_cfg.get("field_key"),
+        options=step_cfg.get("options"),
+        fields=step_cfg.get("fields"),
+        llm_guidance=step_cfg.get("llm_guidance"),
+        quantitative_options=quant_opts,
+        qualitative_options=qual_opts,
+    )
+
+
+class SetMethodologyReq(BaseModel):
+    session_id: str
+    methodology: str  # "quantitative" or "qualitative"
+
+
+class SetMethodologyResp(BaseModel):
+    session_id: str
+    chosen_methodology: str
+
+
+@app.post("/step/set_methodology", response_model=SetMethodologyResp)
+def set_methodology(req: SetMethodologyReq):
+    """For mixed-methods students: set the primary methodology chosen at Step 4."""
+    sess = _require_session(req.session_id)
+    if sess.resolved_path != "mixed":
+        raise HTTPException(
+            status_code=400,
+            detail="Only mixed-methods (pragmatist) students use this endpoint.",
+        )
+    meth = (req.methodology or "").strip().lower()
+    if meth not in ("quantitative", "qualitative"):
+        raise HTTPException(
+            status_code=400,
+            detail="methodology must be 'quantitative' or 'qualitative'",
+        )
+
+    # If changing from a previous choice, clear steps 5-9 data
+    prev = sess.chosen_methodology
+    if prev and prev != meth:
+        for s in range(5, 10):
+            sess.step_notes.pop(str(s), None)
+
+    sess.chosen_methodology = meth
+    s4 = sess.step_notes.get("4") or {}
+    s4["chosen_methodology"] = meth
+    sess.step_notes["4"] = s4
+
+    return SetMethodologyResp(session_id=sess.id, chosen_methodology=meth)
+
+
 # ---------------- Survey-as-conversation logic ----------------
 
 def _render_step_context(sess: SessionData) -> str:
-    s1 = (sess.step_notes or {}).get("1") or {}
-    s2 = (sess.step_notes or {}).get("2") or {}
-
-    worldview = (s1.get("worldview") or "").strip()
-    topic = (s2.get("topic") or "").strip()
-    goals = (s2.get("goals") or "").strip()
-
+    """Build a comprehensive context string from all step inputs (1-9)."""
     lines = []
-    if worldview:
-        lines.append(f"Step 1 selected worldview: {worldview}")
-    if topic:
-        lines.append(f"Step 2 research topic: {topic}")
-    if goals:
-        lines.append(f"Step 2 research goals: {goals}")
+    notes = sess.step_notes or {}
+
+    # Step 1: worldview (field saved as "worldview_id" by /worldview/set)
+    s1 = notes.get("1") or {}
+    worldview_id = (s1.get("worldview_id") or s1.get("worldview") or "").strip()
+    if worldview_id:
+        label = WORLDVIEW_LABELS.get(worldview_id, worldview_id)
+        lines.append(f"Step 1 worldview: {label}")
+
+    # Step 2: topic and goals
+    s2 = notes.get("2") or {}
+    if s2.get("topic"):
+        lines.append(f"Step 2 research topic: {s2['topic']}")
+    if s2.get("goals"):
+        lines.append(f"Step 2 research goals: {s2['goals']}")
+
+    # Step 3: literature review
+    s3 = notes.get("3") or {}
+    if s3.get("topicalResearch"):
+        lines.append(f"Step 3 topical research: {s3['topicalResearch']}")
+    if s3.get("theoreticalFrameworks"):
+        lines.append(f"Step 3 theoretical frameworks: {s3['theoreticalFrameworks']}")
+
+    # Resolved path and methodology (if set)
+    if sess.resolved_path:
+        lines.append(f"Research path: {sess.resolved_path}")
+    if sess.chosen_methodology:
+        lines.append(f"Chosen methodology (Step 4): {sess.chosen_methodology}")
+
+    # Steps 4-9: read whatever structured data was saved
+    for step_num in range(4, 10):
+        sn = notes.get(str(step_num)) or {}
+        for key, val in sn.items():
+            if not val:
+                continue
+            if isinstance(val, list):
+                val_str = ", ".join(str(v) for v in val)
+            else:
+                val_str = str(val)
+            # Truncate very long values to keep context manageable
+            if len(val_str) > 300:
+                val_str = val_str[:300] + "..."
+            lines.append(f"Step {step_num} {key}: {val_str}")
 
     return "\n".join(lines) if lines else "No step inputs saved yet."
 
@@ -782,8 +1119,12 @@ def chat_send(req: ChatSendReq = Body(...)):
     worldview_profile = _render_worldview_profile(sess)
     step_context = _render_step_context(sess)
     passages = _retrieve(user_msg, k=5)
-    answer = call_llm(worldview_profile, step_context, user_msg, passages)
-
+    step_llm_guidance = _get_step_llm_guidance(sess, req.active_step)
+    answer = call_llm(
+        worldview_profile, step_context, user_msg, passages,
+        active_step=req.active_step, step_llm_guidance=step_llm_guidance,
+        chat_history=history,
+    )
 
     history.append(ChatTurn(role="assistant", content=answer))
     return ChatHistoryResp(session_id=req.session_id, history=history)
@@ -815,11 +1156,16 @@ def chat_send_stream(req: ChatSendReq = Body(...)):
         if survey_resp is not None:
             return survey_resp
 
-    # 2) Survey is done → stream LLM answer
+    # 2) Survey is done -> stream LLM answer
     worldview_profile = _render_worldview_profile(sess)
     step_context = _render_step_context(sess)
     passages = _retrieve(user_msg, k=5)
-    payload = build_ollama_payload(worldview_profile, step_context, user_msg, passages, stream=True)
+    step_llm_guidance = _get_step_llm_guidance(sess, req.active_step)
+    payload = build_ollama_payload(
+        worldview_profile, step_context, user_msg, passages,
+        stream=True, active_step=req.active_step, step_llm_guidance=step_llm_guidance,
+        chat_history=history,
+    )
 
 
     def event_stream():
