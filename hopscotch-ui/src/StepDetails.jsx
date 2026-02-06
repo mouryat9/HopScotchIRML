@@ -146,7 +146,7 @@ export default function StepDetails({ step, sessionId, onChatRefresh, onAutoSend
     });
   };
 
-  // Step 1: when worldview changes, also tell backend to disable survey and set worldview
+  // Step 1: when worldview changes, tell backend to set worldview
   const onWorldviewChange = async (newValue) => {
     updateField("worldview", newValue);
 

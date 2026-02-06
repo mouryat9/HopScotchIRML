@@ -1,25 +1,19 @@
 """
-Hopscotch IRML - chat-first backend with survey-as-conversation.
+Hopscotch IRML - chat backend with LLM + RAG.
 
 Flow:
 - /session          -> create session
 - /chat/history     -> get full chat history
 - /chat/send        -> main chat endpoint (non-streaming)
-- /chat/send_stream -> optional streaming endpoint
+- /chat/send_stream -> streaming endpoint
 
 Chat behaviour:
-- If worldview survey is NOT finished:
-    * First user message -> assistant explains and asks Q1.
-    * Each subsequent user message is treated as the answer to the current
-      survey question (must be one of the provided options).
-    * After last question, scores worldview and tells the user their band.
-- Once survey is finished:
-    * All messages go to LLM (Ollama + llama3.1:8b) with:
-        - user's worldview band + score
-        - retrieved IRML snippets (RAG, FAISS)
-    * Assistant responds in a short, friendly, tutor-style format
-      and appends a "Quick references from our notes" block that
-      the frontend renders as cards.
+- Worldview is selected via Step 1 dropdown (/worldview/set).
+- All messages go to LLM (Ollama) with:
+    - user's worldview band
+    - retrieved IRML snippets (RAG, FAISS)
+    - step-specific guidance
+- Assistant responds in a short, friendly, tutor-style format.
 """
 
 from __future__ import annotations
@@ -50,7 +44,6 @@ from database import (
 # Paths
 # -------------------------------------------------
 ROOT = Path(__file__).parent
-SURVEY_PATH = ROOT / "server" / "config" / "surveys" / "worldview_continuum.json"
 PATHS_PATH = ROOT / "server" / "config" / "paths" / "research_paths.json"
 
 DOCS_DIR = ROOT / "server" / "resources"
@@ -122,26 +115,6 @@ def load_paths_config() -> Dict[str, Any]:
 
 
 # -------------------------------------------------
-# Worldview continuum bands (total-score based ONLY)
-#   You can tweak these ranges; logic just picks the band
-#   whose [min, max] contains the final total score.
-# -------------------------------------------------
-CONTINUUM_BANDS = [
-    {"id": "positivist",      "label": "Positivist",      "min": 0,  "max": 4},
-    {"id": "post_positivist", "label": "Post Positivist", "min": 5,  "max": 8},
-    {"id": "constructivist",  "label": "Constructivist",  "min": 9,  "max": 12},
-    {"id": "transformative",  "label": "Transformative",  "min": 13, "max": 19},
-    {"id": "pragmatist",      "label": "Pragmatist",      "min": 20, "max": 60},
-]
-
-
-def determine_continuum_band(total: int):
-    for band in CONTINUUM_BANDS:
-        if band["min"] <= total <= band["max"]:
-            return band
-    return None
-
-
 # ============================================================
 # Models
 # ============================================================
@@ -153,16 +126,10 @@ class ChatTurn(BaseModel):
 class SessionData(BaseModel):
     id: str
     created_at: str
-    answers: Dict[str, Any] = Field(default_factory=dict)
     chat: List[ChatTurn] = Field(default_factory=list)
-
-    survey_index: int = 0
-    survey_started: bool = False
-    survey_done: bool = False
 
     worldview_band: Optional[str] = None
     worldview_label: Optional[str] = None
-    worldview_total: Optional[int] = None
 
     # arbitrary notes/data per step (1-9)
     step_notes: Dict[str, Any] = Field(default_factory=dict)
@@ -204,7 +171,7 @@ app.add_middleware(
 )
 
 # ============================================================
-# Helpers: sessions, survey
+# Helpers: sessions
 # ============================================================
 def _require_session(session_id: str) -> SessionData:
     """Load a session from MongoDB and return it as a SessionData model."""
@@ -215,14 +182,9 @@ def _require_session(session_id: str) -> SessionData:
     return SessionData(
         id=doc["session_id"],
         created_at=doc.get("created_at", ""),
-        answers=doc.get("answers", {}),
         chat=chat_turns,
-        survey_index=doc.get("survey_index", 0),
-        survey_started=doc.get("survey_started", False),
-        survey_done=doc.get("survey_done", False),
         worldview_band=doc.get("worldview_band"),
         worldview_label=doc.get("worldview_label"),
-        worldview_total=doc.get("worldview_total"),
         step_notes=doc.get("step_notes", {}),
         resolved_path=doc.get("resolved_path"),
         chosen_methodology=doc.get("chosen_methodology"),
@@ -233,67 +195,15 @@ def _require_session(session_id: str) -> SessionData:
 def _persist_session(sess: SessionData):
     """Write the current SessionData back to MongoDB."""
     update_session(sess.id, {
-        "answers": sess.answers,
         "chat": [t.dict() for t in sess.chat],
-        "survey_index": sess.survey_index,
-        "survey_started": sess.survey_started,
-        "survey_done": sess.survey_done,
         "worldview_band": sess.worldview_band,
         "worldview_label": sess.worldview_label,
-        "worldview_total": sess.worldview_total,
         "step_notes": sess.step_notes,
         "resolved_path": sess.resolved_path,
         "chosen_methodology": sess.chosen_methodology,
         "active_step": sess.active_step,
     })
 
-
-def load_survey_from_disk() -> Dict[str, Any]:
-    try:
-        with open(SURVEY_PATH, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except FileNotFoundError:
-        raise HTTPException(
-            status_code=500, detail=f"Survey not found at {SURVEY_PATH}"
-        )
-    except json.JSONDecodeError as e:
-        raise HTTPException(
-            status_code=500, detail=f"Survey JSON invalid: {e}"
-        )
-
-
-def compute_total_score(answers, survey_data) -> int:
-    """
-    YOUR RULE:
-    - If user answers Agree → add points from the question's "scoring" map
-    - If user answers Disagree → add 0
-    """
-    qspec_by_id = {q["id"]: q for q in survey_data.get("questions", [])}
-    total = 0
-
-    for qid, ans in (answers or {}).items():
-        spec = qspec_by_id.get(qid)
-        if not spec:
-            continue
-
-        # Only "Agree" gives points
-        if str(ans).strip().lower() != "agree":
-            continue
-
-        scoring_map = spec.get("scoring") or {}
-        points_dict = scoring_map.get("Agree") or scoring_map.get("agree") or {}
-
-        if isinstance(points_dict, dict):
-            pts = sum(int(v) for v in points_dict.values())
-        else:
-            try:
-                pts = int(points_dict)
-            except Exception:
-                pts = 0
-
-        total += pts
-
-    return total
 
 
 WORLDVIEW_DESCRIPTIONS = {
@@ -336,15 +246,13 @@ def _render_worldview_profile(sess: SessionData) -> str:
     """
     Human-readable summary sent to the LLM with rich worldview context.
     """
-    if not sess.survey_done:
+    if not sess.worldview_band:
         return "The student has not yet selected a worldview."
-    band = sess.worldview_band or "unknown"
+    band = sess.worldview_band
     label = sess.worldview_label or band.replace("_", " ").title()
     desc = WORLDVIEW_DESCRIPTIONS.get(band, "")
     path = sess.resolved_path or "not yet determined"
     parts = [f"Student's worldview: {label}"]
-    if sess.worldview_total is not None:
-        parts.append(f"Survey score: {sess.worldview_total}")
     parts.append(f"Research methodology pathway: {path}")
     if desc:
         parts.append(f"Worldview description: {desc}")
@@ -765,7 +673,7 @@ def _compute_completed_steps_from_session(sess: "SessionData") -> List[int]:
 
     # Step 1: completed when worldview has been chosen
     s1 = notes.get("1") or {}
-    if s1.get("worldview_id") or sess.survey_done:
+    if s1.get("worldview_id"):
         completed.append(1)
 
     # Steps 2-9: completed when step_notes has non-empty data
@@ -783,7 +691,7 @@ def _compute_completed_steps_from_doc(doc: dict) -> List[int]:
     notes = doc.get("step_notes") or {}
 
     s1 = notes.get("1") or {}
-    if s1.get("worldview_id") or doc.get("survey_done"):
+    if s1.get("worldview_id"):
         completed.append(1)
 
     for s in range(2, 10):
@@ -890,16 +798,9 @@ def set_worldview(req: WorldviewSetReq, user: dict = Depends(get_current_user)):
     if wid not in WORLDVIEW_LABELS:
         raise HTTPException(status_code=400, detail="Invalid worldview_id")
 
-    # IMPORTANT: disable survey mode completely for this session
-    sess.survey_started = True
-    sess.survey_done = True
-    sess.survey_index = 0
-    sess.answers = {}
-
     # Set worldview on session (what the LLM will see)
     sess.worldview_band = wid
     sess.worldview_label = WORLDVIEW_LABELS[wid]
-    sess.worldview_total = None
 
     # Also store into step 1 notes so you can use it later
     sess.step_notes["1"] = {**(sess.step_notes.get("1") or {}), "worldview_id": wid}
@@ -1058,7 +959,6 @@ def set_methodology(req: SetMethodologyReq, user: dict = Depends(get_current_use
     return SetMethodologyResp(session_id=sess.id, chosen_methodology=meth)
 
 
-# ---------------- Survey-as-conversation logic ----------------
 
 def _render_step_context(sess: SessionData) -> str:
     """Build a comprehensive context string from all step inputs (1-9)."""
@@ -1109,159 +1009,6 @@ def _render_step_context(sess: SessionData) -> str:
 
     return "\n".join(lines) if lines else "No step inputs saved yet."
 
-def _handle_survey_turn(
-    sess: SessionData,
-    user_msg: str,
-    history: List[ChatTurn],
-) -> Optional[ChatHistoryResp]:
-    """
-    Chat-driven worldview survey:
-
-    - If survey not started yet, send intro + Question 1.
-    - If survey in progress, treat the user's message as the answer to the
-      current question, score it, and either:
-        * ask the next question, or
-        * finish the survey and send a summary.
-    - If survey already done, return None so caller can go to normal LLM chat.
-    """
-    data = load_survey_from_disk()
-    questions = data.get("questions", [])
-    total_q = len(questions)
-
-    if total_q == 0:
-        # No survey configured – just tell the user and let normal chat handle it
-        history.append(
-            ChatTurn(
-                role="assistant",
-                content=(
-                    "I don’t have any survey questions configured right now, "
-                    "but I can still talk about paradigms with you."
-                ),
-            )
-        )
-        return ChatHistoryResp(session_id=sess.id, history=history)
-
-    # 1) Start survey (only once)
-    if not sess.survey_started:
-        sess.survey_started = True
-        sess.survey_index = 0
-        qspec = questions[0]
-        opts = qspec.get("options") or []
-
-        intro = (
-            "Great, let's start by understanding your **research worldview**. "
-            "I'll ask you a short series of survey questions. For each one, reply using "
-            "exactly one of the listed options so I can score it correctly.\n\n"
-        )
-        body = f"**Question 1/{total_q}:** {qspec.get('text', '')}\n\n"
-        if opts:
-            body += "Please respond with exactly ONE of the following options:\n\n"
-            for o in opts:
-                body += f"- {o}\n"
-
-        history.append(ChatTurn(role="assistant", content=intro + body))
-        return ChatHistoryResp(session_id=sess.id, history=history)
-
-    # 2) If survey already finished → signal caller to go to LLM mode
-    if sess.survey_done:
-        return None
-
-    # 3) We are mid-survey: treat this message as the answer to the current question
-    if sess.survey_index >= total_q:
-        # Safety guard: mark as done and let caller go to LLM
-        sess.survey_done = True
-        return None
-
-    current_spec = questions[sess.survey_index]
-    qid = current_spec.get("id") or f"q{sess.survey_index + 1}"
-    opts = current_spec.get("options") or []
-
-    # ---- normalize answer + options (case-insensitive) ----
-    answer_raw = user_msg.strip()
-    answer_norm = answer_raw.lower()
-    canon_answer = answer_raw  # the value we actually store
-
-    if opts:
-        norm_map = {opt.strip().lower(): opt for opt in opts}
-
-        if answer_norm in norm_map:
-            canon_answer = norm_map[answer_norm]
-        else:
-            # try stripping leading bullet, e.g. "• Agree"
-            m = re.match(r"^[\-\u2022\*]\s*(.+)$", answer_raw)
-            if m:
-                cand = m.group(1).strip().lower()
-                if cand in norm_map:
-                    canon_answer = norm_map[cand]
-                else:
-                    # still invalid
-                    warn = (
-                        "Thanks for your reply! For scoring, please pick **one** of the listed options "
-                        "(you can also click the quick buttons below).\n\n"
-                        f"**Question {sess.survey_index + 1}/{total_q}:** {current_spec.get('text', '')}\n\n"
-                        "Options:\n- " + "\n- ".join(opts)
-                    )
-                    history.append(ChatTurn(role="assistant", content=warn))
-                    return ChatHistoryResp(session_id=sess.id, history=history)
-            else:
-                # not a known option
-                warn = (
-                    "Thanks for your reply! For scoring, please pick **one** of the listed options "
-                    "(you can also click the quick buttons below).\n\n"
-                    f"**Question {sess.survey_index + 1}/{total_q}:** {current_spec.get('text', '')}\n\n"
-                    "Options:\n- " + "\n- ".join(opts)
-                )
-                history.append(ChatTurn(role="assistant", content=warn))
-                return ChatHistoryResp(session_id=sess.id, history=history)
-
-    # Store canonical option (exactly matches JSON key so scoring works)
-    sess.answers[qid] = canon_answer
-
-    # Advance index
-    sess.survey_index += 1
-
-    # 4) If that was the last question → compute scores & summary
-    if sess.survey_index >= total_q:
-        sess.survey_done = True
-
-        data = load_survey_from_disk()
-        total_score = compute_total_score(sess.answers, data)
-        sess.worldview_total = total_score
-
-        band = determine_continuum_band(total_score)
-        if band:
-            sess.worldview_band = band["id"]
-            sess.worldview_label = band["label"]
-        else:
-            sess.worldview_band = None
-            sess.worldview_label = "Unclassified"
-
-        summary = (
-            f"Thanks — that’s all **{total_q}** questions.\n\n"
-            f"Based on your answers, your overall **worldview band** is "
-            f"**{sess.worldview_label}** (total score = {total_score}).\n\n"
-            "You can now ask me questions like:\n"
-            "- *What does this paradigm assume about reality and knowledge?*\n"
-            "- *What methods fit this worldview best?*\n"
-            "- *How would a different paradigm look for my topic?*\n"
-        )
-
-        history.append(ChatTurn(role="assistant", content=summary))
-        return ChatHistoryResp(session_id=sess.id, history=history)
-
-    # 5) Otherwise send the NEXT question
-    next_spec = questions[sess.survey_index]
-    n_opts = next_spec.get("options") or []
-
-    body = f"**Question {sess.survey_index + 1}/{total_q}:** {next_spec.get('text', '')}\n\n"
-    if n_opts:
-        body += "Please respond with exactly ONE of the following options:\n\n"
-        for o in n_opts:
-            body += f"- {o}\n"
-
-    history.append(ChatTurn(role="assistant", content=body))
-    return ChatHistoryResp(session_id=sess.id, history=history)
-
 
 # ---------------- Chat main endpoint (non-streaming) ----------------
 @app.post("/chat/send", response_model=ChatHistoryResp)
@@ -1276,14 +1023,7 @@ def chat_send(req: ChatSendReq = Body(...), user: dict = Depends(get_current_use
     # store user turn
     history.append(ChatTurn(role="user", content=user_msg))
 
-    # Only run survey if user has NOT already set worldview
-    if not sess.survey_done and not sess.worldview_label:
-        survey_resp = _handle_survey_turn(sess, user_msg, history)
-        if survey_resp is not None:
-            _persist_session(sess)
-            return survey_resp
-
-    # 2) Otherwise, normal LLM + RAG chat using worldview and resources
+    # Normal LLM + RAG chat using worldview and resources
     worldview_profile = _render_worldview_profile(sess)
     step_context = _render_step_context(sess)
     passages = _retrieve(user_msg, k=5)
@@ -1303,11 +1043,7 @@ def chat_send(req: ChatSendReq = Body(...), user: dict = Depends(get_current_use
 @app.post("/chat/send_stream")
 def chat_send_stream(req: ChatSendReq = Body(...), user: dict = Depends(get_current_user)):
     """
-    Streaming variant of /chat/send.
-
-    - If the worldview survey is still running, we just reuse the normal survey
-      logic and return JSON (no streaming).
-    - Once the survey is done, we stream the LLM's answer chunk-by-chunk.
+    Streaming variant of /chat/send — streams the LLM's answer chunk-by-chunk.
     """
     sess = _require_session(req.session_id)
     history = _get_chat(sess)
@@ -1319,14 +1055,7 @@ def chat_send_stream(req: ChatSendReq = Body(...), user: dict = Depends(get_curr
     # store user turn
     history.append(ChatTurn(role="user", content=user_msg))
 
-    # Only run survey if user has NOT already set worldview
-    if not sess.survey_done and not sess.worldview_label:
-        survey_resp = _handle_survey_turn(sess, user_msg, history)
-        if survey_resp is not None:
-            _persist_session(sess)
-            return survey_resp
-
-    # 2) Survey is done -> stream LLM answer
+    # Stream LLM answer
     worldview_profile = _render_worldview_profile(sess)
     step_context = _render_step_context(sess)
     passages = _retrieve(user_msg, k=5)

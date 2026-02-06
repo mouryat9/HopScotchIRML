@@ -1,5 +1,5 @@
 // src/ChatBox.jsx
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { API } from "./api";
@@ -92,31 +92,7 @@ function ChatBubble({ turn }) {
   );
 }
 
-function getLastAssistantTurn(history) {
-  for (let i = history.length - 1; i >= 0; i--) {
-    if (history[i].role === "assistant") return history[i];
-  }
-  return null;
-}
 
-// Extract bullet options used by the worldview survey
-function extractSurveyOptionsFromText(text) {
-  if (!text) return [];
-  const marker =
-    "Please respond with exactly ONE of the following options:";
-  const idx = text.indexOf(marker);
-  if (idx === -1) return [];
-
-  const tail = text.slice(idx + marker.length).split("\n");
-  const opts = [];
-  for (const line of tail) {
-    const m = line.match(/^\s*[-•]\s*(.+)\s*$/);
-    if (m && m[1]) {
-      opts.push(m[1].trim());
-    }
-  }
-  return opts;
-}
 
 /* ---------- Main chat component ---------- */
 
@@ -162,12 +138,6 @@ export default function ChatBox({ sessionId, activeStep, refreshKey, autoMessage
     }
   }, [autoMessage]);
 
-  // Detect quick survey options
-  const surveyOptions = useMemo(() => {
-    const last = getLastAssistantTurn(history);
-    if (!last) return [];
-    return extractSurveyOptionsFromText(last.content || "");
-  }, [history]);
 
   async function send(forcedText, opts = {}) {
     const msg = (forcedText ?? input).trim();
@@ -220,9 +190,6 @@ export default function ChatBox({ sessionId, activeStep, refreshKey, autoMessage
     }
   }
 
-  function handleOptionClick(opt) {
-    send(opt);
-  }
 
   return (
     <div className="chat-wrap">
@@ -250,21 +217,6 @@ export default function ChatBox({ sessionId, activeStep, refreshKey, autoMessage
         </div>
       )}
 
-      {surveyOptions.length > 0 && (
-        <div className="quick-options">
-          {surveyOptions.map((opt) => (
-            <button
-              key={opt}
-              className="btn pill"
-              type="button"
-              disabled={sending || !sessionId}
-              onClick={() => handleOptionClick(opt)}
-            >
-              {opt}
-            </button>
-          ))}
-        </div>
-      )}
 
       <div className="chat-input">
         <textarea
