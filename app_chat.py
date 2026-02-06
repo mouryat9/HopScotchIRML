@@ -42,7 +42,7 @@ from auth import hash_password, verify_password, create_access_token, get_curren
 from database import (
     ensure_indexes, find_user_by_email, create_user,
     find_session, create_session_doc, update_session,
-    get_sessions_for_user, get_all_student_sessions,
+    get_sessions_for_user,
     get_latest_session_for_user,
 )
 
@@ -755,6 +755,43 @@ class SessionResumeResponse(BaseModel):
     session_id: Optional[str] = None
     active_step: int = 1
     found: bool = False
+    completed_steps: List[int] = []
+
+
+def _compute_completed_steps_from_session(sess: "SessionData") -> List[int]:
+    """Return list of step numbers that have meaningful saved data."""
+    completed = []
+    notes = sess.step_notes or {}
+
+    # Step 1: completed when worldview has been chosen
+    s1 = notes.get("1") or {}
+    if s1.get("worldview_id") or sess.survey_done:
+        completed.append(1)
+
+    # Steps 2-9: completed when step_notes has non-empty data
+    for s in range(2, 10):
+        data = notes.get(str(s)) or {}
+        if data:
+            completed.append(s)
+
+    return completed
+
+
+def _compute_completed_steps_from_doc(doc: dict) -> List[int]:
+    """Return list of step numbers that have meaningful saved data (from raw MongoDB doc)."""
+    completed = []
+    notes = doc.get("step_notes") or {}
+
+    s1 = notes.get("1") or {}
+    if s1.get("worldview_id") or doc.get("survey_done"):
+        completed.append(1)
+
+    for s in range(2, 10):
+        data = notes.get(str(s)) or {}
+        if data:
+            completed.append(s)
+
+    return completed
 
 
 @app.get("/session/resume", response_model=SessionResumeResponse)
@@ -768,6 +805,7 @@ def resume_session(user: dict = Depends(get_current_user)):
         session_id=doc["session_id"],
         active_step=doc.get("active_step", 1),
         found=True,
+        completed_steps=_compute_completed_steps_from_doc(doc),
     )
 
 
@@ -801,6 +839,7 @@ class StepDataResp(BaseModel):
     session_id: str
     step: int
     data: Dict[str, Any]
+    completed_steps: List[int] = []
 
 
 @app.post("/step/save", response_model=StepDataResp)
@@ -809,7 +848,7 @@ def save_step_data(req: StepDataReq, user: dict = Depends(get_current_user)):
     key = str(req.step)
     sess.step_notes[key] = req.data or {}
     _persist_session(sess)
-    return StepDataResp(session_id=sess.id, step=req.step, data=sess.step_notes[key])
+    return StepDataResp(session_id=sess.id, step=req.step, data=sess.step_notes[key], completed_steps=_compute_completed_steps_from_session(sess))
 
 
 @app.get("/step/get", response_model=StepDataResp)
@@ -831,6 +870,7 @@ class WorldviewSetResp(BaseModel):
     session_id: str
     worldview_id: str
     worldview_label: str
+    completed_steps: List[int] = []
 
 
 WORLDVIEW_LABELS = {
@@ -874,6 +914,7 @@ def set_worldview(req: WorldviewSetReq, user: dict = Depends(get_current_user)):
         session_id=sess.id,
         worldview_id=wid,
         worldview_label=sess.worldview_label,
+        completed_steps=_compute_completed_steps_from_session(sess),
     )
 
 # ---------------- Step config + methodology endpoints ----------------
@@ -1329,22 +1370,6 @@ def chat_send_stream(req: ChatSendReq = Body(...), user: dict = Depends(get_curr
         _persist_session(sess)
 
     return StreamingResponse(event_stream(), media_type="text/plain")
-
-
-# ---------------- Teacher dashboard ----------------
-
-@app.get("/teacher/students")
-def teacher_students(user: dict = Depends(get_current_user)):
-    if user.get("role") != "teacher":
-        raise HTTPException(status_code=403, detail="Teachers only")
-    sessions = get_all_student_sessions()
-    # Serialize ObjectId fields for JSON
-    for s in sessions:
-        s.pop("_id", None)
-        s.pop("user_oid", None)
-        if "user" in s:
-            s["user"].pop("_id", None)
-    return {"sessions": sessions}
 
 
 # ---------------- RAG utilities ----------------

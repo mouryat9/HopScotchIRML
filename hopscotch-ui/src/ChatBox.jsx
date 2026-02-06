@@ -228,11 +228,6 @@ export default function ChatBox({ sessionId, activeStep, refreshKey, autoMessage
     <div className="chat-wrap">
       <div className="chat-head">
         <div className="chat-title">Research Assistant</div>
-        <div className="chat-hint">
-          {activeStep
-            ? `Step ${activeStep} — We are here to help you scaffold your research design.`
-            : "We are here to help you scaffold your research design."}
-        </div>
       </div>
 
       <div className="chat-body" ref={scrollRef}>

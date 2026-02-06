@@ -6,7 +6,6 @@ import ChatBox from "./ChatBox";
 import StepDetails from "./StepDetails";
 import { useAuth } from "./AuthContext";
 import LoginPage from "./LoginPage";
-import TeacherDashboard from "./TeacherDashboard";
 
 /* Small local UI helpers */
 const Btn = ({ className = "", ...p }) => (
@@ -24,13 +23,13 @@ const STEP_LABELS = [
   "Data", "Analysis", "Trustworthiness", "Ethics",
 ];
 
-function StepProgressBar({ activeStep, onStepChange }) {
+function StepProgressBar({ activeStep, completedSteps = [], onStepChange }) {
   return (
     <nav className="step-progress" aria-label="Research steps">
       {STEP_LABELS.map((label, i) => {
         const num = i + 1;
         const isActive = num === activeStep;
-        const isCompleted = num < activeStep;
+        const isCompleted = completedSteps.includes(num);
         return (
           <div className="step-progress__item" key={num}>
             <button
@@ -79,7 +78,7 @@ function StepResourcePanel({ activeStep }) {
 
   return (
     <div className="embed-card">
-      <h3 className="embed-title">Interactive resource for Step {activeStep}</h3>
+      <h3 className="embed-title">Step {activeStep}: {STEP_CARDS[activeStep - 1]?.label}</h3>
       <div className="embed-frame-wrap">
         <iframe
           src={url}
@@ -116,7 +115,7 @@ const HOPSCOTCH_COLUMNS = [
 ];
 
 /* ----- Animated step diagram ----- */
-function StepDiagram({ activeStep, onStepChange }) {
+function StepDiagram({ activeStep, completedSteps = [], onStepChange }) {
   return (
     <div className="hop-diagram">
       {HOPSCOTCH_COLUMNS.map((col, ci) => (
@@ -124,7 +123,7 @@ function StepDiagram({ activeStep, onStepChange }) {
           {col.steps.map((stepNum) => {
             const card = STEP_CARDS[stepNum - 1];
             const isActive = activeStep === stepNum;
-            const isCompleted = stepNum < activeStep;
+            const isCompleted = completedSteps.includes(stepNum);
             return (
               <button
                 key={stepNum}
@@ -153,6 +152,7 @@ function StudentApp() {
   const { user, logout } = useAuth();
   const [sessionId, setSessionId] = useState(null);
   const [activeStep, setActiveStep] = useState(1);
+  const [completedSteps, setCompletedSteps] = useState([]);
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState("");
   const [chatRefreshKey, setChatRefreshKey] = useState(0);
@@ -167,10 +167,12 @@ function StudentApp() {
         if (resumed.found && resumed.session_id) {
           setSessionId(resumed.session_id);
           setActiveStep(resumed.active_step || 1);
+          setCompletedSteps(resumed.completed_steps || []);
         } else {
           // No existing session — create a fresh one
           const { session_id } = await API.createSession();
           setSessionId(session_id);
+          setCompletedSteps([]);
         }
       } catch (e) {
         console.error(e);
@@ -228,10 +230,10 @@ function StudentApp() {
       {/* Content area — centered max-width */}
       <div className="hop-content">
         {/* Step progress bar */}
-        <StepProgressBar activeStep={activeStep} onStepChange={handleStepChange} />
+        <StepProgressBar activeStep={activeStep} completedSteps={completedSteps} onStepChange={handleStepChange} />
 
         {/* Step diagram under header */}
-        <StepDiagram activeStep={activeStep} onStepChange={handleStepChange} />
+        <StepDiagram activeStep={activeStep} completedSteps={completedSteps} onStepChange={handleStepChange} />
 
         {/* 2-column layout: left Genially, right step details + chat */}
         <div className="hop-layout">
@@ -241,7 +243,7 @@ function StudentApp() {
 
           <section className="hop-right-panel">
             {/* Step-specific directions + inputs (saved in backend) */}
-            <StepDetails step={activeStep} sessionId={sessionId} onChatRefresh={() => setChatRefreshKey((k) => k + 1)} onAutoSend={setAutoMessage} />
+            <StepDetails step={activeStep} sessionId={sessionId} onChatRefresh={() => setChatRefreshKey((k) => k + 1)} onAutoSend={setAutoMessage} onCompletedStepsChange={setCompletedSteps} />
 
             {/* Assistant Chat */}
             {loading && !sessionId ? (
@@ -280,6 +282,5 @@ export default function App() {
   }
 
   if (!user) return <LoginPage />;
-  if (user.role === "teacher") return <TeacherDashboard />;
   return <StudentApp />;
 }

@@ -12,7 +12,7 @@ const ROTATING_WORDS = [
 
 export default function LoginPage() {
   const { login } = useAuth();
-  const [role, setRole] = useState(null); // null = hero, "student" | "teacher" = form
+  const [showForm, setShowForm] = useState(false);
   const [isRegister, setIsRegister] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -41,7 +41,7 @@ export default function LoginPage() {
     try {
       let data;
       if (isRegister) {
-        data = await API.register({ email, password, name, role });
+        data = await API.register({ email, password, name });
       } else {
         data = await API.login({ email, password });
       }
@@ -62,8 +62,8 @@ export default function LoginPage() {
     </header>
   );
 
-  // ---------- Hero landing (role = null) ----------
-  if (!role) {
+  // ---------- Hero landing ----------
+  if (!showForm) {
     return (
       <div className="login-page">
         {header}
@@ -80,11 +80,8 @@ export default function LoginPage() {
           </p>
 
           <div className="login-hero__actions">
-            <button className="btn login-btn-filled" onClick={() => setRole("student")}>
-              Sign in as Student
-            </button>
-            <button className="btn login-btn-outline" onClick={() => setRole("teacher")}>
-              Sign in as Teacher
+            <button className="btn login-btn-filled" onClick={() => setShowForm(true)}>
+              Get Started
             </button>
           </div>
         </main>
@@ -97,7 +94,7 @@ export default function LoginPage() {
     <div className="login-split">
       {/* Left side: form */}
       <div className="login-split__left">
-        <button className="login-split__back" onClick={() => setRole(null)}>
+        <button className="login-split__back" onClick={() => setShowForm(false)}>
           &larr; Back
         </button>
 

@@ -13,10 +13,10 @@
   --hop-green-dark:     #5A9A2F;
   --hop-green-light:    #8BC764;
 
-  /* Bright blue accent (ClassroomAI-inspired) */
-  --hop-blue:           #4776E6;
-  --hop-blue-dark:      #3A62CC;
-  --hop-blue-light:     #6B91F0;
+  /* Accent (dark navy) */
+  --hop-blue:           #1E2740;
+  --hop-blue-dark:      #151C30;
+  --hop-blue-light:     #384560;
 
   /* Neutrals */
   --hop-white:          #FFFFFF;
@@ -33,8 +33,8 @@
   --hop-success-bg:     #EFF8E8;
   --hop-error:          #DC3545;
   --hop-error-bg:       #FDF2F2;
-  --hop-info:           #4776E6;
-  --hop-info-bg:        #EEF2FD;
+  --hop-info:           #1E2740;
+  --hop-info-bg:        #EBEDF2;
 
   /* Shadows */
   --hop-shadow-sm:      0 1px 2px rgba(0, 0, 0, 0.04);
@@ -82,16 +82,7 @@ h1, h2, h3, h4, h5, h6 {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: linear-gradient(
-    135deg,
-    #FAFBFC 0%,
-    #F0F4FD 25%,
-    #F5FBF0 50%,
-    #EEF2FD 75%,
-    #FAFBFC 100%
-  );
-  background-size: 400% 400%;
-  animation: ambientBgShift 20s ease infinite;
+  background: var(--hop-white);
 }
 
 .hop-content {
@@ -166,7 +157,7 @@ h1, h2, h3, h4, h5, h6 {
 .hop-header__signout:hover {
   border-color: var(--hop-blue);
   color: var(--hop-blue);
-  box-shadow: 0 2px 8px rgba(71, 118, 230, 0.1);
+  box-shadow: 0 2px 8px rgba(30, 39, 64, 0.1);
 }
 
 /* ========================================================
@@ -183,7 +174,7 @@ h1, h2, h3, h4, h5, h6 {
   border-radius: 999px;
   background: var(--hop-success-bg);
   color: var(--hop-green-dark);
-  border: 1px solid rgba(109, 179, 63, 0.25);
+  border: 1px solid rgba(30, 39, 64, 0.25);
 }
 
 .badge--error {
@@ -252,7 +243,7 @@ h1, h2, h3, h4, h5, h6 {
   background: var(--hop-blue);
   border-color: var(--hop-blue);
   color: var(--hop-white);
-  box-shadow: 0 0 0 4px rgba(71, 118, 230, 0.18);
+  box-shadow: 0 0 0 4px rgba(30, 39, 64, 0.18);
   animation: dotPulseRing 2.5s ease-in-out infinite;
 }
 
@@ -303,7 +294,7 @@ h1, h2, h3, h4, h5, h6 {
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: rgba(71, 118, 230, 0.12);
+  background: rgba(30, 39, 64, 0.12);
   animation: floatUpDown 5s ease-in-out infinite;
   pointer-events: none;
   z-index: 0;
@@ -317,7 +308,7 @@ h1, h2, h3, h4, h5, h6 {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: rgba(109, 179, 63, 0.12);
+  background: rgba(30, 39, 64, 0.12);
   animation: floatLeftRight 6s ease-in-out infinite;
   pointer-events: none;
   z-index: 0;
@@ -394,14 +385,35 @@ h1, h2, h3, h4, h5, h6 {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
 }
 
-/* Active step: ring + scale + breathing glow */
+/* Active step: wobble + breathing glow + shimmer */
 .hop-step-card--active {
-  transform: translateY(-2px) scale(1.05);
+  transform: translateY(-2px) scale(1.05) rotateZ(0deg);
   box-shadow:
     0 0 0 3px #fff,
     0 0 0 6px var(--card-color),
     0 8px 24px rgba(0, 0, 0, 0.2);
-  animation: cardBreathGlow 3s ease-in-out infinite;
+  animation:
+    activeWobble 3s ease-in-out infinite,
+    cardBreathGlow 3s ease-in-out infinite;
+  overflow: hidden;
+}
+
+/* Shimmer sweep on active card */
+.hop-step-card--active::after {
+  content: "";
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 40%;
+  height: 200%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.25) 50%,
+    transparent 100%
+  );
+  animation: activeShimmer 3s ease-in-out infinite;
+  pointer-events: none;
 }
 
 .hop-step-card--active:hover {
@@ -670,7 +682,7 @@ h1, h2, h3, h4, h5, h6 {
   background: var(--hop-blue);
   border-color: var(--hop-blue);
   color: var(--hop-white);
-  box-shadow: 0 2px 8px rgba(71, 118, 230, 0.25);
+  box-shadow: 0 2px 8px rgba(30, 39, 64, 0.25);
 }
 
 .btn--primary:hover,
@@ -678,7 +690,7 @@ h1, h2, h3, h4, h5, h6 {
   background: var(--hop-blue-dark);
   border-color: var(--hop-blue-dark);
   color: var(--hop-white);
-  box-shadow: 0 4px 14px rgba(71, 118, 230, 0.35);
+  box-shadow: 0 4px 14px rgba(30, 39, 64, 0.35);
 }
 
 /* Outline button */
@@ -691,7 +703,7 @@ h1, h2, h3, h4, h5, h6 {
 .btn--outline:hover {
   border-color: var(--hop-blue);
   color: var(--hop-blue);
-  background: rgba(71, 118, 230, 0.04);
+  background: rgba(30, 39, 64, 0.04);
 }
 
 /* Green accent button */
@@ -729,7 +741,7 @@ select.input {
 select.input:focus {
   outline: none;
   border-color: var(--hop-blue);
-  box-shadow: 0 0 0 4px rgba(71, 118, 230, 0.12);
+  box-shadow: 0 0 0 4px rgba(30, 39, 64, 0.12);
 }
 
 .input:disabled,
@@ -823,7 +835,7 @@ select.input:focus {
   border-radius: 999px;
 }
 .chat-body:hover::-webkit-scrollbar-thumb {
-  background: rgba(71, 118, 230, 0.5);
+  background: rgba(30, 39, 64, 0.5);
 }
 
 /* Rows + bubbles */
@@ -864,7 +876,7 @@ select.input:focus {
 .chat-bubble--user {
   background: var(--hop-blue);
   color: #FFFFFF;
-  box-shadow: 0 2px 8px rgba(71, 118, 230, 0.25);
+  box-shadow: 0 2px 8px rgba(30, 39, 64, 0.25);
 }
 
 /* Hover lift */
@@ -873,7 +885,7 @@ select.input:focus {
 }
 
 .chat-bubble--user:hover {
-  box-shadow: 0 4px 14px rgba(71, 118, 230, 0.35);
+  box-shadow: 0 4px 14px rgba(30, 39, 64, 0.35);
 }
 
 /* Markdown inside assistant bubbles */
@@ -910,13 +922,13 @@ select.input:focus {
   background: var(--hop-blue);
   color: var(--hop-white);
   border: none;
-  box-shadow: 0 2px 6px rgba(71, 118, 230, 0.25);
+  box-shadow: 0 2px 6px rgba(30, 39, 64, 0.25);
   transition: transform var(--hop-ease), box-shadow var(--hop-ease), background var(--hop-ease);
 }
 
 .btn.pill:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(71, 118, 230, 0.35);
+  box-shadow: 0 4px 12px rgba(30, 39, 64, 0.35);
   background: var(--hop-blue-dark);
 }
 
@@ -948,7 +960,7 @@ select.input:focus {
 .chat-input textarea:focus {
   outline: none;
   border-color: var(--hop-blue);
-  box-shadow: 0 0 0 2px rgba(71, 118, 230, 0.12);
+  box-shadow: 0 0 0 2px rgba(30, 39, 64, 0.12);
   background: var(--hop-white);
 }
 
@@ -965,7 +977,7 @@ select.input:focus {
   font-size: 0.8rem;
   padding: 0.4rem 0.55rem;
   border-radius: var(--hop-radius-md);
-  border: 1px dashed rgba(71, 118, 230, 0.25);
+  border: 1px dashed rgba(30, 39, 64, 0.25);
   background: var(--hop-info-bg);
   color: var(--hop-ink-secondary);
   cursor: pointer;
@@ -1059,7 +1071,7 @@ select.input:focus {
   height: 6px;
   border-radius: 999px;
   background: var(--hop-blue-light);
-  box-shadow: 0 0 6px rgba(71, 118, 230, 0.4);
+  box-shadow: 0 0 6px rgba(30, 39, 64, 0.4);
   animation: hop-typing 1s infinite ease-in-out;
 }
 
@@ -1176,7 +1188,7 @@ select.input:focus {
   align-items: center;
   padding: 10px 16px;
   background: var(--hop-success-bg);
-  border: 1px solid rgba(109, 179, 63, 0.25);
+  border: 1px solid rgba(30, 39, 64, 0.25);
   border-radius: var(--hop-radius-sm);
   font-size: 14px;
   color: var(--hop-green-dark);
@@ -1288,7 +1300,7 @@ select.input:focus {
   font-weight: 700;
   letter-spacing: -0.025em;
   margin: 0;
-  background: linear-gradient(135deg, #7C3AED, #4776E6);
+  background: linear-gradient(135deg, var(--hop-navy) 0%, var(--hop-green) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -1329,13 +1341,13 @@ select.input:focus {
   gap: 1rem;
 }
 
-/* Filled blue pill button */
+/* Filled brand pill button */
 .login-btn-filled {
   padding: 0.85rem 2.2rem;
   font-size: 1rem;
   font-weight: 500;
   border-radius: var(--hop-radius-pill);
-  background: var(--hop-blue);
+  background: var(--hop-navy);
   color: var(--hop-white);
   border: none;
   cursor: pointer;
@@ -1343,8 +1355,8 @@ select.input:focus {
 }
 
 .login-btn-filled:hover {
-  background: var(--hop-blue-dark);
-  box-shadow: 0 4px 14px rgba(71, 118, 230, 0.3);
+  background: var(--hop-navy-dark);
+  box-shadow: 0 4px 14px rgba(30, 39, 64, 0.3);
 }
 
 /* Outlined pill button */
@@ -1363,7 +1375,7 @@ select.input:focus {
 .login-btn-outline:hover {
   border-color: var(--hop-blue);
   color: var(--hop-blue);
-  box-shadow: 0 2px 8px rgba(71, 118, 230, 0.1);
+  box-shadow: 0 2px 8px rgba(30, 39, 64, 0.1);
 }
 
 /* --- Split-screen auth form (ClassroomAI style) --- */
@@ -1376,6 +1388,7 @@ select.input:focus {
   flex: 1;
   display: flex;
   flex-direction: column;
+  align-items: center;
   padding: 2.5rem 4rem;
   background: var(--hop-white);
 }
@@ -1402,6 +1415,7 @@ select.input:focus {
   display: flex;
   flex-direction: column;
   justify-content: center;
+  width: 100%;
   max-width: 400px;
 }
 
@@ -1537,7 +1551,7 @@ select.input:focus {
   width: 34px;
   height: 34px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #7C3AED, var(--hop-blue));
+  background: linear-gradient(135deg, var(--hop-navy), var(--hop-green));
   color: #fff;
   font-size: 0.85rem;
   font-weight: 700;
@@ -1545,7 +1559,7 @@ select.input:focus {
   align-items: center;
   justify-content: center;
   letter-spacing: 0.02em;
-  box-shadow: 0 2px 8px rgba(71, 118, 230, 0.25);
+  box-shadow: 0 2px 8px rgba(30, 39, 64, 0.25);
 }
 
 .hop-user__name {
@@ -1657,12 +1671,6 @@ select.input:focus {
    Ambient Animations (keyframes)
    ======================================================== */
 
-/* Background gradient cycle */
-@keyframes ambientBgShift {
-  0%   { background-position: 0% 50%; }
-  50%  { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
-}
 
 /* Active step card breathing glow */
 @keyframes cardBreathGlow {
@@ -1677,8 +1685,25 @@ select.input:focus {
       0 0 0 3px #fff,
       0 0 0 8px var(--card-color),
       0 8px 28px rgba(0, 0, 0, 0.25),
-      0 0 20px rgba(71, 118, 230, 0.15);
+      0 0 20px rgba(30, 39, 64, 0.15);
   }
+}
+
+/* Active card wobble tilt */
+@keyframes activeWobble {
+  0%, 100% { transform: translateY(-2px) scale(1.05) rotateZ(0deg); }
+  20%      { transform: translateY(-2px) scale(1.05) rotateZ(-3deg); }
+  40%      { transform: translateY(-2px) scale(1.05) rotateZ(3deg); }
+  60%      { transform: translateY(-2px) scale(1.05) rotateZ(-2deg); }
+  80%      { transform: translateY(-2px) scale(1.05) rotateZ(1deg); }
+}
+
+/* Active card shimmer sweep */
+@keyframes activeShimmer {
+  0%        { transform: translateX(-100%) rotate(25deg); opacity: 0; }
+  15%       { opacity: 1; }
+  50%       { transform: translateX(200%) rotate(25deg); opacity: 0; }
+  100%      { transform: translateX(200%) rotate(25deg); opacity: 0; }
 }
 
 /* Completed card shimmer sweep */
@@ -1708,10 +1733,10 @@ select.input:focus {
 /* Active progress dot pulse ring */
 @keyframes dotPulseRing {
   0%, 100% {
-    box-shadow: 0 0 0 4px rgba(71, 118, 230, 0.18);
+    box-shadow: 0 0 0 4px rgba(30, 39, 64, 0.18);
   }
   50% {
-    box-shadow: 0 0 0 8px rgba(71, 118, 230, 0.08);
+    box-shadow: 0 0 0 8px rgba(30, 39, 64, 0.08);
   }
 }
 
@@ -1749,13 +1774,13 @@ select.input:focus {
    ======================================================== */
 
 @media (prefers-reduced-motion: reduce) {
-  .hop-wrap {
-    animation: none;
-    background: var(--hop-bg);
-  }
-
   .hop-step-card--active {
     animation: none;
+  }
+
+  .hop-step-card--active::after {
+    animation: none;
+    display: none;
   }
 
   .hop-step-card--completed::after {

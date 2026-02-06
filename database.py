@@ -83,37 +83,3 @@ def get_latest_session_for_user(user_id: str) -> Optional[Dict]:
     return docs[0] if docs else None
 
 
-def get_all_student_sessions() -> List[Dict]:
-    """Aggregate sessions with student user info for the teacher dashboard."""
-    pipeline = [
-        {
-            "$addFields": {
-                "user_oid": {"$toObjectId": "$user_id"}
-            }
-        },
-        {
-            "$lookup": {
-                "from": "users",
-                "localField": "user_oid",
-                "foreignField": "_id",
-                "as": "user",
-            }
-        },
-        {"$unwind": "$user"},
-        {"$match": {"user.role": "student"}},
-        {
-            "$project": {
-                "session_id": 1,
-                "created_at": 1,
-                "worldview_band": 1,
-                "worldview_label": 1,
-                "resolved_path": 1,
-                "step_notes": 1,
-                "survey_done": 1,
-                "chosen_methodology": 1,
-                "user.name": 1,
-                "user.email": 1,
-            }
-        },
-    ]
-    return list(sessions_col.aggregate(pipeline))

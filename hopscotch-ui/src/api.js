@@ -17,11 +17,11 @@ function authHeaders() {
 export const API = {
   // ---------- Auth ----------
 
-  async register({ email, password, name, role }) {
+  async register({ email, password, name }) {
     const res = await fetch(`${API_BASE}/auth/register`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password, name, role }),
+      body: JSON.stringify({ email, password, name, role: "student" }),
     });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
@@ -40,16 +40,6 @@ export const API = {
       const data = await res.json().catch(() => ({}));
       throw new Error(data.detail || `Login failed: ${res.status}`);
     }
-    return res.json();
-  },
-
-  // ---------- Teacher ----------
-
-  async getStudentSessions() {
-    const res = await fetch(`${API_BASE}/teacher/students`, {
-      headers: authHeaders(),
-    });
-    if (!res.ok) throw new Error("Failed to load student sessions");
     return res.json();
   },
 

@@ -49,7 +49,7 @@ const WORLDVIEW_IDS = new Set([
  *  - step: number (1–9)
  *  - sessionId: string | null   (used for saving/loading)
  */
-export default function StepDetails({ step, sessionId, onChatRefresh, onAutoSend }) {
+export default function StepDetails({ step, sessionId, onChatRefresh, onAutoSend, onCompletedStepsChange }) {
   const baseShape = useMemo(() => EMPTY_STEP_DATA[step] || {}, [step]);
 
   const [data, setData] = useState(baseShape);
@@ -129,7 +129,12 @@ export default function StepDetails({ step, sessionId, onChatRefresh, onAutoSend
           step,
           data: next,
         })
-          .then(() => setSaving(false))
+          .then((res) => {
+            setSaving(false);
+            if (res.completed_steps && onCompletedStepsChange) {
+              onCompletedStepsChange(res.completed_steps);
+            }
+          })
           .catch((err) => {
             console.error("Failed to save step data", err);
             setSaving(false);
@@ -154,8 +159,10 @@ export default function StepDetails({ step, sessionId, onChatRefresh, onAutoSend
     if (!WORLDVIEW_IDS.has(newValue)) return;
 
     try {
-      // You must add this method in api.js (see below)
-      await API.setWorldview(sessionId, newValue);
+      const wvRes = await API.setWorldview(sessionId, newValue);
+      if (wvRes.completed_steps && onCompletedStepsChange) {
+        onCompletedStepsChange(wvRes.completed_steps);
+      }
       // Trigger a streaming welcome message in the chat
       const label = newValue.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
       if (onAutoSend) onAutoSend(`I just selected ${label} as my worldview. Can you give me a personalised welcome explaining what this means for my research approach and methodology pathway?`);
