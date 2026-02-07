@@ -18,9 +18,8 @@ BACKEND_PORT="8000"
 FRONTEND_HOST="0.0.0.0"
 FRONTEND_PORT="5173"
 
-# logs for cloudflare URLs
-CF_BACK_LOG="$ROOT/cloudflared_backend.log"
-CF_UI_LOG="$ROOT/cloudflared_ui.log"
+# Cloudflare tunnel log
+CF_LOG="$ROOT/cloudflared_tunnel.log"
 
 # =========================
 # HELPERS
@@ -138,19 +137,13 @@ tmux send-keys -t "$SESSION:0.1" "cd \"$ROOT\" && $activate_venv && python -V &&
 tmux send-keys -t "$SESSION:0.2" "cd \"$ROOT/hopscotch-ui\" && echo 'Starting UI...' && npm install && npm run dev -- --host $FRONTEND_HOST --port $FRONTEND_PORT" C-m
 
 # =========================
-# PANE 3: CLOUDFLARED (BACKEND + UI) WITH LOGS
+# PANE 3: CLOUDFLARED NAMED TUNNEL
 # =========================
-tmux send-keys -t "$SESSION:0.3" "echo 'Starting Cloudflare tunnels...'; rm -f \"$CF_BACK_LOG\" \"$CF_UI_LOG\"; \
-cloudflared tunnel --url http://127.0.0.1:$BACKEND_PORT --logfile \"$CF_BACK_LOG\" --loglevel info & \
-sleep 2; \
-cloudflared tunnel --url http://127.0.0.1:$FRONTEND_PORT --logfile \"$CF_UI_LOG\" --loglevel info & \
-sleep 2; \
-echo; echo 'Backend tunnel URL (if ready):'; grep -oE 'https://[a-zA-Z0-9.-]+\\.trycloudflare\\.com' \"$CF_BACK_LOG\" | tail -n 1 || true; \
-echo 'UI tunnel URL (if ready):'; grep -oE 'https://[a-zA-Z0-9.-]+\\.trycloudflare\\.com' \"$CF_UI_LOG\" | tail -n 1 || true; \
-echo; echo 'To re-print URLs later:'; \
-echo \"  grep -oE 'https://[a-zA-Z0-9.-]+\\\\.trycloudflare\\\\.com' $CF_BACK_LOG | tail -n 1\"; \
-echo \"  grep -oE 'https://[a-zA-Z0-9.-]+\\\\.trycloudflare\\\\.com' $CF_UI_LOG | tail -n 1\"; \
-echo; echo 'Keeping this pane alive...'; tail -f \"$CF_BACK_LOG\" \"$CF_UI_LOG\"" C-m
+tmux send-keys -t "$SESSION:0.3" "echo 'Starting Cloudflare named tunnel...'; \
+echo 'Frontend: https://hopscotchai.us'; \
+echo 'Backend API: https://api.hopscotchai.us'; \
+echo; \
+cloudflared tunnel run hopscotch" C-m
 
 # make panes readable
 tmux select-layout -t "$SESSION" tiled

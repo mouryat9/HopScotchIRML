@@ -1,8 +1,9 @@
 // src/api.js
+// For local development:
 // const API_BASE = "http://127.0.0.1:8000";
 
-// For Cloudflare tunnel (production):
-const API_BASE = "https://eating-mhz-smoking-missouri.trycloudflare.com";
+// For production (permanent Cloudflare tunnel):
+const API_BASE = "https://api.hopscotchai.us";
 
 function authHeaders() {
   const stored = localStorage.getItem("hopscotch_user");
