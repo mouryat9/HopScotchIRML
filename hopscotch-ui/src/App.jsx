@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { API } from "./api";
 import SplitPanelLayout from "./SplitPanelLayout";
 import { useAuth } from "./AuthContext";
+import { useTheme } from "./ThemeContext";
 import LoginPage from "./LoginPage";
 
 /* Small local UI helpers */
@@ -106,6 +107,7 @@ function StepDiagram({ activeStep, completedSteps = [], onStepChange }) {
 
 function StudentApp() {
   const { user, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const [sessionId, setSessionId] = useState(null);
   const [activeStep, setActiveStep] = useState(1);
   const [completedSteps, setCompletedSteps] = useState([]);
@@ -166,7 +168,7 @@ function StudentApp() {
       <header className="hop-header">
         <div className="hop-header__left">
           <img
-            src="/hopscotch-logo.png"
+            src="/Hopscotch-4-all-logo-alpha.png"
             alt="Hopscotch 4 All"
             className="hop-logo"
           />
@@ -178,6 +180,9 @@ function StudentApp() {
               <span className="hop-user__name">{user.name}</span>
             </div>
           )}
+          <button className="theme-toggle" onClick={toggleTheme} aria-label="Toggle dark mode" title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}>
+            {theme === "dark" ? "\u2600" : "\u263E"}
+          </button>
           <span className="hop-header__divider" />
           <button className="hop-header__signout" onClick={logout}>Sign Out</button>
         </div>

@@ -1,9 +1,9 @@
 // src/TabbedPanel.jsx
 
 const TABS = [
-  { id: "resource", label: "Resource" },
-  { id: "details", label: "Step Details" },
-  { id: "chat", label: "Chat" },
+  { id: "resource", label: "Interactive Lesson" },
+  { id: "details", label: "Workspace" },
+  { id: "chat", label: "Research Assistant" },
 ];
 
 export default function TabbedPanel({ activeTab, onTabChange, variant = "pill", children }) {

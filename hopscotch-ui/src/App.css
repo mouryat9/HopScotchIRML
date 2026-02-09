@@ -50,6 +50,52 @@
 
   /* Transitions */
   --hop-ease:           0.18s ease-out;
+
+  /* Extra tokens for hardcoded colors */
+  --hop-neutral-bg:     #F3F4F6;
+  --hop-placeholder:    #C4C9D2;
+  --hop-panel-dark:     #1A1A2E;
+}
+
+/* ========================================================
+   Dark Mode Overrides
+   ======================================================== */
+
+:root[data-theme="dark"] {
+  --hop-navy:           #5B8CC8;
+  --hop-navy-dark:      #7BA3D6;
+  --hop-navy-light:     #4A7AB8;
+  --hop-green:          #7BC74F;
+  --hop-green-dark:     #6DB33F;
+  --hop-green-light:    #90D66A;
+
+  --hop-blue:           #4A6FA5;
+  --hop-blue-dark:      #3D5F90;
+  --hop-blue-light:     #6B8FC0;
+
+  --hop-white:          #1A1D23;
+  --hop-bg:             #12151A;
+  --hop-surface:        #1E2128;
+  --hop-border:         #2D3340;
+  --hop-border-light:   #252B36;
+  --hop-muted:          #8896A6;
+  --hop-ink:            #E8ECF1;
+  --hop-ink-secondary:  #B0BAC5;
+
+  --hop-success:        #7BC74F;
+  --hop-success-bg:     #1A2E1A;
+  --hop-error:          #F06060;
+  --hop-error-bg:       #2E1A1A;
+  --hop-info:           #6B8FC0;
+  --hop-info-bg:        #1A2030;
+
+  --hop-shadow-sm:      0 1px 2px rgba(0, 0, 0, 0.2);
+  --hop-shadow-md:      0 2px 8px rgba(0, 0, 0, 0.3);
+  --hop-shadow-lg:      0 4px 16px rgba(0, 0, 0, 0.4);
+
+  --hop-neutral-bg:     #252B36;
+  --hop-placeholder:    #555E6B;
+  --hop-panel-dark:     #0F1118;
 }
 
 /* ========================================================
@@ -184,7 +230,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .badge--neutral {
-  background: #F3F4F6;
+  background: var(--hop-neutral-bg);
   color: var(--hop-muted);
   border-color: var(--hop-border);
 }
@@ -530,8 +576,8 @@ h1, h2, h3, h4, h5, h6 {
 /* --- Tab bar: Pill style --- */
 .panel-tabs--pill {
   display: flex;
-  gap: 6px;
-  padding: 8px;
+  gap: 4px;
+  padding: 4px;
   background: var(--hop-surface);
   border: 1px solid var(--hop-border);
   border-radius: 999px;
@@ -540,8 +586,8 @@ h1, h2, h3, h4, h5, h6 {
 
 .panel-tabs--pill .panel-tabs__btn {
   flex: 1;
-  padding: 8px 16px;
-  font-size: 13px;
+  padding: 5px 12px;
+  font-size: 12px;
   font-weight: 600;
   font-family: inherit;
   border: 1.5px solid rgba(30, 39, 64, 0.35);
@@ -1821,7 +1867,7 @@ select.input:focus {
 }
 
 .login-field__input::placeholder {
-  color: #C4C9D2;
+  color: var(--hop-placeholder);
 }
 
 .login-field__input:focus {
@@ -1844,7 +1890,7 @@ select.input:focus {
 }
 
 .login-split__submit:hover {
-  background: #000;
+  background: var(--hop-blue-dark);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
 }
 
@@ -1865,9 +1911,16 @@ select.input:focus {
   display: flex;
   flex-direction: column;
   align-items: center;
+  background: var(--hop-panel-dark);
+  color: #FFFFFF;
+}
+
+.login-split__center {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   justify-content: center;
-  background: #1A1A2E;
-  color: var(--hop-white);
   gap: 1.5rem;
 }
 
@@ -1883,6 +1936,30 @@ select.input:focus {
   filter: drop-shadow(0 4px 20px rgba(255, 255, 255, 0.08));
 }
 
+.login-split__affiliations {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding-bottom: 2rem;
+}
+
+.login-split__affiliation {
+  height: 40px;
+  width: auto;
+  opacity: 0.85;
+  transition: opacity 0.2s;
+}
+
+.login-split__affiliation:hover {
+  opacity: 1;
+}
+
+.login-split__affiliation--ksu {
+  height: 36px;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 4px 8px;
+  border-radius: 6px;
+}
 
 .login-split__brand {
   font-size: 1.1rem;
@@ -2132,6 +2209,132 @@ select.input:focus {
 @keyframes gentleFloat {
   0%, 100% { transform: translateY(0); }
   50%      { transform: translateY(-2px); }
+}
+
+/* ========================================================
+   Dark Mode — element-specific overrides
+   ======================================================== */
+
+:root[data-theme="dark"] .hop-step-card--active {
+  box-shadow:
+    0 0 0 3px var(--hop-surface),
+    0 0 0 6px var(--card-color),
+    0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+:root[data-theme="dark"] .hop-step-card {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+:root[data-theme="dark"] .hop-step-card:hover {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+:root[data-theme="dark"] .hop-diagram::before,
+:root[data-theme="dark"] .hop-diagram::after {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+:root[data-theme="dark"] .panel-tabs--pill .panel-tabs__btn {
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+:root[data-theme="dark"] .panel-tabs--pill .panel-tabs__btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--hop-ink);
+}
+
+:root[data-theme="dark"] .panel-tabs--pill .panel-tabs__btn--active {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.25);
+  color: var(--hop-ink);
+}
+
+:root[data-theme="dark"] .panel-tabs--pill .panel-tabs__btn--active::after {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.06) 30%,
+    rgba(255, 255, 255, 0.12) 50%,
+    rgba(255, 255, 255, 0.06) 70%,
+    transparent 100%
+  );
+}
+
+:root[data-theme="dark"] .panel-tabs--pill .panel-tabs__btn--active:hover {
+  background: rgba(255, 255, 255, 0.14);
+  box-shadow:
+    0 0 0 1.5px rgba(255, 255, 255, 0.1),
+    0 2px 16px rgba(0, 0, 0, 0.3);
+}
+
+:root[data-theme="dark"] .chat-step-group__header:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+:root[data-theme="dark"] .chat-body:hover::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+:root[data-theme="dark"] .chat-body::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+:root[data-theme="dark"] .chat-ripple {
+  background: radial-gradient(circle, rgba(107, 143, 192, 0.25) 0%, rgba(255, 255, 255, 0.08) 50%, transparent 70%);
+}
+
+:root[data-theme="dark"] .login-split__logo {
+  background: rgba(255, 255, 255, 0.95);
+}
+
+:root[data-theme="dark"] .login-split__affiliation--ksu {
+  background: rgba(255, 255, 255, 0.85);
+}
+
+:root[data-theme="dark"] .hop-header {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+:root[data-theme="dark"] .btn--primary:hover,
+:root[data-theme="dark"] .btn.dark:hover {
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+}
+
+:root[data-theme="dark"] .chat-bubble--user {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+:root[data-theme="dark"] .chat-bubble--user:hover {
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+}
+
+/* Theme toggle button */
+.theme-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1.5px solid var(--hop-border);
+  background: transparent;
+  color: var(--hop-ink-secondary);
+  cursor: pointer;
+  font-size: 16px;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+  padding: 0;
+  line-height: 1;
+}
+
+.theme-toggle:hover {
+  border-color: var(--hop-blue);
+  color: var(--hop-blue);
+  background: rgba(30, 39, 64, 0.04);
+}
+
+:root[data-theme="dark"] .theme-toggle:hover {
+  background: rgba(255, 255, 255, 0.06);
 }
 
 /* ========================================================

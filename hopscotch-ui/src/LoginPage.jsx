@@ -1,6 +1,7 @@
 // src/LoginPage.jsx
 import React, { useState, useEffect } from "react";
 import { useAuth } from "./AuthContext";
+import { useTheme } from "./ThemeContext";
 import { API } from "./api";
 
 const ROTATING_WORDS = [
@@ -12,6 +13,7 @@ const ROTATING_WORDS = [
 
 export default function LoginPage() {
   const { login } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const [showForm, setShowForm] = useState(false);
   const [isRegister, setIsRegister] = useState(false);
   const [name, setName] = useState("");
@@ -57,8 +59,11 @@ export default function LoginPage() {
   const header = (
     <header className="login-header">
       <div className="login-header__left">
-        <img src="/hopscotch-logo.png" alt="Hopscotch" className="login-header-logo" />
+        <img src="/Hopscotch-4-all-logo-alpha.png" alt="Hopscotch" className="login-header-logo" />
       </div>
+      <button className="theme-toggle" onClick={toggleTheme} aria-label="Toggle dark mode" title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}>
+        {theme === "dark" ? "\u2600" : "\u263E"}
+      </button>
     </header>
   );
 
@@ -196,20 +201,26 @@ export default function LoginPage() {
 
       {/* Right side: branded panel */}
       <div className="login-split__right">
-        <div className="login-split__hopscotch">
-          <svg className="hop-grid-loader hop-grid-hero" viewBox="0 0 128 46" width="180" height="65" xmlns="http://www.w3.org/2000/svg" shapeRendering="geometricPrecision" fill="none" style={{background:'transparent'}} aria-label="Hopscotch grid">
-            <rect className="hop-sq sq-1" x="0"  y="0"  width="18" height="22" rx="6" fill="#2B5EA7"/>
-            <rect className="hop-sq sq-2" x="0"  y="24" width="18" height="22" rx="6" fill="#E8618C"/>
-            <rect className="hop-sq sq-3" x="22" y="12" width="18" height="22" rx="6" fill="#D94040"/>
-            <rect className="hop-sq sq-4" x="44" y="0"  width="18" height="22" rx="6" fill="#1A8A7D"/>
-            <rect className="hop-sq sq-5" x="44" y="24" width="18" height="22" rx="6" fill="#B0A47A"/>
-            <rect className="hop-sq sq-6" x="66" y="12" width="18" height="22" rx="6" fill="#00AEEF"/>
-            <rect className="hop-sq sq-7" x="88" y="0"  width="18" height="22" rx="6" fill="#F0B429"/>
-            <rect className="hop-sq sq-8" x="88" y="24" width="18" height="22" rx="6" fill="#F5922A"/>
-            <path className="hop-sq sq-9" d="M110,7 A16,16 0 0,1 110,39 Z" fill="#7B8794"/>
-          </svg>
+        <div className="login-split__center">
+          <div className="login-split__hopscotch">
+            <svg className="hop-grid-loader hop-grid-hero" viewBox="0 0 128 46" width="180" height="65" xmlns="http://www.w3.org/2000/svg" shapeRendering="geometricPrecision" fill="none" style={{background:'transparent'}} aria-label="Hopscotch grid">
+              <rect className="hop-sq sq-1" x="0"  y="0"  width="18" height="22" rx="6" fill="#2B5EA7"/>
+              <rect className="hop-sq sq-2" x="0"  y="24" width="18" height="22" rx="6" fill="#E8618C"/>
+              <rect className="hop-sq sq-3" x="22" y="12" width="18" height="22" rx="6" fill="#D94040"/>
+              <rect className="hop-sq sq-4" x="44" y="0"  width="18" height="22" rx="6" fill="#1A8A7D"/>
+              <rect className="hop-sq sq-5" x="44" y="24" width="18" height="22" rx="6" fill="#B0A47A"/>
+              <rect className="hop-sq sq-6" x="66" y="12" width="18" height="22" rx="6" fill="#00AEEF"/>
+              <rect className="hop-sq sq-7" x="88" y="0"  width="18" height="22" rx="6" fill="#F0B429"/>
+              <rect className="hop-sq sq-8" x="88" y="24" width="18" height="22" rx="6" fill="#F5922A"/>
+              <path className="hop-sq sq-9" d="M110,7 A16,16 0 0,1 110,39 Z" fill="#7B8794"/>
+            </svg>
+          </div>
+          <img src="/Hopscotch-4-all-logo.png" alt="Hopscotch" className="login-split__logo" />
         </div>
-        <img src="/hopscotch-logo.png" alt="Hopscotch" className="login-split__logo" />
+        <div className="login-split__affiliations">
+          <img src="/IRML LOGO COLOR white.png" alt="IRML Lab" className="login-split__affiliation" />
+          <img src="/MB_Horz_3Clr.png" alt="Kennesaw State University" className="login-split__affiliation login-split__affiliation--ksu" />
+        </div>
       </div>
     </div>
   );
