@@ -495,29 +495,149 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* ========================================================
-   Two-column layout (Genially + content)
+   Split-panel tabbed layout
    ======================================================== */
 
-.hop-layout {
-  display: grid;
-  grid-template-columns: 2fr 3fr;
-  gap: 20px;
-  padding: 8px 0;
+.split-panel-layout {
+  display: flex;
   width: 100%;
-  align-items: start;
+  height: calc(100vh - 280px);
+  min-height: 420px;
+  padding: 8px 0;
 }
 
-.hop-left-panel {}
+.split-panel-layout--dragging {
+  user-select: none;
+  cursor: col-resize;
+}
+.split-panel-layout--dragging .split-panel {
+  pointer-events: none;
+}
 
-.hop-right-panel {
+.split-panel {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  min-width: 0;
+  overflow: hidden;
 }
 
+.tabbed-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* --- Tab bar --- */
+.panel-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid var(--hop-border);
+  background: var(--hop-surface);
+  border-radius: var(--hop-radius) var(--hop-radius) 0 0;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.panel-tabs__btn {
+  flex: 1;
+  padding: 9px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  border: none;
+  background: transparent;
+  color: var(--hop-muted, #8896a6);
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  white-space: nowrap;
+}
+
+.panel-tabs__btn:hover {
+  color: var(--hop-blue);
+  background: rgba(30, 39, 64, 0.03);
+}
+
+.panel-tabs__btn--active {
+  color: var(--hop-navy-dark);
+  border-bottom-color: var(--hop-blue);
+  background: var(--hop-white, #fff);
+}
+
+/* --- Tab content area --- */
+.panel-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px;
+  background: var(--hop-surface);
+  border: 1px solid var(--hop-border);
+  border-top: none;
+  border-radius: 0 0 var(--hop-radius) var(--hop-radius);
+}
+
+/* --- Drag handle --- */
+.split-panel__handle {
+  width: 8px;
+  cursor: col-resize;
+  background: var(--hop-border);
+  border-radius: 4px;
+  margin: 0 3px;
+  flex-shrink: 0;
+  transition: background 0.15s;
+  position: relative;
+}
+
+.split-panel__handle:hover,
+.split-panel__handle--active {
+  background: var(--hop-blue-light);
+}
+
+.split-panel__handle::before {
+  content: "⋮";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: var(--hop-muted, #8896a6);
+  font-size: 14px;
+}
+
+/* --- Overrides for components inside panels --- */
+.panel-content .embed-card {
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  height: 100%;
+}
+.panel-content .embed-frame-wrap {
+  max-height: none;
+  height: 100%;
+  aspect-ratio: auto;
+}
+.panel-content .chat-wrap {
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
+  padding: 0;
+}
+.panel-content .step-details {
+  gap: 10px;
+}
+
+/* --- Responsive: stack on small screens --- */
 @media (max-width: 1024px) {
-  .hop-layout {
-    grid-template-columns: 1fr;
+  .split-panel-layout {
+    flex-direction: column;
+    gap: 12px;
+    max-height: none;
+  }
+  .split-panel {
+    width: 100% !important;
+    min-height: 400px;
+  }
+  .split-panel__handle {
+    display: none;
   }
 }
 
@@ -899,6 +1019,84 @@ select.input:focus {
   margin: 2px 0;
 }
 
+/* Step dot on user bubbles */
+.chat-step-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 8px;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
+/* ---- Step group (collapsible chat sections) ---- */
+.chat-step-group {
+  margin: 4px 0;
+}
+
+.chat-step-group__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 10px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: var(--hop-radius);
+  transition: background 0.15s;
+}
+.chat-step-group__header:hover {
+  background: rgba(30, 39, 64, 0.06);
+}
+
+.chat-step-group__pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.chat-step-group__label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--hop-navy-dark);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chat-step-group__count {
+  font-size: 11px;
+  color: var(--hop-ink-muted, #8896a6);
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.chat-step-group__arrow {
+  font-size: 10px;
+  color: var(--hop-ink-muted, #8896a6);
+  transition: transform 0.2s;
+}
+.chat-step-group__arrow--open {
+  transform: rotate(180deg);
+}
+
+.chat-step-group__body {
+  padding: 2px 0 4px;
+}
+
+/* Border accent on assistant bubbles with step */
+.chat-bubble[style*="border-left"] {
+  padding-left: 20px;
+}
+
 /* Empty state */
 .chat-empty {
   font-size: 0.9rem;
@@ -1058,39 +1256,51 @@ select.input:focus {
   }
 }
 
-/* Typing dots */
+/* Hopscotch grid loader */
 .typing-indicator {
   display: flex;
-  gap: 4px;
+  gap: 8px;
   align-items: center;
-  margin: 4px 0 8px 8px;
+  margin: 8px 0 8px 8px;
+  background: transparent;
 }
 
-.typing-indicator span {
-  width: 6px;
-  height: 6px;
-  border-radius: 999px;
-  background: var(--hop-blue-light);
-  box-shadow: 0 0 6px rgba(30, 39, 64, 0.4);
-  animation: hop-typing 1s infinite ease-in-out;
+.hop-grid-loader {
+  background: transparent;
+  overflow: visible;
 }
 
-.typing-indicator span:nth-child(2) {
-  animation-delay: 0.15s;
+/* Each square lights up in sequence — pairs light together */
+.hop-sq {
+  opacity: 0.25;
+  animation: hop-sq-light 2.7s infinite ease-in-out;
 }
-.typing-indicator span:nth-child(3) {
-  animation-delay: 0.3s;
+.sq-1 { animation-delay: 0s; }      /* col 1 pair */
+.sq-2 { animation-delay: 0s; }      /* col 1 pair */
+.sq-3 { animation-delay: 0.3s; }    /* col 2 single */
+.sq-4 { animation-delay: 0.6s; }    /* col 3 pair */
+.sq-5 { animation-delay: 0.6s; }    /* col 3 pair */
+.sq-6 { animation-delay: 0.9s; }    /* col 4 single */
+.sq-7 { animation-delay: 1.2s; }    /* col 5 pair */
+.sq-8 { animation-delay: 1.2s; }    /* col 5 pair */
+.sq-9 { animation-delay: 1.5s; }    /* col 6 single */
+
+.hop-bot-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--hop-navy-dark);
+  opacity: 0.7;
+  animation: hop-label-pulse 2.7s infinite ease-in-out;
 }
 
-@keyframes hop-typing {
-  0%, 60%, 100% {
-    transform: translateY(0);
-    opacity: 0.4;
-  }
-  30% {
-    transform: translateY(-4px);
-    opacity: 1;
-  }
+@keyframes hop-sq-light {
+  0%, 100% { opacity: 0.25; transform: scale(1); }
+  11%, 22%  { opacity: 1;    transform: scale(1.15); }
+}
+
+@keyframes hop-label-pulse {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 0.35; }
 }
 
 /* ========================================================
@@ -1823,7 +2033,8 @@ select.input:focus {
     animation-duration: 0.01s;
   }
 
-  .typing-indicator span {
-    box-shadow: none;
+  .hop-grid-loader {
+    width: 56px;
+    height: 23px;
   }
 }

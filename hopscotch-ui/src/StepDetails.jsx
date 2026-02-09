@@ -416,6 +416,22 @@ export default function StepDetails({ step, sessionId, onChatRefresh, onAutoSend
             sessionId={sessionId}
             disabled={!sessionId}
           />
+        </section>
+
+        {/* Additional notes textarea for every step */}
+        <section className="hop-card">
+          <label className="hop-desc" style={{ display: "block", marginBottom: 6 }}>
+            Additional questions for Step {step}
+          </label>
+          <textarea
+            className="textarea"
+            rows={3}
+            placeholder={`Write any additional questions for Step ${step} here...`}
+            value={data.notes || ""}
+            onChange={(e) => updateField("notes", e.target.value)}
+            disabled={!sessionId}
+          />
+
           <div className="step-save-row">
             <button
               className="btn btn--primary"
@@ -439,21 +455,6 @@ export default function StepDetails({ step, sessionId, onChatRefresh, onAutoSend
               {saveError}
             </div>
           )}
-        </section>
-
-        {/* Additional notes textarea for every step */}
-        <section className="hop-card">
-          <label className="hop-desc" style={{ display: "block", marginBottom: 6 }}>
-            Additional notes for Step {step}
-          </label>
-          <textarea
-            className="textarea"
-            rows={3}
-            placeholder={`Write any extra notes for Step ${step} here...`}
-            value={data.notes || ""}
-            onChange={(e) => updateField("notes", e.target.value)}
-            disabled={!sessionId}
-          />
         </section>
       </div>
     );

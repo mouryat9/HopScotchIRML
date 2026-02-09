@@ -4,6 +4,30 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { API } from "./api";
 
+/* ---------- Step color + label map ---------- */
+const STEP_COLORS = {
+  1: "#2B5EA7",
+  2: "#E8618C",
+  3: "#D94040",
+  4: "#1A8A7D",
+  5: "#B0A47A",
+  6: "#00AEEF",
+  7: "#F0B429",
+  8: "#F5922A",
+  9: "#7B8794",
+};
+const STEP_LABELS = {
+  1: "Who am I as a researcher?",
+  2: "What am I wondering about?",
+  3: "What do I already know?",
+  4: "How will I study it?",
+  5: "What is my research question?",
+  6: "What is the data to collect?",
+  7: "How will I make sense of the data?",
+  8: "How will I ensure my evidence is trustworthy?",
+  9: "How will I be ethical and safe in my study?",
+};
+
 /* ---------- Small helpers ---------- */
 
 function Collapsible({ title, children, defaultOpen = false }) {
@@ -60,10 +84,13 @@ function parseAssistantMessage(md) {
 }
 
 function ChatBubble({ turn }) {
+  const stepColor = STEP_COLORS[turn.step] || null;
+  const borderStyle = stepColor ? { borderLeft: `4px solid ${stepColor}` } : {};
+
   if (turn.role === "user") {
     return (
       <div className="chat-row user">
-        <div className="chat-bubble chat-bubble--user">{turn.content}</div>
+        <div className="chat-bubble chat-bubble--user" style={borderStyle}>{turn.content}</div>
       </div>
     );
   }
@@ -73,7 +100,7 @@ function ChatBubble({ turn }) {
 
   return (
     <div className="chat-row assistant">
-      <div className="chat-bubble chat-bubble--assistant">
+      <div className="chat-bubble chat-bubble--assistant" style={borderStyle}>
         <ReactMarkdown remarkPlugins={[remarkGfm]}>
           {mdToRender}
         </ReactMarkdown>
@@ -88,6 +115,58 @@ function ChatBubble({ turn }) {
           </Collapsible>
         )}
       </div>
+    </div>
+  );
+}
+
+/* ---------- Step group wrapper ---------- */
+function groupByStep(history) {
+  const groups = [];
+  let current = null;
+  for (const turn of history) {
+    const s = turn.step || null;
+    if (!current || current.step !== s) {
+      current = { step: s, turns: [] };
+      groups.push(current);
+    }
+    current.turns.push(turn);
+  }
+  return groups;
+}
+
+function StepGroup({ group, isActive }) {
+  const [open, setOpen] = useState(isActive);
+  const color = STEP_COLORS[group.step] || "var(--hop-navy-dark)";
+  const label = STEP_LABELS[group.step] || "General";
+  const msgCount = group.turns.length;
+
+  // Auto-expand when step becomes active
+  useEffect(() => { if (isActive) setOpen(true); }, [isActive]);
+
+  if (!group.step) {
+    // Messages with no step — always show
+    return group.turns.map((t, i) => <ChatBubble key={i} turn={t} />);
+  }
+
+  return (
+    <div className="chat-step-group">
+      <button
+        className={`chat-step-group__header${open ? " chat-step-group__header--open" : ""}`}
+        style={{ "--step-color": color }}
+        onClick={() => setOpen((o) => !o)}
+      >
+        <span className="chat-step-group__pill" style={{ background: color }}>
+          Step {group.step}
+        </span>
+        <span className="chat-step-group__label">{label}</span>
+        <span className="chat-step-group__count">{msgCount} msg{msgCount !== 1 ? "s" : ""}</span>
+        <span className={`chat-step-group__arrow${open ? " chat-step-group__arrow--open" : ""}`}>&#9662;</span>
+      </button>
+      {open && (
+        <div className="chat-step-group__body">
+          {group.turns.map((t, i) => <ChatBubble key={i} turn={t} />)}
+        </div>
+      )}
     </div>
   );
 }
@@ -151,8 +230,8 @@ export default function ChatBox({ sessionId, activeStep, refreshKey, autoMessage
     // If hideUserBubble is set, only show the assistant placeholder
     setHistory((prev) => [
       ...prev,
-      ...(opts.hideUserBubble ? [] : [{ role: "user", content: msg }]),
-      { role: "assistant", content: "" },
+      ...(opts.hideUserBubble ? [] : [{ role: "user", content: msg, step: activeStep }]),
+      { role: "assistant", content: "", step: activeStep },
     ]);
 
     try {
@@ -169,7 +248,7 @@ export default function ChatBox({ sessionId, activeStep, refreshKey, autoMessage
         const snap = accumulated;
         setHistory((prev) => {
           const updated = [...prev];
-          updated[updated.length - 1] = { role: "assistant", content: snap };
+          updated[updated.length - 1] = { role: "assistant", content: snap, step: activeStep };
           return updated;
         });
       }
@@ -204,16 +283,30 @@ export default function ChatBox({ sessionId, activeStep, refreshKey, autoMessage
             Ask me anything or select a worldview above to get started.
           </div>
         )}
-        {history.map((t, i) => (
-          <ChatBubble key={i} turn={t} />
+        {groupByStep(history).map((g, i) => (
+          <StepGroup key={`${g.step}-${i}`} group={g} isActive={g.step === activeStep} />
         ))}
       </div>
 
       {sending && (
         <div className="typing-indicator">
-          <span></span>
-          <span></span>
-          <span></span>
+          <svg className="hop-grid-loader" viewBox="0 0 128 46" width="64" height="23" xmlns="http://www.w3.org/2000/svg" shapeRendering="geometricPrecision" fill="none" style={{background:'transparent'}} aria-label="Loading">
+            {/* col 1 — pair (Steps 1,2) */}
+            <rect className="hop-sq sq-1" x="0"  y="0"  width="18" height="22" rx="6" fill="#2B5EA7"/>
+            <rect className="hop-sq sq-2" x="0"  y="24" width="18" height="22" rx="6" fill="#E8618C"/>
+            {/* col 2 — single (Step 3) */}
+            <rect className="hop-sq sq-3" x="22" y="12" width="18" height="22" rx="6" fill="#D94040"/>
+            {/* col 3 — pair (Steps 4,5) */}
+            <rect className="hop-sq sq-4" x="44" y="0"  width="18" height="22" rx="6" fill="#1A8A7D"/>
+            <rect className="hop-sq sq-5" x="44" y="24" width="18" height="22" rx="6" fill="#B0A47A"/>
+            {/* col 4 — single (Step 6) */}
+            <rect className="hop-sq sq-6" x="66" y="12" width="18" height="22" rx="6" fill="#00AEEF"/>
+            {/* col 5 — pair (Steps 7,8) */}
+            <rect className="hop-sq sq-7" x="88" y="0"  width="18" height="22" rx="6" fill="#F0B429"/>
+            <rect className="hop-sq sq-8" x="88" y="24" width="18" height="22" rx="6" fill="#F5922A"/>
+            {/* col 6 — single half-circle (Step 9) */}
+            <path className="hop-sq sq-9" d="M110,7 A16,16 0 0,1 110,39 Z" fill="#7B8794"/>
+          </svg>
         </div>
       )}
 

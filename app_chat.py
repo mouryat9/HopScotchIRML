@@ -121,6 +121,7 @@ def load_paths_config() -> Dict[str, Any]:
 class ChatTurn(BaseModel):
     role: Literal["user", "assistant"]
     content: str
+    step: Optional[int] = None
 
 
 class SessionData(BaseModel):
@@ -1021,7 +1022,7 @@ def chat_send(req: ChatSendReq = Body(...), user: dict = Depends(get_current_use
         return ChatHistoryResp(session_id=req.session_id, history=history)
 
     # store user turn
-    history.append(ChatTurn(role="user", content=user_msg))
+    history.append(ChatTurn(role="user", content=user_msg, step=req.active_step))
 
     # Normal LLM + RAG chat using worldview and resources
     worldview_profile = _render_worldview_profile(sess)
@@ -1034,7 +1035,7 @@ def chat_send(req: ChatSendReq = Body(...), user: dict = Depends(get_current_use
         chat_history=history,
     )
 
-    history.append(ChatTurn(role="assistant", content=answer))
+    history.append(ChatTurn(role="assistant", content=answer, step=req.active_step))
     _persist_session(sess)
     return ChatHistoryResp(session_id=req.session_id, history=history)
 
@@ -1053,7 +1054,7 @@ def chat_send_stream(req: ChatSendReq = Body(...), user: dict = Depends(get_curr
         raise HTTPException(status_code=400, detail="Empty message")
 
     # store user turn
-    history.append(ChatTurn(role="user", content=user_msg))
+    history.append(ChatTurn(role="user", content=user_msg, step=req.active_step))
 
     # Stream LLM answer
     worldview_profile = _render_worldview_profile(sess)
@@ -1095,7 +1096,7 @@ def chat_send_stream(req: ChatSendReq = Body(...), user: dict = Depends(get_curr
         # When streaming is done, persist the full assistant message
         full_text = "".join(assistant_text_parts).strip()
         if full_text:
-            history.append(ChatTurn(role="assistant", content=full_text))
+            history.append(ChatTurn(role="assistant", content=full_text, step=req.active_step))
         _persist_session(sess)
 
     return StreamingResponse(event_stream(), media_type="text/plain")

@@ -2,8 +2,7 @@
 import "./App.css";
 import React, { useEffect, useState } from "react";
 import { API } from "./api";
-import ChatBox from "./ChatBox";
-import StepDetails from "./StepDetails";
+import SplitPanelLayout from "./SplitPanelLayout";
 import { useAuth } from "./AuthContext";
 import LoginPage from "./LoginPage";
 
@@ -45,49 +44,6 @@ function StepProgressBar({ activeStep, completedSteps = [], onStepChange }) {
         );
       })}
     </nav>
-  );
-}
-
-/* ----- Genially URLs per step ----- */
-const STEP_GENIALLY = {
-  1: "https://view.genially.com/6626b5edb31fe80014324408",
-  2: "https://view.genially.com/6626b5ff75024b0014c9c279",
-  3: "https://view.genially.com/6626b64db31fe8001432844c",
-  4: "https://view.genially.com/6626b6648a9b7d0014fd0809",
-  5: "https://view.genially.com/6626b6792aa762001439fe8f",
-  6: "https://view.genially.com/6626b6a92b4ff00014385a51",
-  7: "https://view.genially.com/6626b6c22b4ff000143872e2",
-  8: "https://view.genially.com/6626b6e02b4ff0001438901b",
-  9: "https://view.genially.com/6626b6f22aa76200143a6d36",
-};
-
-/* ----- Left panel: embedded Genially ----- */
-function StepResourcePanel({ activeStep }) {
-  const url = STEP_GENIALLY[activeStep];
-
-  if (!url) {
-    return (
-      <div className="embed-card">
-        <h3 className="embed-title">Interactive resource</h3>
-        <p className="embed-placeholder">
-          No interactive resource has been configured for this step yet.
-        </p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="embed-card">
-      <h3 className="embed-title">Step {activeStep}: {STEP_CARDS[activeStep - 1]?.label}</h3>
-      <div className="embed-frame-wrap">
-        <iframe
-          src={url}
-          title={`Step ${activeStep} interactive resource`}
-          loading="lazy"
-          allowFullScreen
-        />
-      </div>
-    </div>
   );
 }
 
@@ -235,31 +191,19 @@ function StudentApp() {
         {/* Step diagram under header */}
         <StepDiagram activeStep={activeStep} completedSteps={completedSteps} onStepChange={handleStepChange} />
 
-        {/* 2-column layout: left Genially, right step details + chat */}
-        <div className="hop-layout">
-          <aside className="hop-left-panel">
-            <StepResourcePanel activeStep={activeStep} />
-          </aside>
-
-          <section className="hop-right-panel">
-            {/* Step-specific directions + inputs (saved in backend) */}
-            <StepDetails step={activeStep} sessionId={sessionId} onChatRefresh={() => setChatRefreshKey((k) => k + 1)} onAutoSend={setAutoMessage} onCompletedStepsChange={setCompletedSteps} />
-
-            {/* Assistant Chat */}
-            {loading && !sessionId ? (
-              <div className="badge badge--neutral">Starting session…</div>
-            ) : (
-              <>
-                <ChatBox sessionId={sessionId} activeStep={activeStep} refreshKey={chatRefreshKey} autoMessage={autoMessage} onAutoMessageSent={() => setAutoMessage(null)} />
-                {status && (
-                  <div className="badge" style={{ marginTop: 8 }}>
-                    {status}
-                  </div>
-                )}
-              </>
-            )}
-          </section>
-        </div>
+        {/* Split-panel tabbed layout: Resource / Step Details / Chat */}
+        <SplitPanelLayout
+          activeStep={activeStep}
+          sessionId={sessionId}
+          chatRefreshKey={chatRefreshKey}
+          autoMessage={autoMessage}
+          onAutoMessageSent={() => setAutoMessage(null)}
+          onChatRefresh={() => setChatRefreshKey((k) => k + 1)}
+          onAutoSend={setAutoMessage}
+          onCompletedStepsChange={setCompletedSteps}
+          loading={loading}
+          status={status}
+        />
       </div>
     </div>
   );
