@@ -6,10 +6,10 @@ const TABS = [
   { id: "chat", label: "Chat" },
 ];
 
-export default function TabbedPanel({ activeTab, onTabChange, children }) {
+export default function TabbedPanel({ activeTab, onTabChange, variant = "pill", children }) {
   return (
     <div className="tabbed-panel">
-      <div className="panel-tabs">
+      <div className={`panel-tabs--${variant}`}>
         {TABS.map((tab) => (
           <button
             key={tab.id}

@@ -131,7 +131,7 @@ export default function SplitPanelLayout({
     >
       {/* Left panel */}
       <div className="split-panel" style={{ width: `${splitPercent}%` }}>
-        <TabbedPanel activeTab={leftTab} onTabChange={handleLeftTabChange}>
+        <TabbedPanel activeTab={leftTab} onTabChange={handleLeftTabChange} variant="pill">
           {renderPanelContent(leftTab, "left")}
         </TabbedPanel>
       </div>
@@ -147,7 +147,7 @@ export default function SplitPanelLayout({
 
       {/* Right panel */}
       <div className="split-panel" style={{ width: `${100 - splitPercent}%` }}>
-        <TabbedPanel activeTab={rightTab} onTabChange={handleRightTabChange}>
+        <TabbedPanel activeTab={rightTab} onTabChange={handleRightTabChange} variant="pill">
           {renderPanelContent(rightTab, "right")}
         </TabbedPanel>
       </div>
