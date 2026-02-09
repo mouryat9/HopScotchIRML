@@ -1277,7 +1277,7 @@ select.input:focus {
 /* --- Touch ripple on chat body click --- */
 .chat-body {
   position: relative;
-  overflow: hidden;
+  overflow-x: hidden;
 }
 
 .chat-ripple {
@@ -1409,15 +1409,15 @@ select.input:focus {
   opacity: 0.25;
   animation: hop-sq-light 2.7s infinite ease-in-out;
 }
-.sq-1 { animation-delay: 0s; }      /* col 1 pair */
-.sq-2 { animation-delay: 0s; }      /* col 1 pair */
-.sq-3 { animation-delay: 0.3s; }    /* col 2 single */
-.sq-4 { animation-delay: 0.6s; }    /* col 3 pair */
-.sq-5 { animation-delay: 0.6s; }    /* col 3 pair */
-.sq-6 { animation-delay: 0.9s; }    /* col 4 single */
-.sq-7 { animation-delay: 1.2s; }    /* col 5 pair */
-.sq-8 { animation-delay: 1.2s; }    /* col 5 pair */
-.sq-9 { animation-delay: 1.5s; }    /* col 6 single */
+.sq-1 { animation-delay: 0s; }
+.sq-2 { animation-delay: 0.2s; }
+.sq-3 { animation-delay: 0.4s; }
+.sq-4 { animation-delay: 0.6s; }
+.sq-5 { animation-delay: 0.8s; }
+.sq-6 { animation-delay: 1.0s; }
+.sq-7 { animation-delay: 1.2s; }
+.sq-8 { animation-delay: 1.4s; }
+.sq-9 { animation-delay: 1.6s; }
 
 .hop-bot-label {
   font-size: 13px;
@@ -1679,6 +1679,21 @@ select.input:focus {
   margin: 2rem 0 2.5rem;
 }
 
+.login-hero__hopscotch {
+  margin: 0 0 1.8rem;
+  animation: heroGridFadeIn 1s ease-out 0.2s both;
+}
+
+.hop-grid-hero {
+  filter: drop-shadow(0 4px 16px rgba(30, 39, 64, 0.12));
+}
+
+
+@keyframes heroGridFadeIn {
+  from { opacity: 0; transform: translateY(16px) scale(0.9); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
 .login-hero__actions {
   display: flex;
   align-items: center;
@@ -1858,10 +1873,16 @@ select.input:focus {
 
 .login-split__logo {
   width: 220px;
-  background: rgba(255, 255, 255, 0.92);
+  background: #ffffff;
   padding: 1.2rem 1.8rem;
   border-radius: 16px;
 }
+
+.login-split__hopscotch {
+  animation: heroGridFadeIn 1s ease-out 0.4s both;
+  filter: drop-shadow(0 4px 20px rgba(255, 255, 255, 0.08));
+}
+
 
 .login-split__brand {
   font-size: 1.1rem;
