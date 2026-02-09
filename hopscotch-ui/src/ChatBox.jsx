@@ -1,5 +1,5 @@
 // src/ChatBox.jsx
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useMemo, useCallback, memo } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { API } from "./api";
@@ -83,7 +83,7 @@ function parseAssistantMessage(md) {
   return { prose, refs };
 }
 
-function ChatBubble({ turn }) {
+const ChatBubble = memo(function ChatBubble({ turn, streaming }) {
   const stepColor = STEP_COLORS[turn.step] || null;
   const borderStyle = stepColor ? { borderLeft: `4px solid ${stepColor}` } : {};
 
@@ -91,6 +91,17 @@ function ChatBubble({ turn }) {
     return (
       <div className="chat-row user">
         <div className="chat-bubble chat-bubble--user" style={borderStyle}>{turn.content}</div>
+      </div>
+    );
+  }
+
+  // During streaming, skip expensive markdown parsing — show plain text
+  if (streaming) {
+    return (
+      <div className="chat-row assistant">
+        <div className="chat-bubble chat-bubble--assistant" style={borderStyle}>
+          <div style={{ whiteSpace: "pre-wrap" }}>{turn.content}</div>
+        </div>
       </div>
     );
   }
@@ -117,7 +128,7 @@ function ChatBubble({ turn }) {
       </div>
     </div>
   );
-}
+});
 
 /* ---------- Step group wrapper ---------- */
 function groupByStep(history) {
@@ -134,7 +145,7 @@ function groupByStep(history) {
   return groups;
 }
 
-function StepGroup({ group, isActive }) {
+function StepGroup({ group, isActive, streaming }) {
   const [open, setOpen] = useState(isActive);
   const color = STEP_COLORS[group.step] || "var(--hop-navy-dark)";
   const label = STEP_LABELS[group.step] || "General";
@@ -164,7 +175,13 @@ function StepGroup({ group, isActive }) {
       </button>
       {open && (
         <div className="chat-step-group__body">
-          {group.turns.map((t, i) => <ChatBubble key={i} turn={t} />)}
+          {group.turns.map((t, i) => (
+            <ChatBubble
+              key={i}
+              turn={t}
+              streaming={streaming && i === group.turns.length - 1 && t.role === "assistant"}
+            />
+          ))}
         </div>
       )}
     </div>
@@ -239,19 +256,29 @@ export default function ChatBox({ sessionId, activeStep, refreshKey, autoMessage
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let accumulated = "";
+      let lastFlush = 0;
+
+      function flush(text) {
+        setHistory((prev) => {
+          const updated = [...prev];
+          updated[updated.length - 1] = { role: "assistant", content: text, step: activeStep };
+          return updated;
+        });
+      }
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
         accumulated += decoder.decode(value, { stream: true });
-        // Update the last (assistant) bubble in-place
-        const snap = accumulated;
-        setHistory((prev) => {
-          const updated = [...prev];
-          updated[updated.length - 1] = { role: "assistant", content: snap, step: activeStep };
-          return updated;
-        });
+        // Throttle UI updates to every 80ms to avoid excessive re-renders
+        const now = Date.now();
+        if (now - lastFlush >= 80) {
+          lastFlush = now;
+          flush(accumulated);
+        }
       }
+      // Final flush to ensure all text is shown
+      flush(accumulated);
     } catch (e) {
       console.error(e);
       setErr("Send failed. Check backend logs / Network tab.");
@@ -269,6 +296,19 @@ export default function ChatBox({ sessionId, activeStep, refreshKey, autoMessage
     }
   }
 
+  const groups = useMemo(() => groupByStep(history), [history]);
+
+  const handleChatBodyClick = useCallback((e) => {
+    const rect = scrollRef.current.getBoundingClientRect();
+    const size = Math.max(rect.width, rect.height) * 0.6;
+    const x = e.clientX - rect.left - size / 2;
+    const y = e.clientY - rect.top + scrollRef.current.scrollTop - size / 2;
+    const ripple = document.createElement("span");
+    ripple.className = "chat-ripple";
+    ripple.style.cssText = `width:${size}px;height:${size}px;left:${x}px;top:${y}px`;
+    scrollRef.current.appendChild(ripple);
+    ripple.addEventListener("animationend", () => ripple.remove());
+  }, []);
 
   return (
     <div className="chat-wrap">
@@ -276,15 +316,20 @@ export default function ChatBox({ sessionId, activeStep, refreshKey, autoMessage
         <div className="chat-title">Research Assistant</div>
       </div>
 
-      <div className="chat-body" ref={scrollRef}>
+      <div className="chat-body" ref={scrollRef} onClick={handleChatBodyClick}>
         {history.length === 0 && (
           <div className="chat-empty">
             Welcome! I can help you scaffold your research design step by step.
             Ask me anything or select a worldview above to get started.
           </div>
         )}
-        {groupByStep(history).map((g, i) => (
-          <StepGroup key={`${g.step}-${i}`} group={g} isActive={g.step === activeStep} />
+        {groups.map((g, i) => (
+          <StepGroup
+            key={`${g.step}-${i}`}
+            group={g}
+            isActive={g.step === activeStep}
+            streaming={sending && i === groups.length - 1}
+          />
         ))}
       </div>
 
