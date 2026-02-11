@@ -29,8 +29,10 @@ import logging
 import requests
 from fastapi import FastAPI, HTTPException, Body, Query, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, Response
 from pydantic import BaseModel, Field
+from jinja2 import Template
+from weasyprint import HTML
 
 from auth import hash_password, verify_password, create_access_token, get_current_user
 from database import (
@@ -45,6 +47,7 @@ from database import (
 # -------------------------------------------------
 ROOT = Path(__file__).parent
 PATHS_PATH = ROOT / "server" / "config" / "paths" / "research_paths.json"
+TEMPLATE_DIR = ROOT / "server" / "templates"
 
 DOCS_DIR = ROOT / "server" / "resources"
 INDEX_DIR = ROOT / "server" / "index"
@@ -1125,3 +1128,136 @@ def rag_reindex():
         logger.exception("Failed clearing index files: %s", e)
     _build_index()
     return {"ok": True, "num_chunks": len(_chunks)}
+
+
+# ---------------- PDF Export ----------------
+@app.get("/session/{session_id}/export/pdf")
+def export_research_design_pdf(
+    session_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Generate and download a PDF of the research design based on all step responses.
+    Automatically selects the appropriate template (quantitative, qualitative, or mixed-methods)
+    based on the student's chosen methodology.
+    """
+    from datetime import datetime
+
+    # Load session
+    sess = _require_session(session_id)
+    steps_data = sess.step_notes
+
+    # Determine research path/methodology
+    resolved_path = sess.resolved_path or "qualitative"  # Default to qualitative
+    chosen_methodology = sess.chosen_methodology
+
+    # Helper function to safely get field from step data
+    def get_field(step_num: int, field_name: str, default: str = "") -> str:
+        step_key = str(step_num)
+        if step_key not in steps_data or not isinstance(steps_data[step_key], dict):
+            return default
+        value = steps_data[step_key].get(field_name, default)
+        return str(value) if value else default
+
+    # Extract Step 1: Worldview
+    step1_data = steps_data.get("1", {})
+    worldview = step1_data.get("worldview") or step1_data.get("worldview_id") or step1_data.get("worldview_label") or "Not specified"
+
+    # Extract Step 2: Topic & Goals (detailed)
+    step2_data = steps_data.get("2", {})
+    step2_topic = get_field(2, "topic", "Not yet completed")
+    step2_personal_goals = get_field(2, "personal_goals") or get_field(2, "personalGoals") or "Not yet completed"
+    step2_practical_goals = get_field(2, "practical_goals") or get_field(2, "practicalGoals") or "Not yet completed"
+    step2_intellectual_goals = get_field(2, "intellectual_goals") or get_field(2, "intellectualGoals") or "Not yet completed"
+
+    # Extract Step 3: Conceptual Framework (detailed)
+    step3_topical = get_field(3, "topicalResearch") or get_field(3, "topical_research") or "Not yet completed"
+    step3_gaps = get_field(3, "gaps") or get_field(3, "gaps_identified") or "Not yet completed"
+    step3_theoretical = get_field(3, "theoreticalFrameworks") or get_field(3, "theoretical_frameworks") or "Not yet completed"
+    step3_problem = get_field(3, "problem_statement") or get_field(3, "problemStatement") or "Not yet completed"
+
+    # Extract Step 4: Methodology
+    step4_notes = get_field(4, "notes", "Not yet completed")
+
+    # Base template data (common to all templates)
+    template_data = {
+        "name": current_user.get("name", "Student"),
+        "email": current_user.get("email", ""),
+        "date": datetime.now().strftime("%B %d, %Y"),
+        "step1": worldview.title(),
+        "step2_topic": step2_topic,
+        "step2_personal_goals": step2_personal_goals,
+        "step2_practical_goals": step2_practical_goals,
+        "step2_intellectual_goals": step2_intellectual_goals,
+        "step3_topical": step3_topical,
+        "step3_gaps": step3_gaps,
+        "step3_theoretical": step3_theoretical,
+        "step3_problem": step3_problem,
+        "step4": step4_notes,
+    }
+
+    # Determine which template to use and extract appropriate fields
+    if resolved_path == "mixed" or chosen_methodology == "mixed":
+        # Mixed-Methods: Steps 5-8 split into quantitative and qualitative
+        template_name = "research_design_mixed.html"
+
+        # Extract split fields for Steps 5-8
+        step5_data = steps_data.get("5", {})
+        template_data["step5_quant"] = get_field(5, "research_question_quant") or get_field(5, "quantitative_question") or "Not yet completed"
+        template_data["step5_qual"] = get_field(5, "research_question_qual") or get_field(5, "qualitative_question") or "Not yet completed"
+
+        template_data["step6_quant"] = get_field(6, "data_collection_quant") or get_field(6, "quantitative_data") or "Not yet completed"
+        template_data["step6_qual"] = get_field(6, "data_collection_qual") or get_field(6, "qualitative_data") or "Not yet completed"
+
+        template_data["step7_quant"] = get_field(7, "analysis_quant") or get_field(7, "quantitative_analysis") or "Not yet completed"
+        template_data["step7_qual"] = get_field(7, "analysis_qual") or get_field(7, "qualitative_analysis") or "Not yet completed"
+
+        template_data["step8_quant"] = get_field(8, "validity") or get_field(8, "quantitative_validity") or "Not yet completed"
+        template_data["step8_qual"] = get_field(8, "trustworthiness") or get_field(8, "qualitative_trustworthiness") or "Not yet completed"
+
+        template_data["step9"] = get_field(9, "notes") or get_field(9, "ethics") or "Not yet completed"
+
+    elif resolved_path == "quantitative":
+        # Quantitative Research Design
+        template_name = "research_design_quantitative.html"
+        template_data["step5"] = get_field(5, "research_question") or get_field(5, "notes") or "Not yet completed"
+        template_data["step6"] = get_field(6, "notes") or get_field(6, "data_collection") or "Not yet completed"
+        template_data["step7"] = get_field(7, "notes") or get_field(7, "analysis") or "Not yet completed"
+        template_data["step8"] = get_field(8, "notes") or get_field(8, "validity") or "Not yet completed"
+        template_data["step9"] = get_field(9, "notes") or get_field(9, "ethics") or "Not yet completed"
+
+    else:  # qualitative (default)
+        # Qualitative Research Design
+        template_name = "research_design_qualitative.html"
+        template_data["step5"] = get_field(5, "research_question") or get_field(5, "notes") or "Not yet completed"
+        template_data["step6"] = get_field(6, "notes") or get_field(6, "data_collection") or "Not yet completed"
+        template_data["step7"] = get_field(7, "notes") or get_field(7, "analysis") or "Not yet completed"
+        template_data["step8"] = get_field(8, "notes") or get_field(8, "trustworthiness") or "Not yet completed"
+        template_data["step9"] = get_field(9, "notes") or get_field(9, "ethics") or "Not yet completed"
+
+    # Load and render the appropriate HTML template
+    template_path = TEMPLATE_DIR / template_name
+    if not template_path.exists():
+        raise HTTPException(status_code=500, detail=f"PDF template not found: {template_name}")
+
+    with open(template_path, "r", encoding="utf-8") as f:
+        template_html = f.read()
+
+    # Render with Jinja2
+    template = Template(template_html)
+    rendered_html = template.render(**template_data)
+
+    # Generate PDF with WeasyPrint
+    pdf_bytes = HTML(string=rendered_html, base_url=str(ROOT)).write_pdf()
+
+    # Return PDF as download with methodology-specific filename
+    methodology_name = resolved_path.title() if resolved_path else "Research"
+    filename = f"{methodology_name}_Research_Design_{current_user.get('name', 'Student').replace(' ', '_')}.pdf"
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"'
+        }
+    )

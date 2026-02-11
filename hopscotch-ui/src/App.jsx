@@ -84,7 +84,7 @@ function StepDiagram({ activeStep, completedSteps = [], onStepChange }) {
             return (
               <button
                 key={stepNum}
-                className={`hop-step-card${isActive ? " hop-step-card--active" : ""}${isCompleted ? " hop-step-card--completed" : ""}`}
+                className={`hop-step-card hop-step-card--img${isActive ? " hop-step-card--active" : ""}${isCompleted ? " hop-step-card--completed" : ""}`}
                 style={{
                   "--card-color": card.color,
                   animationDelay: `${ci * 0.07}s`,
@@ -92,8 +92,7 @@ function StepDiagram({ activeStep, completedSteps = [], onStepChange }) {
                 onClick={() => onStepChange(stepNum)}
                 aria-label={`Step ${stepNum}: ${card.label}`}
               >
-                <span className="hop-step-card__num">Step {stepNum}</span>
-                <span className="hop-step-card__label">{card.label}</span>
+                <img src={`/Step${stepNum}.png`} alt={`Step ${stepNum}: ${card.label}`} className="hop-step-card__img" />
               </button>
             );
           })}
@@ -162,13 +161,23 @@ function StudentApp() {
     }
   }
 
+  async function handleDownloadPDF() {
+    if (!sessionId) return;
+    try {
+      await API.downloadResearchDesign(sessionId);
+    } catch (e) {
+      console.error("PDF download failed:", e);
+      setStatus("Failed to download research design PDF.");
+    }
+  }
+
   return (
     <div className="hop-wrap">
       {/* Header — edge-to-edge, matching login page style */}
       <header className="hop-header">
         <div className="hop-header__left">
           <img
-            src="/Hopscotch-4-all-logo-alpha.png"
+            src={theme === "dark" ? "/Hopscotch4-all-logo-White-alpha.png" : "/Hopscotch-4-all-logo.png"}
             alt="Hopscotch 4 All"
             className="hop-logo"
           />
@@ -182,6 +191,10 @@ function StudentApp() {
           )}
           <button className="theme-toggle" onClick={toggleTheme} aria-label="Toggle dark mode" title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}>
             {theme === "dark" ? "\u2600" : "\u263E"}
+          </button>
+          <span className="hop-header__divider" />
+          <button className="hop-header__download" onClick={handleDownloadPDF} title="Download Research Design">
+            Download Design
           </button>
           <span className="hop-header__divider" />
           <button className="hop-header__signout" onClick={logout}>Sign Out</button>

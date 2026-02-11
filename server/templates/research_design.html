@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Research Design - {{name}}</title>
+    <style>
+        @page {
+            size: Letter;
+            margin: 0.75in;
+        }
+
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 11pt;
+            line-height: 1.5;
+            color: #000;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .logo {
+            max-width: 400px;
+            margin: 0 auto 20px;
+        }
+
+        .diagram {
+            max-width: 600px;
+            margin: 20px auto;
+        }
+
+        .affiliations {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            margin: 20px 0 30px;
+        }
+
+        .affiliation-logo {
+            height: 60px;
+        }
+
+        .info-box {
+            background-color: #1A5A6D;
+            color: white;
+            padding: 12px 20px;
+            margin-bottom: 30px;
+            border-radius: 4px;
+        }
+
+        .info-box p {
+            margin: 4px 0;
+        }
+
+        .step-section {
+            margin-bottom: 25px;
+            page-break-inside: avoid;
+        }
+
+        .step-header {
+            background-color: #1A5A6D;
+            color: white;
+            padding: 10px 20px;
+            font-size: 13pt;
+            font-weight: bold;
+            margin-bottom: 8px;
+            border-radius: 4px;
+        }
+
+        .step-content {
+            padding: 10px 20px;
+            min-height: 60px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .page-break {
+            page-break-after: always;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header with Logo and Diagram -->
+    <div class="header">
+        <img src="file:///home/aietlab/hopscotch/hopscotch-ui/public/Hopscotch-4-all-logo.png" alt="Hopscotch" class="logo">
+        <img src="file:///home/aietlab/hopscotch/hopscotch-ui/public/hopscotch-steps.png" alt="9-Step Diagram" class="diagram">
+        <div class="affiliations">
+            <img src="file:///home/aietlab/hopscotch/hopscotch-ui/public/MB_Horz_3Clr.png" alt="Kennesaw State" class="affiliation-logo">
+            <img src="file:///home/aietlab/hopscotch/hopscotch-ui/public/IRML LOGO COLOR Black.png" alt="IRML" class="affiliation-logo">
+        </div>
+    </div>
+
+    <!-- Name and Email -->
+    <div class="info-box">
+        <p><strong>Name:</strong> {{name}}</p>
+        <p><strong>Email:</strong> {{email}}</p>
+    </div>
+
+    <!-- Step 1 -->
+    <div class="step-section">
+        <div class="step-header">Step 1: Who am I as a researcher?</div>
+        <div class="step-content">{{step1}}</div>
+    </div>
+
+    <!-- Step 2 -->
+    <div class="step-section">
+        <div class="step-header">Step 2: What am I wondering about?</div>
+        <div class="step-content">{{step2}}</div>
+    </div>
+
+    <!-- Step 3 -->
+    <div class="step-section">
+        <div class="step-header">Step 3: What do I already know?</div>
+        <div class="step-content">{{step3}}</div>
+    </div>
+
+    <!-- Step 4 -->
+    <div class="step-section">
+        <div class="step-header">Step 4: How will I study it?</div>
+        <div class="step-content">{{step4}}</div>
+    </div>
+
+    <!-- Step 5 -->
+    <div class="step-section">
+        <div class="step-header">Step 5: What is my research question?</div>
+        <div class="step-content">{{step5}}</div>
+    </div>
+
+    <!-- Step 6 -->
+    <div class="step-section">
+        <div class="step-header">Step 6: What is the data to collect?</div>
+        <div class="step-content">{{step6}}</div>
+    </div>
+
+    <!-- Page Break -->
+    <div class="page-break"></div>
+
+    <!-- Step 7 -->
+    <div class="step-section">
+        <div class="step-header">Step 7: How will I make sense of the data?</div>
+        <div class="step-content">{{step7}}</div>
+    </div>
+
+    <!-- Step 8 -->
+    <div class="step-section">
+        <div class="step-header">Step 8: How will I ensure my evidence is trustworthy?</div>
+        <div class="step-content">{{step8}}</div>
+    </div>
+
+    <!-- Step 9 -->
+    <div class="step-section">
+        <div class="step-header">Step 9: How will I be ethical and safe in my study?</div>
+        <div class="step-content">{{step9}}</div>
+    </div>
+</body>
+</html>

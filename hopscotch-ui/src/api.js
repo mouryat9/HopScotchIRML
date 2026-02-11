@@ -169,4 +169,21 @@ export const API = {
     if (!res.ok) throw new Error("Failed to set methodology");
     return res.json();
   },
+
+  async downloadResearchDesign(session_id) {
+    const res = await fetch(`${API_BASE}/session/${session_id}/export/pdf`, {
+      headers: authHeaders(),
+    });
+    if (!res.ok) throw new Error("Failed to download research design");
+    // Return the blob for download
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "Research_Design.pdf";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  },
 };
