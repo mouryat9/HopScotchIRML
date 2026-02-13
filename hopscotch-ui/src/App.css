@@ -206,7 +206,15 @@ h1, h2, h3, h4, h5, h6 {
   box-shadow: 0 2px 8px rgba(30, 39, 64, 0.1);
 }
 
+/* Download dropdown */
+.hop-download {
+  position: relative;
+}
+
 .hop-header__download {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
   padding: 0.45rem 1.4rem;
   font-size: 0.85rem;
   font-weight: 500;
@@ -224,6 +232,94 @@ h1, h2, h3, h4, h5, h6 {
   border-color: var(--hop-blue-dark);
   box-shadow: 0 2px 12px rgba(43, 94, 167, 0.25);
   transform: translateY(-1px);
+}
+
+.hop-download__arrow {
+  font-size: 0.65rem;
+  transition: transform 0.2s;
+}
+
+.hop-download__arrow--open {
+  transform: rotate(180deg);
+}
+
+.hop-download__menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 240px;
+  background: var(--hop-surface);
+  border: 1px solid var(--hop-border);
+  border-radius: var(--hop-radius-md);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  z-index: 50;
+  padding: 4px;
+  animation: dropdownFadeIn 0.12s ease-out;
+}
+
+@keyframes dropdownFadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.hop-download__item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  font-family: inherit;
+  color: var(--hop-ink);
+  background: transparent;
+  border: none;
+  border-radius: var(--hop-radius-sm);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.1s;
+}
+
+.hop-download__item:hover {
+  background: var(--hop-bg);
+}
+
+.hop-download__item--disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.hop-download__item--disabled:hover {
+  background: transparent;
+}
+
+.hop-download__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 24px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  border-radius: 4px;
+  flex-shrink: 0;
+  color: #fff;
+  background: var(--hop-blue);
+}
+
+.hop-download__lock {
+  margin-left: auto;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--hop-muted);
+  background: var(--hop-neutral-bg);
+  padding: 1px 6px;
+  border-radius: 999px;
+}
+
+:root[data-theme="dark"] .hop-download__menu {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
 }
 
 /* ========================================================
@@ -3330,4 +3426,1219 @@ select.input:focus {
 
 :root[data-theme="dark"] .session-history-btn:hover {
   background: rgba(255, 255, 255, 0.06);
+}
+
+
+/* ========================================================
+   Conceptual Framework Editor (Slide 3 — angular polygons)
+   Exact polygon coordinates extracted from PPTX freeform shapes.
+   Two-layer approach: background polygons + text overlays.
+   ======================================================== */
+
+.cf-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: #e8e8e8;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+}
+
+/* Toolbar */
+.cf-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.6rem 1.5rem;
+  background: #fff;
+  border-bottom: 1px solid #ddd;
+  flex-shrink: 0;
+}
+
+.cf-toolbar__left,
+.cf-toolbar__right {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.cf-toolbar__title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #1e2740;
+}
+
+.cf-toolbar__hint {
+  font-size: 0.78rem;
+  color: #999;
+  font-style: italic;
+}
+
+.cf-toolbar__btn {
+  padding: 0.4rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-family: inherit;
+  border: 1.5px solid #ccc;
+  border-radius: 999px;
+  background: #fff;
+  color: #555;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.cf-toolbar__btn:hover {
+  border-color: #2B5EA7;
+  color: #2B5EA7;
+}
+
+.cf-toolbar__btn--primary {
+  background: #2B5EA7;
+  border-color: #2B5EA7;
+  color: #fff;
+}
+
+.cf-toolbar__btn--primary:hover {
+  background: #1e4a8a;
+}
+
+.cf-toolbar__center {
+  display: flex;
+  align-items: center;
+}
+
+.cf-toolbar__template-toggle {
+  display: flex;
+  border: 1.5px solid #ccc;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.cf-toolbar__template-btn {
+  padding: 0.35rem 1rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  font-family: inherit;
+  border: none;
+  background: #fff;
+  color: #777;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.cf-toolbar__template-btn + .cf-toolbar__template-btn {
+  border-left: 1.5px solid #ccc;
+}
+
+.cf-toolbar__template-btn:hover {
+  color: #2B5EA7;
+  background: #f0f4fa;
+}
+
+.cf-toolbar__template-btn--active {
+  background: #2B5EA7;
+  color: #fff;
+}
+
+.cf-toolbar__template-btn--active:hover {
+  background: #1e4a8a;
+  color: #fff;
+}
+
+/* Page wrapper — centers the diagram */
+.cf-page {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+/* The diagram — fixed aspect ratio matching PPTX (10" x 6.25" = 1.6:1) */
+.cf-diagram {
+  position: relative;
+  width: min(1200px, 94vw);
+  aspect-ratio: 10 / 6.25;
+  background: #fff;
+  border-radius: 4px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+  font-size: 14px;
+}
+
+/* ── Editable text ── */
+.cf-editable {
+  display: inline-block;
+  outline: none;
+  border-radius: 3px;
+  padding: 1px 3px;
+  transition: background 0.15s;
+  cursor: text;
+  min-width: 40px;
+  word-break: break-word;
+}
+
+.cf-editable:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.cf-editable:focus {
+  background: rgba(255, 255, 255, 0.25);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.3);
+}
+
+.cf-text--light { color: #fff; }
+.cf-text--dark { color: #1e2740; }
+.cf-text--sm { font-size: 0.78em; line-height: 1.4; }
+.cf-text--name { font-weight: 700; }
+.cf-text--footer { color: #073763; }
+
+/* ── Labels ── */
+.cf-label {
+  display: block;
+  font-weight: 700;
+  font-size: 0.85em;
+  margin-bottom: 2px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+.cf-label--light { color: #fff; }
+.cf-label--dark { color: #1e2740; text-shadow: none; }
+
+/* ═══════════════════════════════════════════════════
+   Layer 1: Background polygon shapes
+   Exact vertices from PPTX freeform shape coordinates.
+   Each covers the full diagram and is clipped to its polygon.
+   ═══════════════════════════════════════════════════ */
+.cf-bg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* Per-shape white border outlines.
+   Each SVG has the same z-index as its shape (via inline style).
+   Higher shapes cover lower outlines → borders only at visible boundaries.
+   CSS clip-path hides strokes at the container edges. */
+.cf-border {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  clip-path: inset(0.3% 0.3% 9.3% 0.3%);
+}
+.cf-border polygon {
+  fill: none;
+  stroke: #ffffff;
+  stroke-width: 2px;
+  vector-effect: non-scaling-stroke;
+  stroke-linejoin: round;
+}
+
+/*
+   Z-index matches PPTX draw order (later shapes on top):
+   Green(1) → Teal(2) → Yellow(3) → Brown(4) → Orange(5) → Blue(6)
+   → Red(7) → Gray(8) → LightBlue(9)
+   Polygons use original PPTX coordinates; footer covers bottom 9%.
+*/
+
+/* Green — Problem Statement, right-middle (drawn first = bottom) */
+.cf-bg--green {
+  background: #6AA84F;
+  clip-path: polygon(60.9% 47.2%, 100% 24.3%, 100% 100%, 84.1% 100%, 56.9% 64.9%);
+  z-index: 1;
+}
+
+/* Teal — Research Questions, bottom-right */
+.cf-bg--teal {
+  background: #0097A7;
+  clip-path: polygon(55.8% 64.8%, 83.9% 100%, 100% 100%, 100% 68.2%, 57.9% 55.6%);
+  z-index: 2;
+}
+
+/* Yellow — Personal Interests, left-middle.
+   Top edge follows blue's bottom edge (0,24.5)→(40,47.3) exactly to eliminate
+   the white gap. Blue (z:6) covers the overlap above. */
+.cf-bg--yellow {
+  background: #F1C232;
+  clip-path: polygon(0% 24.5%, 40% 47.3%, 44% 24.3%, 44% 100%, 27.7% 100%, 0% 68.2%);
+  z-index: 3;
+}
+
+/* Brown — Identity & Positionality, bottom-left */
+.cf-bg--brown {
+  background: #7F6000;
+  clip-path: polygon(44.1% 64.8%, 15.9% 100%, 0% 100%, 0% 68.2%, 42.4% 54.9%);
+  z-index: 4;
+}
+
+/* Orange — Theoretical Frameworks, top-right */
+.cf-bg--orange {
+  background: #FFAB40;
+  clip-path: polygon(50.6% 36.4%, 50.6% 0%, 100% 0%, 100% 24.6%, 61% 47.3%);
+  z-index: 5;
+}
+
+/* Blue — Topical Research, top-left (on top of yellow & orange) */
+.cf-bg--blue {
+  background: #1C4587;
+  clip-path: polygon(50.6% 36.4%, 50.6% 0%, 0% 0%, 0% 24.5%, 40% 47.3%);
+  z-index: 6;
+}
+
+/* Red — Research Design, bottom-center */
+.cf-bg--red {
+  background: #CC0000;
+  clip-path: polygon(44.2% 64.9%, 56.8% 64.8%, 76.9% 91.2%, 22.9% 91.4%);
+  z-index: 7;
+}
+
+/* Gray — Research Topic, center pentagon */
+.cf-bg--gray {
+  background: #666666;
+  clip-path: polygon(50.65% 36.5%, 61% 47.4%, 57% 64.9%, 44% 64.9%, 40.3% 47.4%);
+  z-index: 8;
+}
+
+/* Light Blue — Gap/s Found, top-center triangle (topmost) */
+.cf-bg--lightblue {
+  background: #CFE2F3;
+  clip-path: polygon(50.6% 36.6%, 34.6% 0%, 65.7% 0%);
+  z-index: 9;
+}
+
+/* ═══════════════════════════════════════════════════
+   Layer 2: Text content overlays
+   Positioned to match PPTX text box coordinates.
+   ═══════════════════════════════════════════════════ */
+.cf-txt {
+  position: absolute;
+  z-index: 11;
+  pointer-events: auto;
+}
+
+/* Topical Research label */
+.cf-txt--topical-label {
+  left: 0.4%;
+  top: 0.5%;
+  width: 16%;
+}
+
+/* Individual topic items (staircase) */
+.cf-txt--topic {
+  width: 23%;
+  font-size: 0.78em;
+  color: #fff;
+}
+
+/* Theoretical Frameworks label */
+.cf-txt--fw-label {
+  right: 0.5%;
+  top: 0.5%;
+  width: 19%;
+  text-align: right;
+}
+
+/* Individual framework items (reverse staircase) */
+.cf-txt--framework {
+  width: 23%;
+  font-size: 0.78em;
+  color: #fff;
+  text-align: right;
+}
+
+/* Gap/s Found */
+.cf-txt--gaps {
+  left: 39%;
+  top: 0.5%;
+  width: 23%;
+  text-align: center;
+}
+
+/* Research Topic (center pentagon) */
+.cf-txt--topic-center {
+  left: 42%;
+  top: 42%;
+  width: 17%;
+  text-align: center;
+}
+
+/* Personal Interests & Goals */
+.cf-txt--interests {
+  left: 0.4%;
+  top: 41%;
+  width: 29%;
+}
+
+/* Identity & Positionality */
+.cf-txt--identity {
+  left: 1.4%;
+  top: 68%;
+  width: 31%;
+}
+
+/* Problem Statement */
+.cf-txt--problem {
+  left: 71%;
+  top: 44%;
+  width: 28%;
+}
+
+/* Research Design */
+.cf-txt--design {
+  left: 43%;
+  top: 65%;
+  width: 15%;
+  text-align: center;
+}
+
+/* Research Questions */
+.cf-txt--questions {
+  left: 70.5%;
+  top: 69%;
+  width: 28%;
+  text-align: right;
+}
+
+/* ── Footer bar (covers bottom 9% matching PPTX footer area) ── */
+.cf-footer {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 9%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  background: #fff;
+  z-index: 20;
+  font-size: 0.68em;
+  color: #073763;
+}
+
+.cf-footer__left,
+.cf-footer__right {
+  flex: 1;
+}
+
+.cf-footer__right {
+  text-align: right;
+}
+
+.cf-footer__center {
+  font-weight: 700;
+  font-size: 1.15em;
+  text-align: center;
+  flex: 2;
+}
+
+.cf-footer__logo {
+  height: 80%;
+  max-height: 36px;
+  width: auto;
+  object-fit: contain;
+  margin-left: 12px;
+  flex-shrink: 0;
+}
+.cf-footer__grid {
+  height: 70%;
+  max-height: 28px;
+  width: auto;
+  margin-left: 10px;
+  flex-shrink: 0;
+}
+
+/* Color tile bar at the very bottom of the diagram */
+.cf-tile-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 8px;
+  z-index: 21;
+  display: flex;
+}
+.cf-tile-bar span {
+  flex: 1;
+}
+
+/* ── CF Loading overlay ── */
+.cf-loading-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(30, 39, 64, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cf-loading-card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 2.5rem 3rem;
+  text-align: center;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+  max-width: 400px;
+}
+
+.cf-loading-spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid #e8e8e8;
+  border-top-color: #2B5EA7;
+  border-radius: 50%;
+  margin: 0 auto 1.25rem;
+  animation: cf-spin 0.8s linear infinite;
+}
+
+@keyframes cf-spin {
+  to { transform: rotate(360deg); }
+}
+
+.cf-loading-text {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #1e2740;
+  margin: 0 0 0.5rem;
+}
+
+.cf-loading-sub {
+  font-size: 0.85rem;
+  color: #888;
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* ═══════════════════════════════════════════════════
+   Template 2: Boxed / Card Layout (.cfb-* prefix)
+   Rectangular card sections in a flowchart arrangement
+   matching the "Hopscotch Create your Research Design" PPTX.
+   ═══════════════════════════════════════════════════ */
+
+.cfb-diagram {
+  position: relative;
+  width: min(1200px, 96vw);
+  aspect-ratio: 10 / 6.5;
+  background: #fff;
+  border-radius: 4px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+  font-size: 13px;
+  color: #1e2740;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Text helpers ── */
+.cfb-text--meta { color: #8B0000; font-weight: 600; }
+.cfb-text--name { font-weight: 700; color: #073763; }
+.cfb-text--body { font-size: 0.92em; line-height: 1.4; }
+
+/* ── Header: email/date left, CF name center-right ── */
+.cfb-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 10px 20px 6px;
+}
+
+.cfb-header__meta {
+  font-size: 0.85em;
+  font-weight: 700;
+  color: #8B0000;
+  line-height: 1.5;
+}
+
+.cfb-header__title {
+  font-size: 1.2em;
+  font-weight: 700;
+  color: #073763;
+  text-align: right;
+}
+
+/* ── Main content: sidebar + connector + main flow ── */
+.cfb-content {
+  flex: 1;
+  display: flex;
+  padding: 0 14px 0 14px;
+  gap: 0;
+  min-height: 0;
+}
+
+/* ── Left sidebar cards ── */
+.cfb-sidebar {
+  width: 210px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  padding-top: 6px;
+  margin-right: 8px;
+}
+
+/* Card with colored header strip */
+.cfb-card {
+  border: 2px solid #999;
+  border-radius: 4px;
+  overflow: hidden;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.cfb-card__header {
+  font-weight: 700;
+  font-size: 0.88em;
+  padding: 6px 10px;
+  text-align: center;
+  color: #fff;
+}
+
+.cfb-card__header--red { background: #C0504D; }
+.cfb-card__header--yellow { background: #C9960C; color: #fff; }
+
+.cfb-card__body {
+  padding: 12px 10px;
+  flex: 1;
+}
+
+.cfb-card--personal .cfb-card__body { background: #F4CCCC; }
+.cfb-card--identity .cfb-card__body { background: #F1C232; }
+
+/* Midpoint connector area between sidebar cards */
+.cfb-connector-mid {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+/* Vertical connector line */
+.cfb-connector-v {
+  width: 2px;
+  height: 28px;
+  background: #555;
+  margin-left: 50%;
+  flex-shrink: 0;
+}
+
+/* Arrow connector: sidebar → lit review */
+.cfb-arrow-right--connector {
+  flex-shrink: 0;
+  padding: 0 2px;
+  margin-left: auto;
+}
+
+/* ── Main flow column (right of sidebar) ── */
+.cfb-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* Literature Review teal banner */
+.cfb-lit-banner {
+  background: #0097A7;
+  color: #fff;
+  text-align: center;
+  font-weight: 700;
+  font-size: 1em;
+  padding: 5px 0;
+  letter-spacing: 0.5px;
+}
+
+/* 3-column literature review area */
+.cfb-lit-area {
+  display: flex;
+  border: 2px solid #0097A7;
+  border-top: none;
+  flex: 1;
+  min-height: 0;
+}
+
+.cfb-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 8px;
+  gap: 6px;
+}
+
+.cfb-col__heading {
+  font-weight: 700;
+  font-size: 0.92em;
+  text-align: center;
+  padding-bottom: 4px;
+  margin-bottom: 2px;
+}
+
+.cfb-col__item {
+  padding: 4px 6px;
+  font-size: 0.9em;
+}
+
+/* Topical Research: light blue bg */
+.cfb-col--topics {
+  background: #CFE2F3;
+}
+
+.cfb-col--topics .cfb-col__heading {
+  color: #1C4587;
+}
+
+/* Center column: Research Topic */
+.cfb-col--center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #D6E4F0;
+  border-left: 2px solid #0097A7;
+  border-right: 2px solid #0097A7;
+}
+
+/* Research Topic — large rounded rect */
+.cfb-topic-box {
+  width: 85%;
+  aspect-ratio: 1;
+  max-width: 180px;
+  border-radius: 16px;
+  background: #2B5EA7;
+  border: 3px solid #1C4587;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 14px;
+}
+
+.cfb-topic-box__label {
+  font-weight: 700;
+  font-size: 0.95em;
+  margin-bottom: 6px;
+}
+
+/* Theoretical Frameworks: mauve/pink bg */
+.cfb-col--frameworks {
+  background: #D5B8D5;
+}
+
+.cfb-col--frameworks .cfb-col__heading {
+  color: #4A235A;
+}
+
+/* ── Flow boxes below literature review ── */
+.cfb-flow-box {
+  padding: 10px 16px;
+  text-align: center;
+  border: 1.5px solid #aaa;
+}
+
+.cfb-flow-box__label {
+  font-weight: 700;
+  font-size: 0.9em;
+  display: block;
+  margin-bottom: 2px;
+}
+
+.cfb-flow-box--gaps {
+  background: #D6E4F0;
+  border-color: #999;
+}
+
+.cfb-flow-box--problem {
+  background: #FDEBD0;
+  border-color: #E0A84C;
+}
+
+.cfb-flow-box--questions {
+  background: #93C47D;
+  border-color: #6AA84F;
+  color: #fff;
+  flex: 1.6;
+}
+
+.cfb-flow-box--questions .cfb-flow-box__label { color: #fff; }
+
+.cfb-flow-box--design {
+  background: #D5B8D5;
+  border-color: #9C7BBD;
+  flex: 1;
+}
+
+/* Arrows */
+.cfb-arrow-down {
+  text-align: center;
+  font-size: 1.5em;
+  color: #555;
+  line-height: 1;
+  padding: 2px 0;
+}
+
+.cfb-arrow-right {
+  font-size: 1.5em;
+  color: #555;
+  padding: 0 6px;
+  display: flex;
+  align-items: center;
+}
+
+/* Bottom row */
+.cfb-bottom-row {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+/* ── Footer ── */
+.cfb-footer {
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+}
+
+.cfb-footer__logo {
+  height: 44px;
+  width: auto;
+  object-fit: contain;
+}
+
+.cfb-footer__grid {
+  height: 32px;
+  width: auto;
+  margin-left: 10px;
+}
+
+/* ═══════════════════════════════════════════════════
+   Template 3: Extended 3-Column + Pinwheel (.cfe-*)
+   ═══════════════════════════════════════════════════ */
+
+.cfe-diagram {
+  position: relative;
+  width: min(1200px, 96vw);
+  aspect-ratio: 10 / 6.5;
+  background: #fff;
+  border-radius: 4px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+  font-size: 12px;
+  color: #1e2740;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Text helpers ── */
+.cfe-text--meta { color: #8B0000; font-weight: 600; }
+.cfe-text--topic { color: #073763; }
+.cfe-text--body { font-size: 0.92em; line-height: 1.35; }
+
+/* ── Header ── */
+.cfe-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 8px 16px 4px;
+  gap: 12px;
+}
+
+.cfe-header__meta {
+  font-size: 0.85em;
+  font-weight: 700;
+  color: #8B0000;
+  line-height: 1.5;
+  flex-shrink: 0;
+}
+
+.cfe-header__topic {
+  font-size: 1.15em;
+  color: #073763;
+  text-align: center;
+  flex: 1;
+}
+
+.cfe-header__logo {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.cfe-header__logo-img {
+  height: 36px;
+  width: auto;
+  object-fit: contain;
+}
+
+.cfe-header__grid {
+  height: 28px;
+  width: auto;
+}
+
+/* ── 3-column body ── */
+.cfe-body {
+  flex: 1;
+  display: flex;
+  padding: 0 10px 8px;
+  gap: 8px;
+  min-height: 0;
+}
+
+/* ── Columns ── */
+.cfe-col {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
+}
+
+.cfe-col--left {
+  flex: 0 0 22%;
+}
+
+.cfe-col--center {
+  flex: 1;
+}
+
+.cfe-col--right {
+  flex: 0 0 22%;
+}
+
+/* ── Cards ── */
+.cfe-card {
+  border: 1.5px solid #999;
+  border-radius: 3px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.cfe-card__header {
+  font-weight: 700;
+  font-size: 0.9em;
+  padding: 5px 10px;
+  text-align: center;
+}
+
+.cfe-card__body {
+  padding: 8px 10px;
+  flex: 1;
+}
+
+/* Unified card colors: header + body same background, header text colored */
+.cfe-card--topics .cfe-card__header,
+.cfe-card--topics .cfe-card__body { background: #CFE2F3; }
+.cfe-card--topics .cfe-card__header { color: #1C4587; }
+
+.cfe-card--frameworks .cfe-card__header,
+.cfe-card--frameworks .cfe-card__body { background: #D5B8D5; }
+.cfe-card--frameworks .cfe-card__header { color: #4A235A; }
+
+.cfe-card--personal .cfe-card__header,
+.cfe-card--personal .cfe-card__body { background: #F4CCCC; }
+.cfe-card--personal .cfe-card__header { color: #C0504D; }
+
+.cfe-card--identity .cfe-card__header,
+.cfe-card--identity .cfe-card__body { background: #FFF2CC; }
+.cfe-card--identity .cfe-card__header { color: #7F6000; }
+
+.cfe-card--litreview .cfe-card__header,
+.cfe-card--litreview .cfe-card__body { background: #E0F7FA; }
+.cfe-card--litreview .cfe-card__header { color: #0097A7; }
+
+.cfe-card--problem .cfe-card__header,
+.cfe-card--problem .cfe-card__body { background: #FDEBD0; }
+.cfe-card--problem .cfe-card__header { color: #BF6900; }
+
+.cfe-card--questions .cfe-card__header,
+.cfe-card--questions .cfe-card__body { background: #93C47D; }
+.cfe-card--questions .cfe-card__header { color: #1B5E20; }
+
+.cfe-card--design .cfe-card__header,
+.cfe-card--design .cfe-card__body { background: #D5B8D5; }
+.cfe-card--design .cfe-card__header { color: #4A235A; }
+
+.cfe-card__item {
+  padding: 3px 0;
+}
+
+.cfe-card__label {
+  font-weight: 700;
+  font-size: 0.9em;
+  display: block;
+  margin-bottom: 2px;
+}
+
+/* Make topics/frameworks cards grow equally */
+.cfe-col--left .cfe-card:first-child,
+.cfe-col--right .cfe-card:first-child {
+  flex: 1.4;
+}
+
+.cfe-col--left .cfe-card:nth-child(2),
+.cfe-col--left .cfe-card:nth-child(3),
+.cfe-col--right .cfe-card:nth-child(2),
+.cfe-col--right .cfe-card:nth-child(3) {
+  flex: 1;
+}
+
+/* ── Pinwheel infographic ── */
+.cfe-infographic {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  min-height: 0;
+}
+
+.cfe-infographic__title {
+  font-weight: 700;
+  font-size: 0.95em;
+  color: #C0504D;
+  text-align: center;
+  padding: 4px 0 2px;
+}
+
+.cfe-infographic__citation {
+  font-size: 0.75em;
+  font-style: italic;
+  color: #666;
+  text-align: center;
+  padding: 2px 0;
+}
+
+/* ── Wheel (SVG-based pie-chart circle with 5 sections) ── */
+.cfe-wheel {
+  position: relative;
+  width: 95%;
+  max-width: 560px;
+  aspect-ratio: 1 / 1;
+  margin: 4px auto;
+  font-size: 14px;
+}
+
+/* SVG fills the wheel container */
+.cfe-wheel__svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* Section text labels (positioned at pie-slice centroids) */
+.cfe-slabel {
+  position: absolute;
+  width: 26%;
+  text-align: center;
+  color: #fff;
+  pointer-events: none;
+  line-height: 1.15;
+  z-index: 7;
+}
+
+.cfe-slabel strong {
+  display: block;
+  font-size: 0.82em;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+
+.cfe-slabel span {
+  font-size: 0.48em;
+  line-height: 1.1;
+  display: block;
+}
+
+/* Position labels at each pie-slice centroid (no rotation needed) */
+.cfe-slabel--0 { left: 50%;  top: 18%; transform: translate(-50%, -50%); }
+.cfe-slabel--1 { left: 80%;  top: 40%; transform: translate(-50%, -50%); }
+.cfe-slabel--2 { left: 69%;  top: 74%; transform: translate(-50%, -50%); }
+.cfe-slabel--3 { left: 31%;  top: 74%; transform: translate(-50%, -50%); }
+.cfe-slabel--4 { left: 20%;  top: 40%; transform: translate(-50%, -50%); }
+
+/* Center circle with CF definition */
+.cfe-wheel__center {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 40%;
+  height: 40%;
+  border-radius: 50%;
+  background: #6AA84F;
+  border: 2.5px solid #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2.5%;
+  text-align: center;
+  color: #fff;
+  z-index: 10;
+}
+
+.cfe-wheel__center span {
+  font-size: 0.48em;
+  line-height: 1.2;
+}
+
+/* ── Research Design row with flanking arrows ── */
+.cfe-design-row {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+}
+
+.cfe-design-row .cfe-card {
+  flex: 1;
+}
+
+.cfe-design-arrow {
+  display: flex;
+  align-items: center;
+  font-size: 1.8em;
+  color: #6AA84F;
+  padding: 0 2px;
+  flex-shrink: 0;
+}
+
+/* ── Print styles ── */
+@media print {
+  /* Force background colors and images to print */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+
+  /* Landscape, fill entire page */
+  @page {
+    size: landscape;
+    margin: 0;
+  }
+
+  /* Hide everything except the diagram */
+  body > *:not(#root),
+  .no-print {
+    display: none !important;
+  }
+
+  /* Reset the overlay to fill the page */
+  .cf-overlay {
+    position: fixed !important;
+    inset: 0 !important;
+    background: #fff !important;
+    z-index: 999999 !important;
+    overflow: hidden !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  .cf-page {
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  .cf-diagram {
+    width: 100vw !important;
+    height: 100vh !important;
+    max-width: none !important;
+    max-height: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    page-break-inside: avoid !important;
+    position: relative !important;
+    overflow: hidden !important;
+  }
+
+  /* Ensure background shapes render with colors */
+  .cf-bg {
+    position: absolute !important;
+    inset: 0 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Ensure SVG borders render */
+  .cf-border {
+    position: absolute !important;
+    inset: 0 !important;
+  }
+
+  /* Footer */
+  .cf-footer {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Tile bar */
+  .cf-tile-bar {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  .cf-tile-bar span {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* No hover/focus effects */
+  .cf-editable:hover,
+  .cf-editable:focus {
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+
+  /* ── Boxed template print ── */
+  .cfb-diagram {
+    width: 100vw !important;
+    height: 100vh !important;
+    max-width: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+  }
+
+  .cfb-card__header,
+  .cfb-card__body,
+  .cfb-lit-banner,
+  .cfb-lit-area,
+  .cfb-col--topics,
+  .cfb-col--center,
+  .cfb-col--frameworks,
+  .cfb-topic-box,
+  .cfb-flow-box,
+  .cfb-footer {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* ── Extended template print ── */
+  .cfe-diagram {
+    width: 100vw !important;
+    height: 100vh !important;
+    max-width: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+  }
+
+  .cfe-card__header,
+  .cfe-card__body,
+  .cfe-design-arrow,
+  .cfe-wheel__svg,
+  .cfe-wheel__center,
+  .cfe-wheel,
+  [class*="cfe-card--"] .cfe-card__header,
+  [class*="cfe-card--"] .cfe-card__body {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
 }

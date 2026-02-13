@@ -1554,3 +1554,244 @@ def export_research_design_pdf(
             "Content-Disposition": f'attachment; filename="{filename}"'
         }
     )
+
+
+# ---------------- PPTX Conceptual Framework Export ----------------
+
+def _structure_cf_via_llm(sess: SessionData, raw_fields: dict) -> dict:
+    """
+    Always call the LLM to structure ALL conceptual framework fields.
+    The LLM extracts short titles from long text, generates missing fields
+    from chat history, and returns clean structured data for the diagram.
+    """
+    import json as _json
+
+    # Gather chat history for Steps 1-5 as context
+    history = _get_chat(sess)
+    chat_context = []
+    for turn in history:
+        if turn.step and turn.step <= 5:
+            prefix = f"[Step {turn.step}] " if turn.step else ""
+            chat_context.append(f"{prefix}{turn.role}: {turn.content[:500]}")
+
+    chat_text = "\n".join(chat_context[-40:])
+
+    # Build prompt — always ask LLM to structure everything
+    prompt = (
+        "You are helping create a Conceptual Framework diagram for a research methods student.\n"
+        "Based on ALL the data below (conversation history, step notes, and raw field values), "
+        "extract and structure the following fields.\n\n"
+        "IMPORTANT RULES:\n"
+        "- 'topics' must be an array of exactly 5 SHORT titles (3-8 words each) representing "
+        "key topical areas from the student's literature review. Extract themes from the raw text.\n"
+        "- 'frameworks' must be an array of exactly 5 SHORT titles (3-8 words each) representing "
+        "theoretical frameworks relevant to the student's study. Name specific theories.\n"
+        "- 'topic' should be ONE concise sentence (max 15 words) summarizing their research topic.\n"
+        "- 'gaps' should be 1-2 sentences about literature gaps found.\n"
+        "- 'problem_statement' should be 1-2 sentences defining the problem.\n"
+        "- 'personal_goals' should be 1-2 sentences about their motivations.\n"
+        "- 'research_questions' should be the main research question (1-2 sentences).\n"
+        "- 'research_design' should name the methodology in 1 sentence.\n"
+        "- 'worldview' should be ONE word (e.g. Constructivist, Post-Positivist, Pragmatist).\n\n"
+        f"RAW DATA FROM STUDENT'S SESSION:\n"
+        f"  Topic: {raw_fields.get('topic', '')[:300]}\n"
+        f"  Worldview: {raw_fields.get('worldview', '')}\n"
+        f"  Personal Goals: {raw_fields.get('personal_goals', '')[:200]}\n"
+        f"  Topical Research (raw): {raw_fields.get('topical_raw', '')[:600]}\n"
+        f"  Theoretical Frameworks (raw): {raw_fields.get('theoretical_raw', '')[:400]}\n"
+        f"  Gaps: {raw_fields.get('gaps', '')[:200]}\n"
+        f"  Problem Statement: {raw_fields.get('problem_statement', '')[:200]}\n"
+        f"  Research Questions: {raw_fields.get('research_questions', '')[:300]}\n"
+        f"  Research Design: {raw_fields.get('research_design', '')[:200]}\n\n"
+        "STEP NOTES (JSON):\n"
+        f"{_json.dumps({k: v for k, v in sess.step_notes.items() if k in ('1','2','3','4','5')}, default=str, indent=2)[:2000]}\n\n"
+        "CONVERSATION HISTORY:\n"
+        f"{chat_text[:3000]}\n\n"
+        "Respond with ONLY valid JSON. No markdown, no explanation:\n"
+        "{\n"
+        '  "topic": "concise research topic title",\n'
+        '  "worldview": "Worldview Name",\n'
+        '  "personal_goals": "1-2 sentences",\n'
+        '  "topics": ["Short Title 1", "Short Title 2", "Short Title 3", "Short Title 4", "Short Title 5"],\n'
+        '  "frameworks": ["Theory Name 1", "Theory Name 2", "Theory Name 3", "Theory Name 4", "Theory Name 5"],\n'
+        '  "gaps": "1-2 sentences about gaps",\n'
+        '  "problem_statement": "1-2 sentences",\n'
+        '  "research_questions": "main research question",\n'
+        '  "research_design": "methodology in 1 sentence"\n'
+        "}\n"
+    )
+
+    try:
+        resp = requests.post(OLLAMA_URL, json={
+            "model": LLM_MODEL,
+            "messages": [{"role": "user", "content": prompt}],
+            "stream": False,
+            "options": {"temperature": 0.3, "num_predict": 2000},
+        }, timeout=90)
+        resp.raise_for_status()
+        raw = resp.json().get("message", {}).get("content", "")
+
+        # Extract JSON from response (handle markdown code blocks)
+        json_match = re.search(r'\{[\s\S]*\}', raw)
+        if json_match:
+            generated = _json.loads(json_match.group())
+        else:
+            logger.warning("LLM did not return valid JSON for CF: %s", raw[:200])
+            return raw_fields
+
+        # Ensure topics and frameworks are lists of 5
+        if isinstance(generated.get("topics"), list):
+            generated["topics"] = (generated["topics"] + [""] * 5)[:5]
+        if isinstance(generated.get("frameworks"), list):
+            generated["frameworks"] = (generated["frameworks"] + [""] * 5)[:5]
+
+        return generated
+    except Exception as e:
+        logger.warning("LLM CF structuring failed: %s", e)
+        return raw_fields
+
+
+def _gather_cf_data(session_id: str, current_user: dict) -> dict:
+    """Shared helper: gather conceptual framework data, always using LLM to structure."""
+    from datetime import datetime
+
+    sess = _require_session(session_id)
+    steps_data = sess.step_notes
+
+    step1_data = steps_data.get("1", {})
+    worldview = (step1_data.get("worldview") or step1_data.get("worldview_id")
+                 or step1_data.get("worldview_label") or "")
+
+    step2_data = steps_data.get("2", {})
+    topic = step2_data.get("topic", "")
+    personal_goals = (step2_data.get("personal_goals") or step2_data.get("personalGoals") or "")
+
+    step3_data = steps_data.get("3", {})
+    topical_raw = step3_data.get("topicalResearch") or step3_data.get("topical_research") or ""
+    theoretical_raw = step3_data.get("theoreticalFrameworks") or step3_data.get("theoretical_frameworks") or ""
+    gaps = step3_data.get("gaps") or step3_data.get("gaps_identified") or ""
+    problem = step3_data.get("problem_statement") or step3_data.get("problemStatement") or ""
+
+    step4_data = steps_data.get("4", {})
+    research_design = step4_data.get("notes", "")
+    step5_data = steps_data.get("5", {})
+    research_questions = (step5_data.get("research_question") or step5_data.get("notes") or "")
+
+    email = current_user.get("email") or current_user.get("username") or ""
+    name = current_user.get("name", "Student")
+    timestamp = datetime.now().strftime("%B %d, %Y")
+
+    # Pass raw text to LLM — it will extract short titles and structure everything
+    raw_fields = {
+        "topic": topic,
+        "worldview": worldview,
+        "personal_goals": personal_goals,
+        "topical_raw": topical_raw,
+        "theoretical_raw": theoretical_raw,
+        "gaps": gaps,
+        "problem_statement": problem,
+        "research_questions": research_questions,
+        "research_design": research_design,
+    }
+
+    # Always call LLM to structure the data properly
+    structured = _structure_cf_via_llm(sess, raw_fields)
+
+    # Ensure lists are padded to 5
+    topics = (structured.get("topics", []) + [""] * 5)[:5]
+    frameworks = (structured.get("frameworks", []) + [""] * 5)[:5]
+
+    wv = structured.get("worldview", worldview) or "Not specified"
+    return {
+        "email": email,
+        "name": name,
+        "date": timestamp,
+        "topic": structured.get("topic", topic) or "",
+        "worldview": wv.title() if isinstance(wv, str) else str(wv),
+        "personal_goals": structured.get("personal_goals", personal_goals) or "",
+        "topics": topics,
+        "frameworks": frameworks,
+        "gaps": structured.get("gaps", gaps) or "",
+        "problem_statement": structured.get("problem_statement", problem) or "",
+        "research_questions": structured.get("research_questions", research_questions) or "",
+        "research_design": structured.get("research_design", research_design) or "",
+    }
+
+
+@app.get("/session/{session_id}/export/conceptual-framework/data")
+def get_conceptual_framework_data(
+    session_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Return conceptual framework data as JSON for the web editor."""
+    return _gather_cf_data(session_id, current_user)
+
+
+@app.get("/session/{session_id}/export/conceptual-framework")
+def export_conceptual_framework(
+    session_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Generate a Conceptual Framework PPTX using the shared data helper."""
+    from pptx import Presentation as PptxPresentation
+    import io
+
+    d = _gather_cf_data(session_id, current_user)
+    topics = (d.get("topics", []) + [""] * 5)[:5]
+    frameworks = (d.get("frameworks", []) + [""] * 5)[:5]
+
+    replacements = {
+        "<<email>>": d["email"],
+        "<<Timestamp>>": d["date"],
+        "<<Define your research topic>>": d["topic"] or "Not yet defined",
+        "<<Name>>": d["name"],
+        "<<Gap/s found in the review of your topical research>>": d["gaps"] or "Not yet identified",
+        "<<Define your Personal Interests and Goals>>": d["personal_goals"] or "Not yet defined",
+        "<<Describe your positionality and worldview >>": d["worldview"] or "Not specified",
+        "<<Define your Problem Statement>>": d["problem_statement"] or "Not yet defined",
+        "<<Define your Research Question/s>>": d["research_questions"] or "Not yet defined",
+        "<<Define your Research Design>>": d["research_design"] or "Not yet defined",
+    }
+    for i in range(5):
+        replacements[f"<<Topic {i+1}>>"] = topics[i] if topics[i] else ""
+        replacements[f"<<Theoretical Framework {i+1}>>"] = frameworks[i] if frameworks[i] else ""
+
+    template_path = TEMPLATE_DIR / "conceptual_framework.pptx"
+    if not template_path.exists():
+        raise HTTPException(status_code=500, detail="Conceptual framework template not found")
+
+    prs = PptxPresentation(str(template_path))
+    for slide in prs.slides:
+        for shape in slide.shapes:
+            _replace_pptx_text(shape, replacements)
+
+    buf = io.BytesIO()
+    prs.save(buf)
+    buf.seek(0)
+
+    filename = f"Conceptual_Framework_{d['name'].replace(' ', '_')}.pptx"
+    return Response(
+        content=buf.getvalue(),
+        media_type="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+    )
+
+
+def _replace_pptx_text(shape, replacements: dict):
+    """Recursively replace placeholder text in a PPTX shape."""
+    from pptx.enum.shapes import MSO_SHAPE_TYPE
+
+    # Handle group shapes recursively
+    if shape.shape_type == MSO_SHAPE_TYPE.GROUP:
+        for child in shape.shapes:
+            _replace_pptx_text(child, replacements)
+        return
+
+    if not shape.has_text_frame:
+        return
+
+    for paragraph in shape.text_frame.paragraphs:
+        for run in paragraph.runs:
+            for placeholder, value in replacements.items():
+                if placeholder in run.text:
+                    run.text = run.text.replace(placeholder, value)

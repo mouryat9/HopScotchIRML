@@ -255,12 +255,35 @@ export const API = {
       headers: authHeaders(),
     });
     if (!res.ok) throw new Error("Failed to download research design");
-    // Return the blob for download
     const blob = await res.blob();
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
     a.download = "Research_Design.pdf";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  },
+
+  async getConceptualFrameworkData(session_id) {
+    const res = await fetch(`${API_BASE}/session/${session_id}/export/conceptual-framework/data`, {
+      headers: authHeaders(),
+    });
+    if (!res.ok) throw new Error("Failed to load conceptual framework data");
+    return res.json();
+  },
+
+  async downloadConceptualFramework(session_id) {
+    const res = await fetch(`${API_BASE}/session/${session_id}/export/conceptual-framework`, {
+      headers: authHeaders(),
+    });
+    if (!res.ok) throw new Error("Failed to download conceptual framework");
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "Conceptual_Framework.pptx";
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);

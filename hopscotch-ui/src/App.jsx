@@ -1,6 +1,6 @@
 // src/App.jsx
 import "./App.css";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import { API } from "./api";
 import SplitPanelLayout from "./SplitPanelLayout";
 import { useAuth } from "./AuthContext";
@@ -8,6 +8,7 @@ import { useTheme } from "./ThemeContext";
 import LoginPage from "./LoginPage";
 import TeacherDashboard from "./TeacherDashboard";
 import SessionHistoryPanel from "./SessionHistoryPanel";
+import ConceptualFrameworkEditor from "./ConceptualFrameworkEditor";
 
 /* Small local UI helpers */
 const Btn = ({ className = "", ...p }) => (
@@ -186,7 +187,23 @@ function StudentApp() {
     setStatus("");
   }
 
+  const [downloadOpen, setDownloadOpen] = useState(false);
+  const downloadRef = useRef(null);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    if (!downloadOpen) return;
+    function handleClick(e) {
+      if (downloadRef.current && !downloadRef.current.contains(e.target)) {
+        setDownloadOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [downloadOpen]);
+
   async function handleDownloadPDF() {
+    setDownloadOpen(false);
     if (!sessionId) return;
     try {
       await API.downloadResearchDesign(sessionId);
@@ -194,6 +211,44 @@ function StudentApp() {
       console.error("PDF download failed:", e);
       setStatus("Failed to download research design PDF.");
     }
+  }
+
+  const [cfData, setCfData] = useState(null);
+  const [cfOpen, setCfOpen] = useState(false);
+  const [cfLoading, setCfLoading] = useState(false);
+
+  async function handleOpenConceptualFramework() {
+    setDownloadOpen(false);
+    if (!sessionId) return;
+    try {
+      setCfLoading(true);
+      const data = await API.getConceptualFrameworkData(sessionId);
+      setCfData(data);
+      setCfOpen(true);
+    } catch (e) {
+      console.error("CF data load failed:", e);
+      setStatus("Failed to load conceptual framework data.");
+    } finally {
+      setCfLoading(false);
+    }
+  }
+
+  const step3Completed = completedSteps.includes(3);
+
+  if (cfLoading) {
+    return (
+      <div className="cf-loading-overlay">
+        <div className="cf-loading-card">
+          <div className="cf-loading-spinner" />
+          <p className="cf-loading-text">Generating Conceptual Framework...</p>
+          <p className="cf-loading-sub">The AI is analyzing your research data to structure the diagram.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (cfOpen && cfData) {
+    return <ConceptualFrameworkEditor data={cfData} onClose={() => setCfOpen(false)} />;
   }
 
   return (
@@ -229,9 +284,34 @@ function StudentApp() {
             {theme === "dark" ? "\u2600" : "\u263E"}
           </button>
           <span className="hop-header__divider" />
-          <button className="hop-header__download" onClick={handleDownloadPDF} title="Download Research Design">
-            Download Design
-          </button>
+          <div className="hop-download" ref={downloadRef}>
+            <button
+              className="hop-header__download"
+              onClick={() => setDownloadOpen((o) => !o)}
+              title="Download designs"
+            >
+              Download Design
+              <span className={`hop-download__arrow${downloadOpen ? " hop-download__arrow--open" : ""}`}>&#9662;</span>
+            </button>
+            {downloadOpen && (
+              <div className="hop-download__menu">
+                <button className="hop-download__item" onClick={handleDownloadPDF}>
+                  <span className="hop-download__icon">PDF</span>
+                  Research Design
+                </button>
+                <button
+                  className={`hop-download__item${!step3Completed ? " hop-download__item--disabled" : ""}`}
+                  onClick={step3Completed ? handleOpenConceptualFramework : undefined}
+                  disabled={!step3Completed}
+                  title={!step3Completed ? "Complete Step 3 (Literature) to unlock" : "Edit & Print Conceptual Framework"}
+                >
+                  <span className="hop-download__icon" style={{ background: "#6AA84F" }}>CF</span>
+                  Conceptual Framework
+                  {!step3Completed && <span className="hop-download__lock">Step 3</span>}
+                </button>
+              </div>
+            )}
+          </div>
           <span className="hop-header__divider" />
           <button className="hop-header__signout" onClick={logout}>Sign Out</button>
         </div>
