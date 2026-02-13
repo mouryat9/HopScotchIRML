@@ -18,11 +18,11 @@ function authHeaders() {
 export const API = {
   // ---------- Auth ----------
 
-  async register({ email, password, name }) {
+  async register({ email, password, name, role = "student" }) {
     const res = await fetch(`${API_BASE}/auth/register`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password, name, role: "student" }),
+      body: JSON.stringify({ email, password, name, role }),
     });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
@@ -44,6 +44,76 @@ export const API = {
     return res.json();
   },
 
+  async forgotPassword({ email }) {
+    const res = await fetch(`${API_BASE}/auth/forgot-password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.detail || `Request failed: ${res.status}`);
+    }
+    return res.json();
+  },
+
+  async resetPassword({ token, new_password }) {
+    const res = await fetch(`${API_BASE}/auth/reset-password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token, new_password }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.detail || `Reset failed: ${res.status}`);
+    }
+    return res.json();
+  },
+
+  async classroomLogin({ username, password }) {
+    const res = await fetch(`${API_BASE}/auth/classroom-login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.detail || `Login failed: ${res.status}`);
+    }
+    return res.json();
+  },
+
+  // ---------- Teacher / Class Management ----------
+
+  async createClass({ class_name, student_count, password }) {
+    const res = await fetch(`${API_BASE}/teacher/create-class`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify({ class_name, student_count, password }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.detail || `Failed to create class: ${res.status}`);
+    }
+    return res.json();
+  },
+
+  async getTeacherClasses() {
+    const res = await fetch(`${API_BASE}/teacher/classes`, {
+      headers: authHeaders(),
+    });
+    if (!res.ok) throw new Error(`Failed to load classes: ${res.status}`);
+    return res.json();
+  },
+
+  async getStudentSessions() {
+    const res = await fetch(`${API_BASE}/teacher/student-sessions`, {
+      headers: authHeaders(),
+    });
+    if (!res.ok) throw new Error(`Failed to load student sessions: ${res.status}`);
+    return res.json();
+  },
+
   // ---------- Sessions + Chat ----------
 
   async createSession() {
@@ -62,6 +132,14 @@ export const API = {
       headers: authHeaders(),
     });
     if (!res.ok) throw new Error(`resumeSession failed: ${res.status}`);
+    return res.json();
+  },
+
+  async listSessions() {
+    const res = await fetch(`${API_BASE}/session/list`, {
+      headers: authHeaders(),
+    });
+    if (!res.ok) throw new Error(`listSessions failed: ${res.status}`);
     return res.json();
   },
 
@@ -145,14 +223,16 @@ export const API = {
     return res.json();
   },
 
-  async chatSendStream(session_id, message, active_step = null) {
+  async chatSendStream(session_id, message, active_step = null, signal = null) {
     const body = { session_id, message };
     if (active_step !== null) body.active_step = active_step;
-    const res = await fetch(`${API_BASE}/chat/send_stream`, {
+    const opts = {
       method: "POST",
       headers: { "Content-Type": "application/json", ...authHeaders() },
       body: JSON.stringify(body),
-    });
+    };
+    if (signal) opts.signal = signal;
+    const res = await fetch(`${API_BASE}/chat/send_stream`, opts);
     if (!res.ok) {
       const text = await res.text();
       throw new Error(`chatSendStream failed: ${res.status} ${text}`);

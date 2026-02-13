@@ -9,11 +9,12 @@ from jose import JWTError, jwt
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
-from database import find_user_by_email
+from database import find_user_by_email, find_user_by_username
 
 SECRET_KEY = os.environ.get("HOPSCOTCH_SECRET", "hopscotch-dev-secret-change-in-prod")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 1440  # 24 hours
+RESET_TOKEN_EXPIRE_MINUTES = 30
 
 security = HTTPBearer(auto_error=False)
 
@@ -33,6 +34,14 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 
+def create_password_reset_token(email: str) -> str:
+    """Create a short-lived JWT for password reset."""
+    return create_access_token(
+        data={"sub": email, "purpose": "password_reset"},
+        expires_delta=timedelta(minutes=RESET_TOKEN_EXPIRE_MINUTES),
+    )
+
+
 def decode_token(token: str) -> dict:
     try:
         return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
@@ -45,10 +54,14 @@ def get_current_user(credentials: Optional[HTTPAuthorizationCredentials] = Depen
     if credentials is None:
         raise HTTPException(status_code=401, detail="Not authenticated")
     payload = decode_token(credentials.credentials)
-    email = payload.get("sub")
-    if not email:
+    sub = payload.get("sub")
+    if not sub:
         raise HTTPException(status_code=401, detail="Invalid token payload")
-    user = find_user_by_email(email)
+    sub_type = payload.get("sub_type", "email")  # backward compat
+    if sub_type == "username":
+        user = find_user_by_username(sub)
+    else:
+        user = find_user_by_email(sub)
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
     return user

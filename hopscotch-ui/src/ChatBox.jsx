@@ -95,17 +95,6 @@ const ChatBubble = memo(function ChatBubble({ turn, streaming }) {
     );
   }
 
-  // During streaming, skip expensive markdown parsing — show plain text
-  if (streaming) {
-    return (
-      <div className="chat-row assistant">
-        <div className="chat-bubble chat-bubble--assistant" style={borderStyle}>
-          <div style={{ whiteSpace: "pre-wrap" }}>{turn.content}</div>
-        </div>
-      </div>
-    );
-  }
-
   const { prose, refs } = parseAssistantMessage(turn.content || "");
   const mdToRender = refs.length ? prose : turn.content || "";
 
@@ -116,7 +105,7 @@ const ChatBubble = memo(function ChatBubble({ turn, streaming }) {
           {mdToRender}
         </ReactMarkdown>
 
-        {refs.length > 0 && (
+        {!streaming && refs.length > 0 && (
           <Collapsible title={`References (${refs.length})`}>
             <div className="source-grid">
               {refs.map((r, i) => (
@@ -196,13 +185,16 @@ export default function ChatBox({ sessionId, activeStep, refreshKey, autoMessage
   const [history, setHistory] = useState([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
+  const sendingRef = useRef(false);           // synchronous guard against double-sends
   const [err, setErr] = useState("");
   const scrollRef = useRef(null);
+  const [historyReady, setHistoryReady] = useState(false);
 
   // Load history when we get a session
   useEffect(() => {
     let cancelled = false;
-    async function load() {
+    setHistoryReady(false);
+    (async () => {
       setErr("");
       if (!sessionId) return;
       try {
@@ -211,12 +203,11 @@ export default function ChatBox({ sessionId, activeStep, refreshKey, autoMessage
       } catch (e) {
         console.error(e);
         if (!cancelled) setErr("Could not load chat history.");
+      } finally {
+        if (!cancelled) setHistoryReady(true);
       }
-    }
-    load();
-    return () => {
-      cancelled = true;
-    };
+    })();
+    return () => { cancelled = true; };
   }, [sessionId, refreshKey]);
 
   // Auto-scroll to bottom when history changes
@@ -227,18 +218,20 @@ export default function ChatBox({ sessionId, activeStep, refreshKey, autoMessage
   }, [history]);
 
   // Auto-send message triggered by parent (e.g. worldview selection)
+  // Waits until history is loaded to avoid the API response overwriting streamed content
   useEffect(() => {
-    if (autoMessage && sessionId && !sending) {
+    if (autoMessage && sessionId && historyReady && !sendingRef.current) {
       send(autoMessage, { hideUserBubble: true });
       if (onAutoMessageSent) onAutoMessageSent();
     }
-  }, [autoMessage]);
+  }, [autoMessage, historyReady]);
 
 
   async function send(forcedText, opts = {}) {
     const msg = (forcedText ?? input).trim();
-    if (!msg || !sessionId || sending) return;
+    if (!msg || !sessionId || sendingRef.current) return;
 
+    sendingRef.current = true;
     setSending(true);
     if (!forcedText) setInput("");
     setErr("");
@@ -252,11 +245,14 @@ export default function ChatBox({ sessionId, activeStep, refreshKey, autoMessage
     ]);
 
     try {
-      const res = await API.chatSendStream(sessionId, msg, activeStep);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 120000); // 2-minute timeout
+      const res = await API.chatSendStream(sessionId, msg, activeStep, controller.signal);
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let accumulated = "";
       let lastFlush = 0;
+      let gotFirstChunk = false;
 
       function flush(text) {
         setHistory((prev) => {
@@ -269,6 +265,7 @@ export default function ChatBox({ sessionId, activeStep, refreshKey, autoMessage
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
+        if (!gotFirstChunk) gotFirstChunk = true;
         accumulated += decoder.decode(value, { stream: true });
         // Throttle UI updates to every 80ms to avoid excessive re-renders
         const now = Date.now();
@@ -277,14 +274,32 @@ export default function ChatBox({ sessionId, activeStep, refreshKey, autoMessage
           flush(accumulated);
         }
       }
+      clearTimeout(timeoutId);
       // Final flush to ensure all text is shown
-      flush(accumulated);
+      if (accumulated) {
+        flush(accumulated);
+      } else {
+        // Empty response — remove the placeholder
+        setHistory((prev) => prev.slice(0, -1));
+        setErr("AI returned an empty response. Please try again.");
+      }
     } catch (e) {
       console.error(e);
-      setErr("Send failed. Check backend logs / Network tab.");
+      if (e.name === "AbortError") {
+        setErr("Response timed out. The AI model may be loading — please try again in a moment.");
+      } else {
+        setErr("Send failed — please try again. If the problem persists, reload the page.");
+      }
       // Put text back in box if it was typed manually
       if (!forcedText) setInput(msg);
+      // Remove the empty assistant placeholder on error
+      setHistory((prev) => {
+        const last = prev[prev.length - 1];
+        if (last && last.role === "assistant" && !last.content) return prev.slice(0, -1);
+        return prev;
+      });
     } finally {
+      sendingRef.current = false;
       setSending(false);
     }
   }

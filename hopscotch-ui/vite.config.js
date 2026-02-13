@@ -6,5 +6,8 @@ export default defineConfig({
   plugins: [react()],
   server: {
     allowedHosts: [".trycloudflare.com", "hopscotchai.us"],
+    hmr: {
+      overlay: false,
+    },
   },
 })

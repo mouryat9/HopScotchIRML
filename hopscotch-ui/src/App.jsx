@@ -6,6 +6,8 @@ import SplitPanelLayout from "./SplitPanelLayout";
 import { useAuth } from "./AuthContext";
 import { useTheme } from "./ThemeContext";
 import LoginPage from "./LoginPage";
+import TeacherDashboard from "./TeacherDashboard";
+import SessionHistoryPanel from "./SessionHistoryPanel";
 
 /* Small local UI helpers */
 const Btn = ({ className = "", ...p }) => (
@@ -114,13 +116,16 @@ function StudentApp() {
   const [status, setStatus] = useState("");
   const [chatRefreshKey, setChatRefreshKey] = useState(0);
   const [autoMessage, setAutoMessage] = useState(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
     (async () => {
       setLoading(true);
       try {
         // Try to resume an existing session first
         const resumed = await API.resumeSession();
+        if (cancelled) return;
         if (resumed.found && resumed.session_id) {
           setSessionId(resumed.session_id);
           setActiveStep(resumed.active_step || 1);
@@ -128,16 +133,19 @@ function StudentApp() {
         } else {
           // No existing session — create a fresh one
           const { session_id } = await API.createSession();
+          if (cancelled) return;
           setSessionId(session_id);
           setCompletedSteps([]);
         }
       } catch (e) {
+        if (cancelled) return;
         console.error(e);
         setStatus("Failed to start session. Check backend.");
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     })();
+    return () => { cancelled = true; };
   }, []);
 
   function handleStepChange(step) {
@@ -152,13 +160,30 @@ function StudentApp() {
     try {
       const { session_id } = await API.createSession();
       setSessionId(session_id);
+      setActiveStep(1);
+      setCompletedSteps([]);
+      setChatRefreshKey((k) => k + 1);
+      setAutoMessage(null);
       setStatus("Started a fresh session.");
     } catch (e) {
-      console.error(e);
-      setStatus("Failed to reset session.");
+      console.error("resetSession error:", e);
+      if (e.message?.includes("401")) {
+        setStatus("Session expired. Please sign out and log back in.");
+      } else {
+        setStatus(`Failed to reset session: ${e.message}`);
+      }
     } finally {
       setLoading(false);
     }
+  }
+
+  function loadSession(session) {
+    setSessionId(session.session_id);
+    setActiveStep(session.active_step || 1);
+    setCompletedSteps(session.completed_steps || []);
+    setChatRefreshKey((k) => k + 1);
+    setAutoMessage(null);
+    setStatus("");
   }
 
   async function handleDownloadPDF() {
@@ -181,6 +206,17 @@ function StudentApp() {
             alt="Hopscotch 4 All"
             className="hop-logo"
           />
+          <button
+            className="session-history-btn"
+            onClick={() => setHistoryOpen(true)}
+            title="Session History"
+            aria-label="Open session history"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10" />
+              <polyline points="12 6 12 12 16 14" />
+            </svg>
+          </button>
         </div>
         <div className="hop-header__right">
           {user && (
@@ -223,6 +259,14 @@ function StudentApp() {
           status={status}
         />
       </div>
+
+      <SessionHistoryPanel
+        isOpen={historyOpen}
+        onClose={() => setHistoryOpen(false)}
+        currentSessionId={sessionId}
+        onSelectSession={loadSession}
+        onNewSession={resetSession}
+      />
     </div>
   );
 }
@@ -244,5 +288,6 @@ export default function App() {
   }
 
   if (!user) return <LoginPage />;
+  if (user.role === "teacher") return <TeacherDashboard />;
   return <StudentApp />;
 }

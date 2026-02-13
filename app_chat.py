@@ -34,12 +34,24 @@ from pydantic import BaseModel, Field
 from jinja2 import Template
 from weasyprint import HTML
 
-from auth import hash_password, verify_password, create_access_token, get_current_user
+import os
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
+from auth import (
+    hash_password, verify_password, create_access_token, get_current_user,
+    create_password_reset_token, decode_token,
+)
 from database import (
-    ensure_indexes, find_user_by_email, create_user,
+    ensure_indexes, find_user_by_email, find_user_by_username,
+    create_user, create_classroom_student, update_user_password,
     find_session, create_session_doc, update_session,
     get_sessions_for_user,
     get_latest_session_for_user,
+    get_session_summaries_for_user,
+    create_class_doc, find_class_by_code, get_classes_for_teacher,
+    get_students_in_class, get_all_student_sessions_for_teacher,
 )
 
 # -------------------------------------------------
@@ -48,6 +60,16 @@ from database import (
 ROOT = Path(__file__).parent
 PATHS_PATH = ROOT / "server" / "config" / "paths" / "research_paths.json"
 TEMPLATE_DIR = ROOT / "server" / "templates"
+
+# -------------------------------------------------
+# Email / SMTP configuration (password reset)
+# -------------------------------------------------
+SMTP_HOST = os.environ.get("HOPSCOTCH_SMTP_HOST", "smtp.gmail.com")
+SMTP_PORT = int(os.environ.get("HOPSCOTCH_SMTP_PORT", "587"))
+SMTP_USER = os.environ.get("HOPSCOTCH_SMTP_USER", "")
+SMTP_PASS = os.environ.get("HOPSCOTCH_SMTP_PASS", "")
+SMTP_FROM = os.environ.get("HOPSCOTCH_SMTP_FROM", "") or SMTP_USER
+FRONTEND_URL = os.environ.get("HOPSCOTCH_FRONTEND_URL", "https://hopscotchai.us")
 
 DOCS_DIR = ROOT / "server" / "resources"
 INDEX_DIR = ROOT / "server" / "index"
@@ -445,6 +467,24 @@ def _startup():
     ensure_indexes()
     _build_index()
     load_paths_config()
+    # Pre-warm the LLM so the first chat request doesn't cold-start
+    _warm_ollama_model()
+
+
+def _warm_ollama_model():
+    """Send a tiny request to Ollama to pre-load the model into memory."""
+    try:
+        logger.info("Pre-warming Ollama model %s ...", LLM_MODEL)
+        resp = requests.post(OLLAMA_URL, json={
+            "model": LLM_MODEL,
+            "messages": [{"role": "user", "content": "hi"}],
+            "stream": False,
+            "options": {"num_predict": 1},
+        }, timeout=300)
+        resp.raise_for_status()
+        logger.info("Ollama model %s is warm and ready.", LLM_MODEL)
+    except Exception as e:
+        logger.warning("Failed to pre-warm Ollama model: %s", e)
 
 
 # ============================================================
@@ -621,7 +661,8 @@ class LoginReq(BaseModel):
 
 class AuthResp(BaseModel):
     token: str
-    email: str
+    email: Optional[str] = None
+    username: Optional[str] = None
     name: str
     role: str
 
@@ -649,7 +690,220 @@ def login(req: LoginReq):
 
 @app.get("/auth/me")
 def get_me(user: dict = Depends(get_current_user)):
-    return {"email": user["email"], "name": user["name"], "role": user["role"]}
+    return {
+        "email": user.get("email"),
+        "username": user.get("username"),
+        "name": user["name"],
+        "role": user["role"],
+    }
+
+
+# ---------- Password reset ----------
+
+class ForgotPasswordReq(BaseModel):
+    email: str
+
+class ResetPasswordReq(BaseModel):
+    token: str
+    new_password: str
+
+
+def _send_reset_email(to_email: str, reset_token: str):
+    """Send a password-reset link via SMTP. Fails silently to avoid leaking user existence."""
+    if not SMTP_USER or not SMTP_PASS:
+        logger.warning("SMTP not configured — cannot send reset email")
+        return
+
+    reset_link = f"{FRONTEND_URL}?reset_token={reset_token}"
+
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = "Hopscotch - Reset Your Password"
+    msg["From"] = SMTP_FROM
+    msg["To"] = to_email
+
+    text_body = (
+        f"You requested a password reset for your Hopscotch account.\n\n"
+        f"Click this link to set a new password (valid for 30 minutes):\n"
+        f"{reset_link}\n\n"
+        f"If you did not request this, you can safely ignore this email."
+    )
+
+    html_body = f"""\
+<div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
+    <h2 style="color: #2B5EA7;">Hopscotch Password Reset</h2>
+    <p>You requested a password reset for your Hopscotch account.</p>
+    <p>
+        <a href="{reset_link}"
+           style="display: inline-block; padding: 12px 24px; background: #2B5EA7;
+                  color: white; text-decoration: none; border-radius: 8px; font-weight: 600;">
+            Reset Password
+        </a>
+    </p>
+    <p style="font-size: 0.85rem; color: #666;">
+        This link is valid for 30 minutes. If you did not request this, ignore this email.
+    </p>
+</div>"""
+
+    msg.attach(MIMEText(text_body, "plain"))
+    msg.attach(MIMEText(html_body, "html"))
+
+    try:
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
+            server.starttls()
+            server.login(SMTP_USER, SMTP_PASS)
+            server.sendmail(SMTP_FROM, to_email, msg.as_string())
+        logger.info(f"Reset email sent to {to_email}")
+    except Exception as e:
+        logger.error(f"Failed to send reset email: {e}")
+
+
+@app.post("/auth/forgot-password")
+def forgot_password(req: ForgotPasswordReq):
+    """Send a password-reset email. Always returns success to avoid leaking user existence."""
+    user = find_user_by_email(req.email)
+    if user:
+        token = create_password_reset_token(req.email)
+        _send_reset_email(req.email, token)
+    return {"message": "If an account with that email exists, a reset link has been sent."}
+
+
+@app.post("/auth/reset-password")
+def reset_password(req: ResetPasswordReq):
+    """Verify the reset token and update the user's password."""
+    payload = decode_token(req.token)
+
+    if payload.get("purpose") != "password_reset":
+        raise HTTPException(status_code=400, detail="Invalid reset token")
+
+    email = payload.get("sub")
+    if not email:
+        raise HTTPException(status_code=400, detail="Invalid reset token")
+
+    user = find_user_by_email(email)
+    if not user:
+        raise HTTPException(status_code=400, detail="Invalid reset token")
+
+    if len(req.new_password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+
+    new_hash = hash_password(req.new_password)
+    update_user_password(email, new_hash)
+
+    return {"message": "Password updated successfully. You can now log in."}
+
+
+# ---------- Classroom login ----------
+
+class ClassroomLoginReq(BaseModel):
+    username: str
+    password: str
+
+
+@app.post("/auth/classroom-login", response_model=AuthResp)
+def classroom_login(req: ClassroomLoginReq):
+    """Login for classroom (username-based) students."""
+    user = find_user_by_username(req.username)
+    if not user or user.get("role") != "classroom_student":
+        raise HTTPException(status_code=401, detail="Invalid username or password")
+    if not verify_password(req.password, user["password_hash"]):
+        raise HTTPException(status_code=401, detail="Invalid username or password")
+    token = create_access_token({"sub": req.username, "sub_type": "username"})
+    return AuthResp(
+        token=token,
+        username=req.username,
+        name=user["name"],
+        role=user["role"],
+    )
+
+
+# ============================================================
+# Teacher endpoints
+# ============================================================
+
+class CreateClassReq(BaseModel):
+    class_name: str
+    student_count: int
+    password: str
+
+
+@app.post("/teacher/create-class")
+def create_class_endpoint(req: CreateClassReq, user: dict = Depends(get_current_user)):
+    if user.get("role") != "teacher":
+        raise HTTPException(status_code=403, detail="Only teachers can create classes")
+    if not (1 <= req.student_count <= 100):
+        raise HTTPException(status_code=400, detail="Student count must be between 1 and 100")
+    if len(req.password) < 4:
+        raise HTTPException(status_code=400, detail="Password must be at least 4 characters")
+
+    # Generate class_code from class_name
+    raw = re.sub(r'[^a-z0-9]', '', req.class_name.lower().replace(' ', ''))
+    class_code = raw[:20] or "class"
+
+    # Ensure uniqueness
+    base_code = class_code
+    counter = 1
+    while find_class_by_code(class_code):
+        class_code = f"{base_code}{counter}"
+        counter += 1
+
+    pw_hash = hash_password(req.password)
+    teacher_id = str(user["_id"])
+
+    class_id = create_class_doc(teacher_id, req.class_name, class_code, pw_hash, req.password, req.student_count)
+
+    # Create student accounts
+    students = []
+    for i in range(1, req.student_count + 1):
+        username = f"{class_code}_{i:02d}"
+        student_name = f"Student {i:02d}"
+        create_classroom_student(username, pw_hash, student_name, class_id)
+        students.append({"username": username, "name": student_name})
+
+    return {
+        "class_id": class_id,
+        "class_code": class_code,
+        "class_name": req.class_name,
+        "password": req.password,
+        "students": students,
+    }
+
+
+@app.get("/teacher/classes")
+def list_teacher_classes(user: dict = Depends(get_current_user)):
+    if user.get("role") != "teacher":
+        raise HTTPException(status_code=403, detail="Only teachers can view classes")
+    teacher_id = str(user["_id"])
+    classes = get_classes_for_teacher(teacher_id)
+    result = []
+    for cls in classes:
+        students = get_students_in_class(str(cls["_id"]))
+        result.append({
+            "class_id": str(cls["_id"]),
+            "class_name": cls["class_name"],
+            "class_code": cls["class_code"],
+            "password": cls.get("password", ""),
+            "student_count": cls["student_count"],
+            "created_at": cls.get("created_at", ""),
+            "students": [
+                {"username": s.get("username"), "name": s.get("name")}
+                for s in students
+            ],
+        })
+    return {"classes": result}
+
+
+@app.get("/teacher/student-sessions")
+def get_teacher_student_sessions(user: dict = Depends(get_current_user)):
+    """Return all sessions for all students in the teacher's classes."""
+    if user.get("role") != "teacher":
+        raise HTTPException(status_code=403, detail="Only teachers can view student sessions")
+    teacher_id = str(user["_id"])
+    sessions = get_all_student_sessions_for_teacher(teacher_id)
+    for s in sessions:
+        s["_id"] = str(s["_id"])
+        if "user" in s and "_id" in s["user"]:
+            s["user"]["_id"] = str(s["user"]["_id"])
+    return {"sessions": sessions}
 
 
 # ============================================================
@@ -719,6 +973,41 @@ def resume_session(user: dict = Depends(get_current_user)):
         found=True,
         completed_steps=_compute_completed_steps_from_doc(doc),
     )
+
+
+class SessionSummary(BaseModel):
+    session_id: str
+    created_at: str = ""
+    active_step: int = 1
+    completed_steps: List[int] = []
+    topic: Optional[str] = None
+    resolved_path: Optional[str] = None
+    worldview_label: Optional[str] = None
+
+
+class SessionListResponse(BaseModel):
+    sessions: List[SessionSummary]
+
+
+@app.get("/session/list", response_model=SessionListResponse)
+def list_sessions(user: dict = Depends(get_current_user)):
+    """Return all sessions for the current user with summary info."""
+    user_id = str(user["_id"])
+    docs = get_session_summaries_for_user(user_id)
+    summaries = []
+    for doc in docs:
+        step_notes = doc.get("step_notes") or {}
+        topic = (step_notes.get("2") or {}).get("topic")
+        summaries.append(SessionSummary(
+            session_id=doc["session_id"],
+            created_at=doc.get("created_at", ""),
+            active_step=doc.get("active_step", 1),
+            completed_steps=_compute_completed_steps_from_doc(doc),
+            topic=topic,
+            resolved_path=doc.get("resolved_path"),
+            worldview_label=doc.get("worldview_label"),
+        ))
+    return SessionListResponse(sessions=summaries)
 
 
 class UpdateStepReq(BaseModel):
@@ -1076,31 +1365,35 @@ def chat_send_stream(req: ChatSendReq = Body(...), user: dict = Depends(get_curr
     def event_stream():
         assistant_text_parts: List[str] = []
         try:
-            with requests.post(OLLAMA_URL, json=payload, stream=True) as resp:
-                resp.raise_for_status()
-                for line in resp.iter_lines(decode_unicode=True):
-                    if not line:
-                        continue
-                    try:
-                        data = json.loads(line)
-                    except Exception:
-                        continue
+            try:
+                with requests.post(OLLAMA_URL, json=payload, stream=True, timeout=300) as resp:
+                    resp.raise_for_status()
+                    for line in resp.iter_lines(decode_unicode=True):
+                        if not line:
+                            continue
+                        try:
+                            data = json.loads(line)
+                        except Exception:
+                            continue
 
-                    delta = data.get("message", {}).get("content", "")
-                    if not delta:
-                        continue
+                        delta = data.get("message", {}).get("content", "")
+                        if not delta:
+                            continue
 
-                    assistant_text_parts.append(delta)
-                    yield delta
-        except Exception as e:
-            logger.exception("LLM stream failed: %s", e)
-            yield "\n[Error streaming from model]\n"
-
-        # When streaming is done, persist the full assistant message
-        full_text = "".join(assistant_text_parts).strip()
-        if full_text:
-            history.append(ChatTurn(role="assistant", content=full_text, step=req.active_step))
-        _persist_session(sess)
+                        assistant_text_parts.append(delta)
+                        yield delta
+            except GeneratorExit:
+                logger.info("Client disconnected during stream for session %s", session_id)
+                return  # finally block still runs
+            except Exception as e:
+                logger.exception("LLM stream failed: %s", e)
+                yield "\n[Error streaming from model]\n"
+        finally:
+            # Always persist, even if client disconnected mid-stream
+            full_text = "".join(assistant_text_parts).strip()
+            if full_text:
+                history.append(ChatTurn(role="assistant", content=full_text, step=req.active_step))
+            _persist_session(sess)
 
     return StreamingResponse(event_stream(), media_type="text/plain")
 
@@ -1182,7 +1475,7 @@ def export_research_design_pdf(
     # Base template data (common to all templates)
     template_data = {
         "name": current_user.get("name", "Student"),
-        "email": current_user.get("email", ""),
+        "email": current_user.get("email") or current_user.get("username") or "",
         "date": datetime.now().strftime("%B %d, %Y"),
         "step1": worldview.title(),
         "step2_topic": step2_topic,

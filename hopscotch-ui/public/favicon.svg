@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 46">
+  <!-- Hopscotch 2-1-2-1-2-1 horizontal pattern matching app step colors -->
+
+  <!-- Column 1: Steps 1 (top), 2 (bottom) -->
+  <rect x="0"  y="0"  width="18" height="22" rx="6" fill="#2B5EA7"/>
+  <rect x="0"  y="24" width="18" height="22" rx="6" fill="#E8618C"/>
+
+  <!-- Column 2: Step 3 (centered) -->
+  <rect x="22" y="12" width="18" height="22" rx="6" fill="#D94040"/>
+
+  <!-- Column 3: Steps 4 (top), 5 (bottom) -->
+  <rect x="44" y="0"  width="18" height="22" rx="6" fill="#1A8A7D"/>
+  <rect x="44" y="24" width="18" height="22" rx="6" fill="#B0A47A"/>
+
+  <!-- Column 4: Step 6 (centered) -->
+  <rect x="66" y="12" width="18" height="22" rx="6" fill="#00AEEF"/>
+
+  <!-- Column 5: Steps 7 (top), 8 (bottom) -->
+  <rect x="88" y="0"  width="18" height="22" rx="6" fill="#F0B429"/>
+  <rect x="88" y="24" width="18" height="22" rx="6" fill="#F5922A"/>
+
+  <!-- Column 6: Step 9 (half-circle cap) -->
+  <path d="M110,7 A16,16 0 0,1 110,39 Z" fill="#7B8794"/>
+</svg>
