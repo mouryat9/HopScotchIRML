@@ -76,31 +76,64 @@ const HOPSCOTCH_COLUMNS = [
 
 /* ----- Animated step diagram ----- */
 function StepDiagram({ activeStep, completedSteps = [], onStepChange }) {
+  const [collapsed, setCollapsed] = useState(false);
+
   return (
-    <div className="hop-diagram">
-      {HOPSCOTCH_COLUMNS.map((col, ci) => (
-        <div className={`hop-diagram__col hop-diagram__col--${col.type}`} key={ci}>
-          {col.steps.map((stepNum) => {
-            const card = STEP_CARDS[stepNum - 1];
-            const isActive = activeStep === stepNum;
-            const isCompleted = completedSteps.includes(stepNum);
-            return (
-              <button
-                key={stepNum}
-                className={`hop-step-card hop-step-card--img${isActive ? " hop-step-card--active" : ""}${isCompleted ? " hop-step-card--completed" : ""}`}
-                style={{
-                  "--card-color": card.color,
-                  animationDelay: `${ci * 0.07}s`,
-                }}
-                onClick={() => onStepChange(stepNum)}
-                aria-label={`Step ${stepNum}: ${card.label}`}
-              >
-                <img src={`/Step${stepNum}.png`} alt={`Step ${stepNum}: ${card.label}`} className="hop-step-card__img" />
-              </button>
-            );
-          })}
-        </div>
-      ))}
+    <div className={`hop-diagram-wrap${collapsed ? " hop-diagram-wrap--collapsed" : ""}`}>
+      {/* Collapsed ribbon: colored dots */}
+      <div className="hop-ribbon" onClick={() => setCollapsed(false)} role="button" tabIndex={0} aria-label="Expand step diagram">
+        {STEP_CARDS.map((card) => {
+          const isActive = activeStep === card.num;
+          const isCompleted = completedSteps.includes(card.num);
+          return (
+            <button
+              key={card.num}
+              className={`hop-ribbon__dot${isActive ? " hop-ribbon__dot--active" : ""}${isCompleted ? " hop-ribbon__dot--completed" : ""}`}
+              style={{ "--dot-color": card.color }}
+              onClick={(e) => { e.stopPropagation(); onStepChange(card.num); }}
+              aria-label={`Step ${card.num}: ${card.label}`}
+              title={card.label}
+            >
+              {isCompleted ? "\u2713" : card.num}
+            </button>
+          );
+        })}
+        <span className="hop-ribbon__hint">Click to expand</span>
+      </div>
+
+      {/* Full diagram */}
+      <div className="hop-diagram">
+        {HOPSCOTCH_COLUMNS.map((col, ci) => (
+          <div className={`hop-diagram__col hop-diagram__col--${col.type}`} key={ci}>
+            {col.steps.map((stepNum) => {
+              const card = STEP_CARDS[stepNum - 1];
+              const isActive = activeStep === stepNum;
+              const isCompleted = completedSteps.includes(stepNum);
+              return (
+                <button
+                  key={stepNum}
+                  className={`hop-step-card hop-step-card--img${isActive ? " hop-step-card--active" : ""}${isCompleted ? " hop-step-card--completed" : ""}`}
+                  style={{
+                    "--card-color": card.color,
+                    animationDelay: `${ci * 0.07}s`,
+                  }}
+                  onClick={() => onStepChange(stepNum)}
+                  aria-label={`Step ${stepNum}: ${card.label}`}
+                >
+                  <img src={`/Step${stepNum}.png`} alt={`Step ${stepNum}: ${card.label}`} className="hop-step-card__img" />
+                </button>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+
+      {/* Toggle button */}
+      <button className="hop-diagram__toggle" onClick={() => setCollapsed(!collapsed)} aria-label={collapsed ? "Expand diagram" : "Collapse diagram"}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          {collapsed ? <polyline points="6 9 12 15 18 9"/> : <polyline points="18 15 12 9 6 15"/>}
+        </svg>
+      </button>
     </div>
   );
 }
