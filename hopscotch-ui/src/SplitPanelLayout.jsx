@@ -1,4 +1,4 @@
-// src/SplitPanelLayout.jsx — Drawer layout: workspace center + floating command bar
+// src/SplitPanelLayout.jsx — Pinnable sidebar with Lesson/Assistant tabs
 import { useState, useEffect } from "react";
 import StepResourcePanel from "./StepResourcePanel";
 import StepDetails from "./StepDetails";
@@ -16,63 +16,85 @@ export default function SplitPanelLayout({
   loading,
   status,
 }) {
-  const [leftOpen, setLeftOpen] = useState(false);
-  const [rightOpen, setRightOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [pinned, setPinned] = useState(false);
+  const [activeTab, setActiveTab] = useState("assistant"); // "lesson" | "assistant"
 
-  // Auto-open chat drawer when autoMessage arrives
+  // Auto-open sidebar on autoMessage
   useEffect(() => {
-    if (autoMessage) setRightOpen(true);
+    if (autoMessage) {
+      setSidebarOpen(true);
+      setActiveTab("assistant");
+    }
   }, [autoMessage]);
 
-  const anyOpen = leftOpen || rightOpen;
+  const isOpen = sidebarOpen || pinned;
 
   return (
-    <div className="drawer-layout">
-      {/* Backdrop overlay — always in DOM, toggled via CSS */}
-      <div
-        className={`drawer-overlay${anyOpen ? " drawer-overlay--visible" : ""}`}
-        onClick={() => { setLeftOpen(false); setRightOpen(false); }}
-      />
+    <div className={`sidebar-layout${pinned ? " sidebar-layout--pinned" : ""}`}>
+      {/* Workspace */}
+      <div className="sidebar-layout__main">
+        <StepDetails
+          step={activeStep}
+          sessionId={sessionId}
+          onChatRefresh={onChatRefresh}
+          onAutoSend={onAutoSend}
+          onCompletedStepsChange={onCompletedStepsChange}
+        />
+      </div>
 
-      {/* Left drawer: Interactive Lesson */}
-      <div className={`drawer drawer--left${leftOpen ? " drawer--open" : ""}`}>
-        <div className="drawer__accent drawer__accent--navy" />
-        <div className="drawer__inner">
-          <div className="drawer__header drawer__header--navy">
-            <div className="drawer__header-content">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      {/* Sidebar */}
+      <aside className={`sidebar${isOpen ? " sidebar--open" : ""}`}>
+        <div className="sidebar__header">
+          {/* Tab buttons */}
+          <div className="sidebar__tabs">
+            <button
+              className={`sidebar__tab${activeTab === "lesson" ? " sidebar__tab--active sidebar__tab--navy" : ""}`}
+              onClick={() => { setActiveTab("lesson"); setSidebarOpen(true); }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
                 <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
               </svg>
-              <span className="drawer__title">Interactive Lesson</span>
-            </div>
-            <button className="drawer__close" onClick={() => setLeftOpen(false)} aria-label="Close lesson panel">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+              Lesson
             </button>
-          </div>
-          <div className="drawer__content">
-            <StepResourcePanel activeStep={activeStep} />
-          </div>
-        </div>
-      </div>
-
-      {/* Right drawer: Research Assistant */}
-      <div className={`drawer drawer--right${rightOpen ? " drawer--open" : ""}`}>
-        <div className="drawer__accent drawer__accent--green" />
-        <div className="drawer__inner">
-          <div className="drawer__header drawer__header--green">
-            <div className="drawer__header-content">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <button
+              className={`sidebar__tab${activeTab === "assistant" ? " sidebar__tab--active sidebar__tab--green" : ""}`}
+              onClick={() => { setActiveTab("assistant"); setSidebarOpen(true); }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
               </svg>
-              <span className="drawer__title">Research Assistant</span>
-            </div>
-            <button className="drawer__close" onClick={() => setRightOpen(false)} aria-label="Close assistant panel">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+              Assistant
             </button>
           </div>
-          <div className="drawer__content">
-            {loading && !sessionId ? (
+
+          {/* Pin + close buttons */}
+          <div className="sidebar__actions">
+            <button
+              className={`sidebar__pin${pinned ? " sidebar__pin--active" : ""}`}
+              onClick={() => setPinned(!pinned)}
+              aria-label={pinned ? "Unpin sidebar" : "Pin sidebar open"}
+              title={pinned ? "Unpin" : "Pin open"}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 17v5M9 3h6l-1 7h3l-5 7-1-7H8l1-7z" />
+              </svg>
+            </button>
+            {!pinned && (
+              <button className="sidebar__close" onClick={() => setSidebarOpen(false)} aria-label="Close sidebar">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Tab content */}
+        <div className="sidebar__content">
+          {activeTab === "lesson" ? (
+            <StepResourcePanel activeStep={activeStep} />
+          ) : (
+            loading && !sessionId ? (
               <div className="badge badge--neutral">Starting session...</div>
             ) : (
               <>
@@ -87,53 +109,20 @@ export default function SplitPanelLayout({
                   <div className="badge" style={{ marginTop: 8 }}>{status}</div>
                 )}
               </>
-            )}
-          </div>
+            )
+          )}
         </div>
-      </div>
+      </aside>
 
-      {/* Floating command bar */}
-      <div className={`cmd-bar${anyOpen ? " cmd-bar--drawer-open" : ""}`}>
-        <button
-          className={`cmd-bar__btn cmd-bar__btn--lesson${leftOpen ? " cmd-bar__btn--active" : ""}`}
-          onClick={() => setLeftOpen(!leftOpen)}
-          aria-label="Toggle lesson panel"
-        >
-          <span className="cmd-bar__icon">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
-              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
-            </svg>
-          </span>
-          <span className="cmd-bar__label">Lesson</span>
+      {/* Toggle button (visible when sidebar is closed) */}
+      {!isOpen && (
+        <button className="sidebar__toggle" onClick={() => setSidebarOpen(true)} aria-label="Open sidebar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2"/>
+            <path d="M15 3v18"/>
+          </svg>
         </button>
-
-        <div className="cmd-bar__divider" />
-
-        <button
-          className={`cmd-bar__btn cmd-bar__btn--assistant${rightOpen ? " cmd-bar__btn--active" : ""}`}
-          onClick={() => setRightOpen(!rightOpen)}
-          aria-label="Toggle assistant panel"
-        >
-          <span className="cmd-bar__icon">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-            </svg>
-          </span>
-          <span className="cmd-bar__label">Assistant</span>
-        </button>
-      </div>
-
-      {/* Main: Workspace (always visible) */}
-      <div className="drawer-layout__main">
-        <StepDetails
-          step={activeStep}
-          sessionId={sessionId}
-          onChatRefresh={onChatRefresh}
-          onAutoSend={onAutoSend}
-          onCompletedStepsChange={onCompletedStepsChange}
-        />
-      </div>
+      )}
     </div>
   );
 }
