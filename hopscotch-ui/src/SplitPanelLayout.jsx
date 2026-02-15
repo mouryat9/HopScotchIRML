@@ -1,6 +1,5 @@
-// src/SplitPanelLayout.jsx
-import { useState, useEffect, useRef, useCallback } from "react";
-import TabbedPanel from "./TabbedPanel";
+// src/SplitPanelLayout.jsx — Drawer layout: workspace center + floating command bar
+import { useState, useEffect } from "react";
 import StepResourcePanel from "./StepResourcePanel";
 import StepDetails from "./StepDetails";
 import ChatBox from "./ChatBox";
@@ -17,139 +16,123 @@ export default function SplitPanelLayout({
   loading,
   status,
 }) {
-  const [leftTab, setLeftTab] = useState("resource");
-  const [rightTab, setRightTab] = useState("details");
-  const [splitPercent, setSplitPercent] = useState(50);
-  const [isDragging, setIsDragging] = useState(false);
-  const containerRef = useRef(null);
+  const [leftOpen, setLeftOpen] = useState(false);
+  const [rightOpen, setRightOpen] = useState(false);
 
-  // --- Tab swap: ensure no duplicate tabs ---
-  const handleLeftTabChange = useCallback((newTab) => {
-    if (newTab === rightTab) setRightTab(leftTab);
-    setLeftTab(newTab);
-  }, [leftTab, rightTab]);
-
-  const handleRightTabChange = useCallback((newTab) => {
-    if (newTab === leftTab) setLeftTab(rightTab);
-    setRightTab(newTab);
-  }, [leftTab, rightTab]);
-
-  // --- Auto-switch to Chat when autoMessage arrives ---
+  // Auto-open chat drawer when autoMessage arrives
   useEffect(() => {
-    if (!autoMessage) return;
-    if (leftTab !== "chat" && rightTab !== "chat") {
-      // Open chat on the right, move right's current tab to left
-      setLeftTab(rightTab);
-      setRightTab("chat");
-    }
-  }, [autoMessage]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // --- Drag resizer (mouse + touch) ---
-  const onDragStart = useCallback((e) => {
-    e.preventDefault();
-    setIsDragging(true);
-  }, []);
-
-  const onTouchStart = useCallback((e) => {
-    e.preventDefault();
-    setIsDragging(true);
-  }, []);
-
-  useEffect(() => {
-    if (!isDragging) return;
-
-    function calcPercent(clientX) {
-      const rect = containerRef.current?.getBoundingClientRect();
-      if (!rect) return;
-      const pct = ((clientX - rect.left) / rect.width) * 100;
-      setSplitPercent(Math.max(25, Math.min(75, pct)));
-    }
-
-    function onMouseMove(e) { calcPercent(e.clientX); }
-    function onTouchMove(e) { calcPercent(e.touches[0].clientX); }
-    function onEnd() { setIsDragging(false); }
-
-    document.addEventListener("mousemove", onMouseMove);
-    document.addEventListener("mouseup", onEnd);
-    document.addEventListener("touchmove", onTouchMove);
-    document.addEventListener("touchend", onEnd);
-    return () => {
-      document.removeEventListener("mousemove", onMouseMove);
-      document.removeEventListener("mouseup", onEnd);
-      document.removeEventListener("touchmove", onTouchMove);
-      document.removeEventListener("touchend", onEnd);
-    };
-  }, [isDragging]);
-
-  // --- Render content for a tab ---
-  // Each component renders only once, in whichever panel has it active.
-  function renderPanelContent(activeTab, side) {
-    const showResource = (side === "left" && leftTab === "resource") || (side === "right" && rightTab === "resource");
-    const showDetails = (side === "left" && leftTab === "details") || (side === "right" && rightTab === "details");
-    const showChat = (side === "left" && leftTab === "chat") || (side === "right" && rightTab === "chat");
-
-    return (
-      <>
-        {showResource && (
-          <StepResourcePanel activeStep={activeStep} />
-        )}
-        {showDetails && (
-          <StepDetails
-            step={activeStep}
-            sessionId={sessionId}
-            onChatRefresh={onChatRefresh}
-            onAutoSend={onAutoSend}
-            onCompletedStepsChange={onCompletedStepsChange}
-          />
-        )}
-        {showChat && (
-          loading && !sessionId ? (
-            <div className="badge badge--neutral">Starting session...</div>
-          ) : (
-            <>
-              <ChatBox
-                sessionId={sessionId}
-                activeStep={activeStep}
-                refreshKey={chatRefreshKey}
-                autoMessage={autoMessage}
-                onAutoMessageSent={onAutoMessageSent}
-              />
-              {status && (
-                <div className="badge" style={{ marginTop: 8 }}>{status}</div>
-              )}
-            </>
-          )
-        )}
-      </>
-    );
-  }
+    if (autoMessage) setRightOpen(true);
+  }, [autoMessage]);
 
   return (
-    <div
-      ref={containerRef}
-      className={`split-panel-layout${isDragging ? " split-panel-layout--dragging" : ""}`}
-    >
-      {/* Left panel */}
-      <div className="split-panel" style={{ width: `${splitPercent}%` }}>
-        <TabbedPanel activeTab={leftTab} onTabChange={handleLeftTabChange} variant="pill">
-          {renderPanelContent(leftTab, "left")}
-        </TabbedPanel>
+    <div className="drawer-layout">
+      {/* Backdrop overlay */}
+      {(leftOpen || rightOpen) && (
+        <div
+          className="drawer-overlay"
+          onClick={() => { setLeftOpen(false); setRightOpen(false); }}
+        />
+      )}
+
+      {/* Left drawer: Interactive Lesson */}
+      <div className={`drawer drawer--left${leftOpen ? " drawer--open" : ""}`}>
+        <div className="drawer__accent drawer__accent--navy" />
+        <div className="drawer__inner">
+          <div className="drawer__header drawer__header--navy">
+            <div className="drawer__header-content">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+              </svg>
+              <span className="drawer__title">Interactive Lesson</span>
+            </div>
+            <button className="drawer__close" onClick={() => setLeftOpen(false)} aria-label="Close lesson panel">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            </button>
+          </div>
+          <div className="drawer__content">
+            <StepResourcePanel activeStep={activeStep} />
+          </div>
+        </div>
       </div>
 
-      {/* Drag handle */}
-      <div
-        className={`split-panel__handle${isDragging ? " split-panel__handle--active" : ""}`}
-        onMouseDown={onDragStart}
-        onTouchStart={onTouchStart}
-        onDoubleClick={() => setSplitPercent(50)}
-        title="Drag to resize — double-click to reset"
-      />
+      {/* Right drawer: Research Assistant */}
+      <div className={`drawer drawer--right${rightOpen ? " drawer--open" : ""}`}>
+        <div className="drawer__accent drawer__accent--green" />
+        <div className="drawer__inner">
+          <div className="drawer__header drawer__header--green">
+            <div className="drawer__header-content">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+              </svg>
+              <span className="drawer__title">Research Assistant</span>
+            </div>
+            <button className="drawer__close" onClick={() => setRightOpen(false)} aria-label="Close assistant panel">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            </button>
+          </div>
+          <div className="drawer__content">
+            {loading && !sessionId ? (
+              <div className="badge badge--neutral">Starting session...</div>
+            ) : (
+              <>
+                <ChatBox
+                  sessionId={sessionId}
+                  activeStep={activeStep}
+                  refreshKey={chatRefreshKey}
+                  autoMessage={autoMessage}
+                  onAutoMessageSent={onAutoMessageSent}
+                />
+                {status && (
+                  <div className="badge" style={{ marginTop: 8 }}>{status}</div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      </div>
 
-      {/* Right panel */}
-      <div className="split-panel" style={{ width: `${100 - splitPercent}%` }}>
-        <TabbedPanel activeTab={rightTab} onTabChange={handleRightTabChange} variant="pill">
-          {renderPanelContent(rightTab, "right")}
-        </TabbedPanel>
+      {/* Floating command bar */}
+      <div className={`cmd-bar${leftOpen || rightOpen ? " cmd-bar--drawer-open" : ""}`}>
+        <button
+          className={`cmd-bar__btn cmd-bar__btn--lesson${leftOpen ? " cmd-bar__btn--active" : ""}`}
+          onClick={() => setLeftOpen(!leftOpen)}
+          aria-label="Toggle lesson panel"
+        >
+          <span className="cmd-bar__icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+            </svg>
+          </span>
+          <span className="cmd-bar__label">Lesson</span>
+        </button>
+
+        <div className="cmd-bar__divider" />
+
+        <button
+          className={`cmd-bar__btn cmd-bar__btn--assistant${rightOpen ? " cmd-bar__btn--active" : ""}`}
+          onClick={() => setRightOpen(!rightOpen)}
+          aria-label="Toggle assistant panel"
+        >
+          <span className="cmd-bar__icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            </svg>
+          </span>
+          <span className="cmd-bar__label">Assistant</span>
+        </button>
+      </div>
+
+      {/* Main: Workspace (always visible) */}
+      <div className="drawer-layout__main">
+        <StepDetails
+          step={activeStep}
+          sessionId={sessionId}
+          onChatRefresh={onChatRefresh}
+          onAutoSend={onAutoSend}
+          onCompletedStepsChange={onCompletedStepsChange}
+        />
       </div>
     </div>
   );
