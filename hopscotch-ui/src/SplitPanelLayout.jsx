@@ -24,15 +24,15 @@ export default function SplitPanelLayout({
     if (autoMessage) setRightOpen(true);
   }, [autoMessage]);
 
+  const anyOpen = leftOpen || rightOpen;
+
   return (
     <div className="drawer-layout">
-      {/* Backdrop overlay */}
-      {(leftOpen || rightOpen) && (
-        <div
-          className="drawer-overlay"
-          onClick={() => { setLeftOpen(false); setRightOpen(false); }}
-        />
-      )}
+      {/* Backdrop overlay — always in DOM, toggled via CSS */}
+      <div
+        className={`drawer-overlay${anyOpen ? " drawer-overlay--visible" : ""}`}
+        onClick={() => { setLeftOpen(false); setRightOpen(false); }}
+      />
 
       {/* Left drawer: Interactive Lesson */}
       <div className={`drawer drawer--left${leftOpen ? " drawer--open" : ""}`}>
@@ -93,7 +93,7 @@ export default function SplitPanelLayout({
       </div>
 
       {/* Floating command bar */}
-      <div className={`cmd-bar${leftOpen || rightOpen ? " cmd-bar--drawer-open" : ""}`}>
+      <div className={`cmd-bar${anyOpen ? " cmd-bar--drawer-open" : ""}`}>
         <button
           className={`cmd-bar__btn cmd-bar__btn--lesson${leftOpen ? " cmd-bar__btn--active" : ""}`}
           onClick={() => setLeftOpen(!leftOpen)}
