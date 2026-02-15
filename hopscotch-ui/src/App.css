@@ -449,7 +449,172 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* ========================================================
-   Hopscotch Diagram (animated interactive cards)
+   Floating Step Dock (macOS Dock-style)
+   ======================================================== */
+
+.hop-dock {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 6px;
+  max-width: 1100px;
+  margin: 4px auto 18px;
+  padding: 10px 16px 12px;
+  border-radius: var(--hop-radius-xl);
+  background: rgba(255, 255, 255, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow:
+    0 4px 20px rgba(0, 0, 0, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+.hop-dock__item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 4px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: var(--hop-radius-md);
+  flex: 1;
+  max-width: 110px;
+}
+
+.hop-dock__item:hover {
+  transform: scale(1.18) translateY(-6px);
+}
+
+.hop-dock__item:hover ~ .hop-dock__item,
+.hop-dock__item:has(+ .hop-dock__item:hover) {
+  transform: scale(1.06) translateY(-2px);
+}
+
+.hop-dock__icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  background: var(--card-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.10),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  transition: box-shadow 0.2s;
+}
+
+.hop-dock__item:hover .hop-dock__icon {
+  box-shadow:
+    0 4px 16px color-mix(in srgb, var(--card-color) 40%, transparent),
+    0 2px 8px rgba(0, 0, 0, 0.10),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+.hop-dock__img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: inherit;
+}
+
+.hop-dock__label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--hop-ink-secondary);
+  text-align: center;
+  line-height: 1.2;
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: color 0.15s;
+}
+
+.hop-dock__item:hover .hop-dock__label {
+  color: var(--hop-ink);
+  white-space: normal;
+  overflow: visible;
+}
+
+/* Active state: elevated + colored indicator dot below */
+.hop-dock__item--active {
+  transform: scale(1.12) translateY(-4px);
+}
+
+.hop-dock__item--active .hop-dock__icon {
+  box-shadow:
+    0 0 0 2.5px rgba(255, 255, 255, 0.9),
+    0 0 0 4.5px var(--card-color),
+    0 4px 16px color-mix(in srgb, var(--card-color) 35%, transparent);
+}
+
+.hop-dock__item--active::after {
+  content: "";
+  position: absolute;
+  bottom: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--card-color);
+}
+
+/* Completed check badge */
+.hop-dock__check {
+  position: absolute;
+  top: 2px;
+  right: 8px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--hop-green);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(109, 179, 63, 0.35);
+}
+
+/* Dark mode */
+:root[data-theme="dark"] .hop-dock {
+  background: rgba(30, 33, 40, 0.65);
+  border-color: rgba(255, 255, 255, 0.06);
+  box-shadow:
+    0 4px 20px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+:root[data-theme="dark"] .hop-dock__item--active .hop-dock__icon {
+  box-shadow:
+    0 0 0 2.5px rgba(255, 255, 255, 0.12),
+    0 0 0 4.5px var(--card-color),
+    0 4px 16px color-mix(in srgb, var(--card-color) 30%, transparent);
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+  .hop-dock__icon { width: 44px; height: 44px; border-radius: 10px; }
+  .hop-dock__label { font-size: 9px; }
+  .hop-dock { gap: 4px; }
+}
+
+@media (max-width: 600px) {
+  .hop-dock { overflow-x: auto; justify-content: flex-start; }
+  .hop-dock__icon { width: 40px; height: 40px; }
+  .hop-dock__item { min-width: 50px; }
+}
+
+/* ========================================================
+   Hopscotch Diagram — kept for reference / fallback
    ======================================================== */
 
 .hop-diagram {

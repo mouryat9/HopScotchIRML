@@ -77,30 +77,26 @@ const HOPSCOTCH_COLUMNS = [
 /* ----- Animated step diagram ----- */
 function StepDiagram({ activeStep, completedSteps = [], onStepChange }) {
   return (
-    <div className="hop-diagram">
-      {HOPSCOTCH_COLUMNS.map((col, ci) => (
-        <div className={`hop-diagram__col hop-diagram__col--${col.type}`} key={ci}>
-          {col.steps.map((stepNum) => {
-            const card = STEP_CARDS[stepNum - 1];
-            const isActive = activeStep === stepNum;
-            const isCompleted = completedSteps.includes(stepNum);
-            return (
-              <button
-                key={stepNum}
-                className={`hop-step-card hop-step-card--img${isActive ? " hop-step-card--active" : ""}${isCompleted ? " hop-step-card--completed" : ""}`}
-                style={{
-                  "--card-color": card.color,
-                  animationDelay: `${ci * 0.07}s`,
-                }}
-                onClick={() => onStepChange(stepNum)}
-                aria-label={`Step ${stepNum}: ${card.label}`}
-              >
-                <img src={`/Step${stepNum}.png`} alt={`Step ${stepNum}: ${card.label}`} className="hop-step-card__img" />
-              </button>
-            );
-          })}
-        </div>
-      ))}
+    <div className="hop-dock">
+      {STEP_CARDS.map((card) => {
+        const isActive = activeStep === card.num;
+        const isCompleted = completedSteps.includes(card.num);
+        return (
+          <button
+            key={card.num}
+            className={`hop-dock__item${isActive ? " hop-dock__item--active" : ""}${isCompleted ? " hop-dock__item--completed" : ""}`}
+            style={{ "--card-color": card.color }}
+            onClick={() => onStepChange(card.num)}
+            aria-label={`Step ${card.num}: ${card.label}`}
+          >
+            <span className="hop-dock__icon">
+              <img src={`/Step${card.num}.png`} alt="" className="hop-dock__img" />
+            </span>
+            <span className="hop-dock__label">{card.label}</span>
+            {isCompleted && <span className="hop-dock__check">{"\u2713"}</span>}
+          </button>
+        );
+      })}
     </div>
   );
 }
