@@ -26,7 +26,7 @@ export default function SplitPanelLayout({
 
   return (
     <div className="pin-layout">
-      {/* Left panel: Interactive Lesson */}
+      {/* Left panel: Resources */}
       <div className={`pin-panel pin-panel--left${leftOpen ? " pin-panel--open" : ""}`}>
         <div className="pin-panel__accent pin-panel__accent--navy" />
         <div className="pin-panel__inner">
@@ -36,9 +36,9 @@ export default function SplitPanelLayout({
                 <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
                 <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
               </svg>
-              <span className="pin-panel__title">Interactive Lesson</span>
+              <span className="pin-panel__title">Interactive Resources</span>
             </div>
-            <button className="pin-panel__close" onClick={() => setLeftOpen(false)} aria-label="Close lesson panel">
+            <button className="pin-panel__close" onClick={() => setLeftOpen(false)} aria-label="Close resources panel">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
             </button>
           </div>
@@ -100,7 +100,7 @@ export default function SplitPanelLayout({
         <button
           className={`cmd-bar__btn cmd-bar__btn--lesson${leftOpen ? " cmd-bar__btn--active" : ""}`}
           onClick={() => setLeftOpen(!leftOpen)}
-          aria-label="Toggle lesson panel"
+          aria-label="Toggle resources panel"
         >
           <span className="cmd-bar__icon">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -108,7 +108,7 @@ export default function SplitPanelLayout({
               <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
             </svg>
           </span>
-          <span className="cmd-bar__label">Lesson</span>
+          <span className="cmd-bar__label">Resources</span>
         </button>
 
         <div className="cmd-bar__divider" />

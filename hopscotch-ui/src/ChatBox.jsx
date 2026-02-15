@@ -149,10 +149,9 @@ function StepGroup({ group, isActive, streaming }) {
   }
 
   return (
-    <div className="chat-step-group">
+    <div className="chat-step-group" style={{ "--step-color": color }}>
       <button
         className={`chat-step-group__header${open ? " chat-step-group__header--open" : ""}`}
-        style={{ "--step-color": color }}
         onClick={() => setOpen((o) => !o)}
       >
         <span className="chat-step-group__pill" style={{ background: color }}>
@@ -162,17 +161,15 @@ function StepGroup({ group, isActive, streaming }) {
         <span className="chat-step-group__count">{msgCount} msg{msgCount !== 1 ? "s" : ""}</span>
         <span className={`chat-step-group__arrow${open ? " chat-step-group__arrow--open" : ""}`}>&#9662;</span>
       </button>
-      {open && (
-        <div className="chat-step-group__body">
-          {group.turns.map((t, i) => (
-            <ChatBubble
-              key={i}
-              turn={t}
-              streaming={streaming && i === group.turns.length - 1 && t.role === "assistant"}
-            />
-          ))}
-        </div>
-      )}
+      <div className={`chat-step-group__body${open ? "" : " chat-step-group__body--collapsed"}`}>
+        {group.turns.map((t, i) => (
+          <ChatBubble
+            key={i}
+            turn={t}
+            streaming={streaming && i === group.turns.length - 1 && t.role === "assistant"}
+          />
+        ))}
+      </div>
     </div>
   );
 }
@@ -327,10 +324,6 @@ export default function ChatBox({ sessionId, activeStep, refreshKey, autoMessage
 
   return (
     <div className="chat-wrap">
-      <div className="chat-head">
-        <div className="chat-title">Research Assistant</div>
-      </div>
-
       <div className="chat-body" ref={scrollRef} onClick={handleChatBodyClick}>
         {history.length === 0 && (
           <div className="chat-empty">
