@@ -957,12 +957,55 @@ h1, h2, h3, h4, h5, h6 {
   border-radius: var(--hop-radius-lg);
   padding: 20px;
   min-height: 400px;
-  overflow-y: auto;
+  overflow: hidden;
   max-height: calc(100vh - 340px);
   box-shadow:
     0 4px 24px rgba(0, 0, 0, 0.04),
     inset 0 1px 0 rgba(255, 255, 255, 0.6),
     inset 0 0 0 1px rgba(255, 255, 255, 0.15);
+}
+
+/* ── Slide page transitions ── */
+.workspace-slide {
+  overflow-y: auto;
+  max-height: calc(100vh - 384px);
+}
+
+.workspace-slide--left {
+  animation: slideFromRight 0.3s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+.workspace-slide--right {
+  animation: slideFromLeft 0.3s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+@keyframes slideFromRight {
+  from {
+    opacity: 0;
+    transform: translateX(40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideFromLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workspace-slide--left,
+  .workspace-slide--right {
+    animation: none;
+  }
 }
 
 /* ── Dark mode overrides ── */

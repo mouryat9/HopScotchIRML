@@ -1,5 +1,5 @@
-// src/SplitPanelLayout.jsx — Drawer layout: workspace center + floating command bar
-import { useState, useEffect } from "react";
+// src/SplitPanelLayout.jsx — Drawer layout + slide page transitions
+import { useState, useEffect, useRef } from "react";
 import StepResourcePanel from "./StepResourcePanel";
 import StepDetails from "./StepDetails";
 import ChatBox from "./ChatBox";
@@ -18,11 +18,25 @@ export default function SplitPanelLayout({
 }) {
   const [leftOpen, setLeftOpen] = useState(false);
   const [rightOpen, setRightOpen] = useState(false);
+  const [slideDir, setSlideDir] = useState("");       // "left" | "right" | ""
+  const prevStepRef = useRef(activeStep);
 
   // Auto-open chat drawer when autoMessage arrives
   useEffect(() => {
     if (autoMessage) setRightOpen(true);
   }, [autoMessage]);
+
+  // Detect step change direction and trigger slide animation
+  useEffect(() => {
+    const prev = prevStepRef.current;
+    if (prev !== activeStep) {
+      setSlideDir(activeStep > prev ? "left" : "right");
+      prevStepRef.current = activeStep;
+      // Clear animation class after transition completes
+      const timer = setTimeout(() => setSlideDir(""), 300);
+      return () => clearTimeout(timer);
+    }
+  }, [activeStep]);
 
   const anyOpen = leftOpen || rightOpen;
 
@@ -124,15 +138,20 @@ export default function SplitPanelLayout({
         </button>
       </div>
 
-      {/* Main: Workspace (always visible) */}
+      {/* Main: Workspace with slide transitions */}
       <div className="drawer-layout__main">
-        <StepDetails
-          step={activeStep}
-          sessionId={sessionId}
-          onChatRefresh={onChatRefresh}
-          onAutoSend={onAutoSend}
-          onCompletedStepsChange={onCompletedStepsChange}
-        />
+        <div
+          key={activeStep}
+          className={`workspace-slide${slideDir ? ` workspace-slide--${slideDir}` : ""}`}
+        >
+          <StepDetails
+            step={activeStep}
+            sessionId={sessionId}
+            onChatRefresh={onChatRefresh}
+            onAutoSend={onAutoSend}
+            onCompletedStepsChange={onCompletedStepsChange}
+          />
+        </div>
       </div>
     </div>
   );
