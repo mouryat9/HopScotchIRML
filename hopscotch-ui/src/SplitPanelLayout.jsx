@@ -1,4 +1,4 @@
-// src/SplitPanelLayout.jsx — Drawer layout: workspace center + floating command bar
+// src/SplitPanelLayout.jsx — PiP assistant + lesson drawer
 import { useState, useEffect } from "react";
 import StepResourcePanel from "./StepResourcePanel";
 import StepDetails from "./StepDetails";
@@ -17,21 +17,19 @@ export default function SplitPanelLayout({
   status,
 }) {
   const [leftOpen, setLeftOpen] = useState(false);
-  const [rightOpen, setRightOpen] = useState(false);
+  const [pipOpen, setPipOpen] = useState(false);
 
-  // Auto-open chat drawer when autoMessage arrives
+  // Auto-open PiP when autoMessage arrives
   useEffect(() => {
-    if (autoMessage) setRightOpen(true);
+    if (autoMessage) setPipOpen(true);
   }, [autoMessage]);
-
-  const anyOpen = leftOpen || rightOpen;
 
   return (
     <div className="drawer-layout">
-      {/* Backdrop overlay — always in DOM, toggled via CSS */}
+      {/* Backdrop overlay for lesson drawer only */}
       <div
-        className={`drawer-overlay${anyOpen ? " drawer-overlay--visible" : ""}`}
-        onClick={() => { setLeftOpen(false); setRightOpen(false); }}
+        className={`drawer-overlay${leftOpen ? " drawer-overlay--visible" : ""}`}
+        onClick={() => setLeftOpen(false)}
       />
 
       {/* Left drawer: Interactive Lesson */}
@@ -56,44 +54,50 @@ export default function SplitPanelLayout({
         </div>
       </div>
 
-      {/* Right drawer: Research Assistant */}
-      <div className={`drawer drawer--right${rightOpen ? " drawer--open" : ""}`}>
-        <div className="drawer__accent drawer__accent--green" />
-        <div className="drawer__inner">
-          <div className="drawer__header drawer__header--green">
-            <div className="drawer__header-content">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-              </svg>
-              <span className="drawer__title">Research Assistant</span>
-            </div>
-            <button className="drawer__close" onClick={() => setRightOpen(false)} aria-label="Close assistant panel">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
-            </button>
+      {/* PiP Assistant — floating chat widget */}
+      <div className={`pip-widget${pipOpen ? " pip-widget--open" : ""}`}>
+        <div className="pip-widget__header">
+          <div className="pip-widget__header-content">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            </svg>
+            <span className="pip-widget__title">Research Assistant</span>
           </div>
-          <div className="drawer__content">
-            {loading && !sessionId ? (
-              <div className="badge badge--neutral">Starting session...</div>
-            ) : (
-              <>
-                <ChatBox
-                  sessionId={sessionId}
-                  activeStep={activeStep}
-                  refreshKey={chatRefreshKey}
-                  autoMessage={autoMessage}
-                  onAutoMessageSent={onAutoMessageSent}
-                />
-                {status && (
-                  <div className="badge" style={{ marginTop: 8 }}>{status}</div>
-                )}
-              </>
-            )}
-          </div>
+          <button className="pip-widget__close" onClick={() => setPipOpen(false)} aria-label="Minimize assistant">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14"/></svg>
+          </button>
+        </div>
+        <div className="pip-widget__body">
+          {loading && !sessionId ? (
+            <div className="badge badge--neutral">Starting session...</div>
+          ) : (
+            <>
+              <ChatBox
+                sessionId={sessionId}
+                activeStep={activeStep}
+                refreshKey={chatRefreshKey}
+                autoMessage={autoMessage}
+                onAutoMessageSent={onAutoMessageSent}
+              />
+              {status && (
+                <div className="badge" style={{ marginTop: 8 }}>{status}</div>
+              )}
+            </>
+          )}
         </div>
       </div>
 
-      {/* Floating command bar */}
-      <div className={`cmd-bar${anyOpen ? " cmd-bar--drawer-open" : ""}`}>
+      {/* PiP bubble (visible when widget is minimized) */}
+      {!pipOpen && (
+        <button className="pip-bubble" onClick={() => setPipOpen(true)} aria-label="Open assistant">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+          </svg>
+        </button>
+      )}
+
+      {/* Floating command bar — lesson only */}
+      <div className={`cmd-bar${leftOpen ? " cmd-bar--drawer-open" : ""}`}>
         <button
           className={`cmd-bar__btn cmd-bar__btn--lesson${leftOpen ? " cmd-bar__btn--active" : ""}`}
           onClick={() => setLeftOpen(!leftOpen)}
@@ -106,21 +110,6 @@ export default function SplitPanelLayout({
             </svg>
           </span>
           <span className="cmd-bar__label">Lesson</span>
-        </button>
-
-        <div className="cmd-bar__divider" />
-
-        <button
-          className={`cmd-bar__btn cmd-bar__btn--assistant${rightOpen ? " cmd-bar__btn--active" : ""}`}
-          onClick={() => setRightOpen(!rightOpen)}
-          aria-label="Toggle assistant panel"
-        >
-          <span className="cmd-bar__icon">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-            </svg>
-          </span>
-          <span className="cmd-bar__label">Assistant</span>
         </button>
       </div>
 
