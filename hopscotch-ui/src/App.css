@@ -663,137 +663,114 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* ========================================================
-   Split-panel tabbed layout
+   Inline Pinnable Panels — Everything on One Screen
    ======================================================== */
 
-/* ── Drawer Layout ── */
-/* ========================================================
-   Drawer Layout — Glassmorphism + Floating Command Bar
-   ======================================================== */
-
-.drawer-layout {
-  position: relative;
+.pin-layout {
+  display: flex;
   width: 100%;
   min-height: calc(100vh - 280px);
-  padding: 12px 0 80px;          /* bottom padding for floating bar */
+  max-height: calc(100vh - 280px);
+  gap: 0;
+  padding: 12px 0 80px;
 }
 
-/* ── Backdrop overlay (always in DOM, toggled via CSS) ── */
-.drawer-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(15, 20, 35, 0.18);
-  z-index: 40;
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-  transition: opacity 0.18s ease-out, visibility 0.18s;
-  will-change: opacity;
-}
-
-.drawer-overlay--visible {
-  opacity: 1;
-  visibility: visible;
-  pointer-events: auto;
-}
-
-/* ── Drawer panel (shared) ── */
-.drawer {
-  position: fixed;
-  top: 0;
-  bottom: 0;
-  width: 440px;
-  max-width: 88vw;
-  z-index: 50;
+/* ── Pin panel (shared, left & right) ── */
+.pin-panel {
+  width: 0;
+  min-width: 0;
+  overflow: hidden;
+  flex-shrink: 0;
   display: flex;
   flex-direction: row;
-  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  will-change: transform;
-  contain: layout style paint;
+  transition: width 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+              min-width 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: width;
 }
 
-.drawer--left {
-  left: 0;
-  transform: translate3d(-100%, 0, 0);
+.pin-panel--left {
   flex-direction: row;
 }
 
-.drawer--right {
-  right: 0;
-  transform: translate3d(100%, 0, 0);
+.pin-panel--right {
   flex-direction: row-reverse;
 }
 
-.drawer--open {
-  transform: translate3d(0, 0, 0);
+.pin-panel--open {
+  width: 400px;
+  min-width: 320px;
 }
 
 /* ── Accent strip (thin branded edge) ── */
-.drawer__accent {
+.pin-panel__accent {
   width: 5px;
   flex-shrink: 0;
 }
 
-.drawer__accent--navy {
+.pin-panel__accent--navy {
   background: linear-gradient(180deg, #2B4C7E 0%, #1E3A5F 40%, #3D6098 100%);
 }
 
-.drawer__accent--green {
+.pin-panel__accent--green {
   background: linear-gradient(180deg, #6DB33F 0%, #5A9A2F 40%, #8BC764 100%);
 }
 
-/* ── Drawer inner (glass panel) ── */
-.drawer__inner {
+/* ── Panel inner (glass look) ── */
+.pin-panel__inner {
   flex: 1;
   display: flex;
   flex-direction: column;
+  min-width: 0;
   background: rgba(250, 251, 252, 0.97);
-  box-shadow: 0 8px 48px rgba(0, 0, 0, 0.12), 0 2px 12px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08), 0 1px 6px rgba(0, 0, 0, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.45);
+  border-radius: var(--hop-radius-md);
+  overflow: hidden;
 }
 
-/* ── Drawer header (gradient) ── */
-.drawer__header {
+/* ── Panel header (gradient) ── */
+.pin-panel__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 20px;
+  padding: 14px 16px;
   flex-shrink: 0;
   border-bottom: 1px solid rgba(0, 0, 0, 0.06);
 }
 
-.drawer__header--navy {
+.pin-panel__header--navy {
   background: linear-gradient(135deg, rgba(43, 76, 126, 0.08) 0%, rgba(30, 39, 64, 0.04) 100%);
 }
 
-.drawer__header--green {
+.pin-panel__header--green {
   background: linear-gradient(135deg, rgba(109, 179, 63, 0.08) 0%, rgba(90, 154, 47, 0.04) 100%);
 }
 
-.drawer__header-content {
+.pin-panel__header-content {
   display: flex;
   align-items: center;
   gap: 10px;
 }
 
-.drawer__header--navy .drawer__header-content svg {
+.pin-panel__header--navy .pin-panel__header-content svg {
   color: var(--hop-navy);
 }
 
-.drawer__header--green .drawer__header-content svg {
+.pin-panel__header--green .pin-panel__header-content svg {
   color: var(--hop-green-dark);
 }
 
-.drawer__title {
-  font-size: 15px;
+.pin-panel__title {
+  font-size: 14px;
   font-weight: 700;
   color: var(--hop-ink);
   letter-spacing: -0.01em;
+  white-space: nowrap;
 }
 
-.drawer__close {
-  width: 32px;
-  height: 32px;
+.pin-panel__close {
+  width: 30px;
+  height: 30px;
   border-radius: 8px;
   border: none;
   background: transparent;
@@ -803,25 +780,27 @@ h1, h2, h3, h4, h5, h6 {
   align-items: center;
   justify-content: center;
   transition: all 0.18s;
+  flex-shrink: 0;
 }
 
-.drawer__close:hover {
+.pin-panel__close:hover {
   background: rgba(30, 39, 64, 0.08);
   color: var(--hop-ink);
   transform: scale(1.1);
 }
 
-/* ── Drawer content ── */
-.drawer__content {
+/* ── Panel content ── */
+.pin-panel__content {
   flex: 1;
   overflow-y: auto;
-  padding: 16px;
+  padding: 12px;
   display: flex;
   flex-direction: column;
+  min-height: 0;
 }
 
-/* Overrides for components inside drawers */
-.drawer__content .embed-card {
+/* Overrides for components inside panels */
+.pin-panel__content .embed-card {
   border: none;
   box-shadow: none;
   padding: 0;
@@ -832,7 +811,7 @@ h1, h2, h3, h4, h5, h6 {
   background: transparent;
 }
 
-.drawer__content .embed-frame-wrap {
+.pin-panel__content .embed-frame-wrap {
   max-height: none;
   height: 100%;
   width: 100%;
@@ -840,7 +819,7 @@ h1, h2, h3, h4, h5, h6 {
   flex: 1;
 }
 
-.drawer__content .chat-wrap {
+.pin-panel__content .chat-wrap {
   border: none;
   box-shadow: none;
   border-radius: 0;
@@ -948,47 +927,44 @@ h1, h2, h3, h4, h5, h6 {
   letter-spacing: -0.01em;
 }
 
-/* ── Main workspace area ── */
-.drawer-layout__main {
+/* ── Main workspace area (center, flexes to fill) ── */
+.pin-layout__main {
+  flex: 1 1 0;
+  min-width: 0;
   background: rgba(255, 255, 255, 0.65);
   backdrop-filter: blur(12px) saturate(1.4);
   -webkit-backdrop-filter: blur(12px) saturate(1.4);
   border: 1px solid rgba(255, 255, 255, 0.5);
   border-radius: var(--hop-radius-lg);
   padding: 20px;
-  min-height: 400px;
   overflow-y: auto;
-  max-height: calc(100vh - 340px);
   box-shadow:
     0 4px 24px rgba(0, 0, 0, 0.04),
     inset 0 1px 0 rgba(255, 255, 255, 0.6),
     inset 0 0 0 1px rgba(255, 255, 255, 0.15);
+  transition: flex 0.28s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* ── Dark mode overrides ── */
-:root[data-theme="dark"] .drawer-overlay {
-  background: rgba(0, 0, 0, 0.45);
-}
-
-:root[data-theme="dark"] .drawer__inner {
+/* ── Dark mode overrides (pin panels) ── */
+:root[data-theme="dark"] .pin-panel__inner {
   background: rgba(30, 33, 40, 0.98);
   border-color: rgba(255, 255, 255, 0.08);
-  box-shadow: 0 8px 48px rgba(0, 0, 0, 0.35), 0 2px 12px rgba(0, 0, 0, 0.20);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.30), 0 1px 6px rgba(0, 0, 0, 0.15);
 }
 
-:root[data-theme="dark"] .drawer__header {
+:root[data-theme="dark"] .pin-panel__header {
   border-bottom-color: rgba(255, 255, 255, 0.06);
 }
 
-:root[data-theme="dark"] .drawer__header--navy {
+:root[data-theme="dark"] .pin-panel__header--navy {
   background: linear-gradient(135deg, rgba(91, 140, 200, 0.12) 0%, rgba(74, 111, 165, 0.06) 100%);
 }
 
-:root[data-theme="dark"] .drawer__header--green {
+:root[data-theme="dark"] .pin-panel__header--green {
   background: linear-gradient(135deg, rgba(123, 199, 79, 0.12) 0%, rgba(109, 179, 63, 0.06) 100%);
 }
 
-:root[data-theme="dark"] .drawer__close:hover {
+:root[data-theme="dark"] .pin-panel__close:hover {
   background: rgba(255, 255, 255, 0.10);
 }
 
@@ -1021,11 +997,29 @@ h1, h2, h3, h4, h5, h6 {
   box-shadow: 0 4px 16px rgba(109, 179, 63, 0.30);
 }
 
-/* ── Responsive: full-width drawers on small screens ── */
-@media (max-width: 768px) {
-  .drawer {
-    width: 100vw;
-    max-width: 100vw;
+/* ── Responsive: stack on small screens ── */
+@media (max-width: 900px) {
+  .pin-layout {
+    flex-direction: column;
+    max-height: none;
+  }
+
+  .pin-panel--open {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .pin-panel {
+    width: 100%;
+    height: 0;
+    min-height: 0;
+    transition: height 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+                min-height 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .pin-panel--open {
+    height: 320px;
+    min-height: 200px;
   }
 
   .cmd-bar {
@@ -1034,10 +1028,6 @@ h1, h2, h3, h4, h5, h6 {
     right: 12px;
     transform: none;
     justify-content: center;
-  }
-
-  .cmd-bar--drawer-open {
-    transform: scale(0.95);
   }
 
   @keyframes cmdBarSlideUp {
@@ -3214,7 +3204,7 @@ select.input:focus {
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
 }
 
-:root[data-theme="dark"] .drawer-layout__main {
+:root[data-theme="dark"] .pin-layout__main {
   background: rgba(30, 33, 40, 0.55);
   border-color: rgba(255, 255, 255, 0.06);
   box-shadow:

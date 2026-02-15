@@ -1,4 +1,4 @@
-// src/SplitPanelLayout.jsx — Drawer layout: workspace center + floating command bar
+// src/SplitPanelLayout.jsx — Inline pinnable panels: everything fits on one screen
 import { useState, useEffect } from "react";
 import StepResourcePanel from "./StepResourcePanel";
 import StepDetails from "./StepDetails";
@@ -19,59 +19,62 @@ export default function SplitPanelLayout({
   const [leftOpen, setLeftOpen] = useState(false);
   const [rightOpen, setRightOpen] = useState(false);
 
-  // Auto-open chat drawer when autoMessage arrives
+  // Auto-open assistant when autoMessage arrives
   useEffect(() => {
     if (autoMessage) setRightOpen(true);
   }, [autoMessage]);
 
-  const anyOpen = leftOpen || rightOpen;
-
   return (
-    <div className="drawer-layout">
-      {/* Backdrop overlay — always in DOM, toggled via CSS */}
-      <div
-        className={`drawer-overlay${anyOpen ? " drawer-overlay--visible" : ""}`}
-        onClick={() => { setLeftOpen(false); setRightOpen(false); }}
-      />
-
-      {/* Left drawer: Interactive Lesson */}
-      <div className={`drawer drawer--left${leftOpen ? " drawer--open" : ""}`}>
-        <div className="drawer__accent drawer__accent--navy" />
-        <div className="drawer__inner">
-          <div className="drawer__header drawer__header--navy">
-            <div className="drawer__header-content">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <div className="pin-layout">
+      {/* Left panel: Interactive Lesson */}
+      <div className={`pin-panel pin-panel--left${leftOpen ? " pin-panel--open" : ""}`}>
+        <div className="pin-panel__accent pin-panel__accent--navy" />
+        <div className="pin-panel__inner">
+          <div className="pin-panel__header pin-panel__header--navy">
+            <div className="pin-panel__header-content">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
                 <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
               </svg>
-              <span className="drawer__title">Interactive Lesson</span>
+              <span className="pin-panel__title">Interactive Lesson</span>
             </div>
-            <button className="drawer__close" onClick={() => setLeftOpen(false)} aria-label="Close lesson panel">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            <button className="pin-panel__close" onClick={() => setLeftOpen(false)} aria-label="Close lesson panel">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
             </button>
           </div>
-          <div className="drawer__content">
+          <div className="pin-panel__content">
             <StepResourcePanel activeStep={activeStep} />
           </div>
         </div>
       </div>
 
-      {/* Right drawer: Research Assistant */}
-      <div className={`drawer drawer--right${rightOpen ? " drawer--open" : ""}`}>
-        <div className="drawer__accent drawer__accent--green" />
-        <div className="drawer__inner">
-          <div className="drawer__header drawer__header--green">
-            <div className="drawer__header-content">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      {/* Center: Workspace (always visible, flexes to fill) */}
+      <div className="pin-layout__main">
+        <StepDetails
+          step={activeStep}
+          sessionId={sessionId}
+          onChatRefresh={onChatRefresh}
+          onAutoSend={onAutoSend}
+          onCompletedStepsChange={onCompletedStepsChange}
+        />
+      </div>
+
+      {/* Right panel: Research Assistant */}
+      <div className={`pin-panel pin-panel--right${rightOpen ? " pin-panel--open" : ""}`}>
+        <div className="pin-panel__accent pin-panel__accent--green" />
+        <div className="pin-panel__inner">
+          <div className="pin-panel__header pin-panel__header--green">
+            <div className="pin-panel__header-content">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
               </svg>
-              <span className="drawer__title">Research Assistant</span>
+              <span className="pin-panel__title">Research Assistant</span>
             </div>
-            <button className="drawer__close" onClick={() => setRightOpen(false)} aria-label="Close assistant panel">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            <button className="pin-panel__close" onClick={() => setRightOpen(false)} aria-label="Close assistant panel">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
             </button>
           </div>
-          <div className="drawer__content">
+          <div className="pin-panel__content">
             {loading && !sessionId ? (
               <div className="badge badge--neutral">Starting session...</div>
             ) : (
@@ -93,7 +96,7 @@ export default function SplitPanelLayout({
       </div>
 
       {/* Floating command bar */}
-      <div className={`cmd-bar${anyOpen ? " cmd-bar--drawer-open" : ""}`}>
+      <div className="cmd-bar">
         <button
           className={`cmd-bar__btn cmd-bar__btn--lesson${leftOpen ? " cmd-bar__btn--active" : ""}`}
           onClick={() => setLeftOpen(!leftOpen)}
@@ -122,17 +125,6 @@ export default function SplitPanelLayout({
           </span>
           <span className="cmd-bar__label">Assistant</span>
         </button>
-      </div>
-
-      {/* Main: Workspace (always visible) */}
-      <div className="drawer-layout__main">
-        <StepDetails
-          step={activeStep}
-          sessionId={sessionId}
-          onChatRefresh={onChatRefresh}
-          onAutoSend={onAutoSend}
-          onCompletedStepsChange={onCompletedStepsChange}
-        />
       </div>
     </div>
   );
