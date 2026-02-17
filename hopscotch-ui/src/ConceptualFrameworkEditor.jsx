@@ -15,7 +15,7 @@ export default function ConceptualFrameworkEditor({ data, onClose }) {
     topics: [...(data.topics || ["", "", "", "", ""])],
     frameworks: [...(data.frameworks || ["", "", "", "", ""])],
   }));
-  const [template, setTemplate] = useState("polygon");
+  const [template, setTemplate] = useState("boxed");
   const printRef = useRef(null);
 
   function upd(key, val) {

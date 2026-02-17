@@ -700,18 +700,9 @@ h1, h2, h3, h4, h5, h6 {
   min-width: 320px;
 }
 
-/* ── Accent strip (thin branded edge) ── */
+/* ── Accent strip (hidden — clean look) ── */
 .pin-panel__accent {
-  width: 5px;
-  flex-shrink: 0;
-}
-
-.pin-panel__accent--navy {
-  background: linear-gradient(180deg, #2B4C7E 0%, #1E3A5F 40%, #3D6098 100%);
-}
-
-.pin-panel__accent--green {
-  background: linear-gradient(180deg, #6DB33F 0%, #5A9A2F 40%, #8BC764 100%);
+  display: none;
 }
 
 /* ── Panel inner (glass look) ── */
@@ -720,10 +711,15 @@ h1, h2, h3, h4, h5, h6 {
   display: flex;
   flex-direction: column;
   min-width: 0;
-  background: rgba(250, 251, 252, 0.97);
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08), 0 1px 6px rgba(0, 0, 0, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.45);
-  border-radius: var(--hop-radius-md);
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(12px) saturate(1.4);
+  -webkit-backdrop-filter: blur(12px) saturate(1.4);
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: var(--hop-radius-lg);
   overflow: hidden;
 }
 
@@ -738,11 +734,11 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .pin-panel__header--navy {
-  background: linear-gradient(135deg, rgba(43, 76, 126, 0.08) 0%, rgba(30, 39, 64, 0.04) 100%);
+  background: transparent;
 }
 
 .pin-panel__header--green {
-  background: linear-gradient(135deg, rgba(109, 179, 63, 0.08) 0%, rgba(90, 154, 47, 0.04) 100%);
+  background: transparent;
 }
 
 .pin-panel__header-content {
@@ -752,11 +748,11 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .pin-panel__header--navy .pin-panel__header-content svg {
-  color: var(--hop-navy);
+  color: var(--hop-ink);
 }
 
 .pin-panel__header--green .pin-panel__header-content svg {
-  color: var(--hop-green-dark);
+  color: var(--hop-ink);
 }
 
 .pin-panel__title {
@@ -915,6 +911,15 @@ h1, h2, h3, h4, h5, h6 {
   letter-spacing: -0.01em;
 }
 
+.cmd-bar__hint {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--hop-muted);
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  padding: 0 4px;
+}
+
 /* ── Main workspace area (center, flexes to fill) ── */
 .pin-layout__main {
   flex: 1 1 0;
@@ -935,9 +940,12 @@ h1, h2, h3, h4, h5, h6 {
 
 /* ── Dark mode overrides (pin panels) ── */
 :root[data-theme="dark"] .pin-panel__inner {
-  background: rgba(30, 33, 40, 0.98);
-  border-color: rgba(255, 255, 255, 0.08);
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.30), 0 1px 6px rgba(0, 0, 0, 0.15);
+  background: rgba(30, 33, 40, 0.55);
+  border-color: rgba(255, 255, 255, 0.06);
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.03);
 }
 
 :root[data-theme="dark"] .pin-panel__header {
@@ -945,11 +953,11 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 :root[data-theme="dark"] .pin-panel__header--navy {
-  background: linear-gradient(135deg, rgba(91, 140, 200, 0.12) 0%, rgba(74, 111, 165, 0.06) 100%);
+  background: transparent;
 }
 
 :root[data-theme="dark"] .pin-panel__header--green {
-  background: linear-gradient(135deg, rgba(123, 199, 79, 0.12) 0%, rgba(109, 179, 63, 0.06) 100%);
+  background: transparent;
 }
 
 :root[data-theme="dark"] .pin-panel__close:hover {
@@ -3551,6 +3559,35 @@ select.input:focus {
   border-color: var(--hop-blue);
   color: var(--hop-blue);
   background: rgba(30, 39, 64, 0.04);
+}
+
+/* Instant tooltip */
+.session-history-btn[data-tooltip] {
+  position: relative;
+}
+
+.session-history-btn[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 5px 10px;
+  border-radius: 6px;
+  background: #1e2740;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  z-index: 100;
+}
+
+.session-history-btn[data-tooltip]:hover::after {
+  opacity: 1;
+  visibility: visible;
 }
 
 /* Dark mode overrides */

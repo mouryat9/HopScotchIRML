@@ -136,7 +136,7 @@ export default function TeacherDashboard() {
       <header className="td-header">
         <div className="td-header__left">
           <img
-            src={theme === "dark" ? "/Hopscotch4-all-logo-White-alpha.png" : "/Hopscotch-4-all-logo.png"}
+            src={theme === "dark" ? "/Hopscotch4-all-logo-White-alpha.png" : "/Hopscotch-4-all-logo-alpha.png"}
             alt="Hopscotch"
             className="td-header__logo"
           />

@@ -160,7 +160,7 @@ export default function LoginPage() {
     <header className="login-header">
       <div className="login-header__left">
         <img
-          src={theme === "dark" ? "/Hopscotch4-all-logo-White-alpha.png" : "/Hopscotch-4-all-logo.png"}
+          src={theme === "dark" ? "/Hopscotch4-all-logo-White-alpha.png" : "/Hopscotch-4-all-logo-alpha.png"}
           alt="Hopscotch"
           className="login-header-logo"
         />
@@ -430,7 +430,7 @@ export default function LoginPage() {
           <div className="login-split__hopscotch">
             {hopGrid(180, 65)}
           </div>
-          <img src="/Hopscotch4-all-logo-White.png" alt="Hopscotch" className="login-split__logo" />
+          <img src="/Hopscotch4-all-logo-White-alpha.png" alt="Hopscotch" className="login-split__logo" />
         </div>
         <div className="login-split__affiliations">
           <img src="/IRML LOGO COLOR white.png" alt="IRML Lab" className="login-split__affiliation" />

@@ -122,7 +122,7 @@ export default function CFTemplateBoxed({ d, upd, updTopic, updFramework, E }) {
 
         {/* ── Footer ── */}
         <div className="cfb-footer">
-          <img src="/Hopscotch-4-all-logo.png" alt="Hopscotch" className="cfb-footer__logo" />
+          <img src="/Hopscotch-4-all-logo-alpha.png" alt="Hopscotch" className="cfb-footer__logo" />
           <svg className="cfb-footer__grid" viewBox="0 0 128 46" xmlns="http://www.w3.org/2000/svg" shapeRendering="geometricPrecision" fill="none">
             <rect x="0"  y="0"  width="18" height="22" rx="6" fill="#2B5EA7"/>
             <rect x="0"  y="24" width="18" height="22" rx="6" fill="#E8618C"/>

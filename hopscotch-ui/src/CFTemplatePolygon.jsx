@@ -114,7 +114,7 @@ export default function CFTemplatePolygon({ d, upd, updTopic, updFramework, E })
           <span className="cf-footer__right">
             Date: <E value={d.date} onChange={(v) => upd("date", v)} className="cf-text--footer" />
           </span>
-          <img src="/Hopscotch-4-all-logo.png" alt="Hopscotch" className="cf-footer__logo" />
+          <img src="/Hopscotch-4-all-logo-alpha.png" alt="Hopscotch" className="cf-footer__logo" />
           <svg className="cf-footer__grid" viewBox="0 0 128 46" xmlns="http://www.w3.org/2000/svg" shapeRendering="geometricPrecision" fill="none">
             <rect x="0"  y="0"  width="18" height="22" rx="6" fill="#2B5EA7"/>
             <rect x="0"  y="24" width="18" height="22" rx="6" fill="#E8618C"/>

@@ -21,7 +21,7 @@ export default function CFTemplateExtended({ d, upd, updTopic, updFramework, E }
             <E value={d.topic} onChange={(v) => upd("topic", v)} placeholder="<<Define your research topic>>" className="cfe-text--topic" />
           </div>
           <div className="cfe-header__logo">
-            <img src="/Hopscotch-4-all-logo.png" alt="Hopscotch" className="cfe-header__logo-img" />
+            <img src="/Hopscotch-4-all-logo-alpha.png" alt="Hopscotch" className="cfe-header__logo-img" />
             <svg className="cfe-header__grid" viewBox="0 0 128 46" xmlns="http://www.w3.org/2000/svg" shapeRendering="geometricPrecision" fill="none">
               <rect x="0"  y="0"  width="18" height="22" rx="6" fill="#2B5EA7"/>
               <rect x="0"  y="24" width="18" height="22" rx="6" fill="#E8618C"/>

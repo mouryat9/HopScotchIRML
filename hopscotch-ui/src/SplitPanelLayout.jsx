@@ -97,6 +97,8 @@ export default function SplitPanelLayout({
 
       {/* Floating command bar */}
       <div className="cmd-bar">
+        <span className="cmd-bar__hint">Personalize the layout</span>
+        <div className="cmd-bar__divider" />
         <button
           className={`cmd-bar__btn cmd-bar__btn--lesson${leftOpen ? " cmd-bar__btn--active" : ""}`}
           onClick={() => setLeftOpen(!leftOpen)}

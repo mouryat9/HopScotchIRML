@@ -69,7 +69,7 @@ export default function SessionHistoryPanel({
             onClose();
           }}
         >
-          + New Session
+          + New Design
         </button>
 
         {/* Session List */}

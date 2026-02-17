@@ -257,15 +257,15 @@ function StudentApp() {
       <header className="hop-header">
         <div className="hop-header__left">
           <img
-            src={theme === "dark" ? "/Hopscotch4-all-logo-White-alpha.png" : "/Hopscotch-4-all-logo.png"}
+            src={theme === "dark" ? "/Hopscotch4-all-logo-White-alpha.png" : "/Hopscotch-4-all-logo-alpha.png"}
             alt="Hopscotch 4 All"
             className="hop-logo"
           />
           <button
             className="session-history-btn"
             onClick={() => setHistoryOpen(true)}
-            title="Session History"
-            aria-label="Open session history"
+            aria-label="Create a new design"
+            data-tooltip="Create a new design"
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="10" />
