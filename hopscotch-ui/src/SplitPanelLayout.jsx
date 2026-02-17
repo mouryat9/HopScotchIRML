@@ -16,8 +16,8 @@ export default function SplitPanelLayout({
   loading,
   status,
 }) {
-  const [leftOpen, setLeftOpen] = useState(false);
-  const [rightOpen, setRightOpen] = useState(false);
+  const [leftOpen, setLeftOpen] = useState(true);
+  const [rightOpen, setRightOpen] = useState(true);
 
   // Auto-open assistant when autoMessage arrives
   useEffect(() => {
