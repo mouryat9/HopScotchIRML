@@ -378,9 +378,8 @@ export default function App() {
   }
 
   if (!user) return <LoginPage />;
-  // Higher Ed Faculty → straight to research design workspace (no class management)
-  // High School Teacher → dashboard with class creation + option to create designs
-  if (user.role === "teacher" && user.education_level !== "higher_ed") {
+  // All teachers/faculty get dashboard + ability to create research designs
+  if (user.role === "teacher") {
     if (teacherView === "designs") {
       return <StudentApp onBackToDashboard={() => setTeacherView("dashboard")} />;
     }
