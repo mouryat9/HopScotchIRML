@@ -83,15 +83,21 @@ export default function ConceptualFrameworkEditor({ data, onClose }) {
   }
 
   /* Editable span helper — shared across all templates */
-  const E = ({ value, onChange, className = "", placeholder = "" }) => (
-    <span
-      className={`cf-editable ${className}`}
-      contentEditable
-      suppressContentEditableWarning
-      onBlur={(e) => onChange(e.target.innerText)}
-      dangerouslySetInnerHTML={{ __html: value || placeholder }}
-    />
-  );
+  const E = ({ value, onChange, className = "", placeholder = "" }) => {
+    const hasValue = value && value.trim();
+    const display = hasValue
+      ? value
+      : placeholder.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return (
+      <span
+        className={`cf-editable ${className}${!hasValue ? ' cf-editable--placeholder' : ''}`}
+        contentEditable
+        suppressContentEditableWarning
+        onBlur={(e) => onChange(e.target.innerText)}
+        dangerouslySetInnerHTML={{ __html: display }}
+      />
+    );
+  };
 
   const TemplateComponent =
     template === "boxed" ? CFTemplateBoxed :

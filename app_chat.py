@@ -1720,9 +1720,23 @@ def _gather_cf_data(session_id: str, current_user: dict) -> dict:
     # Always call LLM to structure the data properly
     structured = _structure_cf_via_llm(sess, raw_fields)
 
-    # Ensure lists are padded to 5
-    topics = (structured.get("topics", []) + [""] * 5)[:5]
-    frameworks = (structured.get("frameworks", []) + [""] * 5)[:5]
+    # Extract topics/frameworks — LLM should return arrays, but if it failed
+    # we fall back to splitting the raw text into lines
+    topics = structured.get("topics", [])
+    if not topics:
+        raw_t = structured.get("topical_raw") or topical_raw
+        if raw_t:
+            lines = [l.strip(" -•·\t") for l in raw_t.split("\n") if l.strip(" -•·\t")]
+            topics = lines[:5]
+    topics = (topics + [""] * 5)[:5]
+
+    frameworks = structured.get("frameworks", [])
+    if not frameworks:
+        raw_f = structured.get("theoretical_raw") or theoretical_raw
+        if raw_f:
+            lines = [l.strip(" -•·\t") for l in raw_f.split("\n") if l.strip(" -•·\t")]
+            frameworks = lines[:5]
+    frameworks = (frameworks + [""] * 5)[:5]
 
     wv = structured.get("worldview", worldview) or "Not specified"
     return {

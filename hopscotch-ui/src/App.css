@@ -4036,6 +4036,11 @@ select.input:focus {
   word-break: break-word;
 }
 
+.cf-editable--placeholder {
+  opacity: 0.5;
+  font-style: italic;
+}
+
 .cf-editable:hover {
   background: rgba(255, 255, 255, 0.15);
 }
@@ -4173,6 +4178,7 @@ select.input:focus {
   position: absolute;
   z-index: 11;
   pointer-events: auto;
+  overflow: hidden;
 }
 
 /* Topical Research label */
@@ -4218,6 +4224,7 @@ select.input:focus {
   left: 42%;
   top: 42%;
   width: 17%;
+  max-height: 22%;
   text-align: center;
 }
 
@@ -4226,6 +4233,7 @@ select.input:focus {
   left: 0.4%;
   top: 41%;
   width: 29%;
+  max-height: 24%;
 }
 
 /* Identity & Positionality */
@@ -4240,6 +4248,7 @@ select.input:focus {
   left: 71%;
   top: 44%;
   width: 28%;
+  max-height: 22%;
 }
 
 /* Research Design */
@@ -4247,6 +4256,7 @@ select.input:focus {
   left: 43%;
   top: 65%;
   width: 15%;
+  max-height: 22%;
   text-align: center;
 }
 
@@ -4461,6 +4471,7 @@ select.input:focus {
 .cfb-card__body {
   padding: 12px 10px;
   flex: 1;
+  overflow: hidden;
 }
 
 .cfb-card--personal .cfb-card__body { background: #F4CCCC; }
@@ -4572,6 +4583,7 @@ select.input:focus {
   justify-content: center;
   text-align: center;
   padding: 14px;
+  overflow: hidden;
 }
 
 .cfb-topic-box__label {
@@ -4594,6 +4606,7 @@ select.input:focus {
   padding: 10px 16px;
   text-align: center;
   border: 1.5px solid #aaa;
+  overflow: hidden;
 }
 
 .cfb-flow-box__label {
@@ -4784,6 +4797,7 @@ select.input:focus {
 .cfe-card__body {
   padding: 8px 10px;
   flex: 1;
+  overflow: hidden;
 }
 
 /* Unified card colors: header + body same background, header text colored */
