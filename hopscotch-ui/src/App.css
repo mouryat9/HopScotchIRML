@@ -4072,102 +4072,14 @@ select.input:focus {
    Exact vertices from PPTX freeform shape coordinates.
    Each covers the full diagram and is clipped to its polygon.
    ═══════════════════════════════════════════════════ */
-.cf-bg {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-
-/* Per-shape white border outlines.
-   Each SVG has the same z-index as its shape (via inline style).
-   Higher shapes cover lower outlines → borders only at visible boundaries.
-   CSS clip-path hides strokes at the container edges. */
-.cf-border {
+/* Polygon backgrounds + borders — single SVG for html2canvas compatibility */
+.cf-shapes-svg {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   pointer-events: none;
-  clip-path: inset(0.3% 0.3% 9.3% 0.3%);
-}
-.cf-border polygon {
-  fill: none;
-  stroke: #ffffff;
-  stroke-width: 2px;
-  vector-effect: non-scaling-stroke;
-  stroke-linejoin: round;
-}
-
-/*
-   Z-index matches PPTX draw order (later shapes on top):
-   Green(1) → Teal(2) → Yellow(3) → Brown(4) → Orange(5) → Blue(6)
-   → Red(7) → Gray(8) → LightBlue(9)
-   Polygons use original PPTX coordinates; footer covers bottom 9%.
-*/
-
-/* Green — Problem Statement, right-middle (drawn first = bottom) */
-.cf-bg--green {
-  background: #6AA84F;
-  clip-path: polygon(60.9% 47.2%, 100% 24.3%, 100% 100%, 84.1% 100%, 56.9% 64.9%);
   z-index: 1;
-}
-
-/* Teal — Research Questions, bottom-right */
-.cf-bg--teal {
-  background: #0097A7;
-  clip-path: polygon(55.8% 64.8%, 83.9% 100%, 100% 100%, 100% 68.2%, 57.9% 55.6%);
-  z-index: 2;
-}
-
-/* Yellow — Personal Interests, left-middle.
-   Top edge follows blue's bottom edge (0,24.5)→(40,47.3) exactly to eliminate
-   the white gap. Blue (z:6) covers the overlap above. */
-.cf-bg--yellow {
-  background: #F1C232;
-  clip-path: polygon(0% 24.5%, 40% 47.3%, 44% 24.3%, 44% 100%, 27.7% 100%, 0% 68.2%);
-  z-index: 3;
-}
-
-/* Brown — Identity & Positionality, bottom-left */
-.cf-bg--brown {
-  background: #7F6000;
-  clip-path: polygon(44.1% 64.8%, 15.9% 100%, 0% 100%, 0% 68.2%, 42.4% 54.9%);
-  z-index: 4;
-}
-
-/* Orange — Theoretical Frameworks, top-right */
-.cf-bg--orange {
-  background: #FFAB40;
-  clip-path: polygon(50.6% 36.4%, 50.6% 0%, 100% 0%, 100% 24.6%, 61% 47.3%);
-  z-index: 5;
-}
-
-/* Blue — Topical Research, top-left (on top of yellow & orange) */
-.cf-bg--blue {
-  background: #1C4587;
-  clip-path: polygon(50.6% 36.4%, 50.6% 0%, 0% 0%, 0% 24.5%, 40% 47.3%);
-  z-index: 6;
-}
-
-/* Red — Research Design, bottom-center */
-.cf-bg--red {
-  background: #CC0000;
-  clip-path: polygon(44.2% 64.9%, 56.8% 64.8%, 76.9% 91.2%, 22.9% 91.4%);
-  z-index: 7;
-}
-
-/* Gray — Research Topic, center pentagon */
-.cf-bg--gray {
-  background: #666666;
-  clip-path: polygon(50.65% 36.5%, 61% 47.4%, 57% 64.9%, 44% 64.9%, 40.3% 47.4%);
-  z-index: 8;
-}
-
-/* Light Blue — Gap/s Found, top-center triangle (topmost) */
-.cf-bg--lightblue {
-  background: #CFE2F3;
-  clip-path: polygon(50.6% 36.6%, 34.6% 0%, 65.7% 0%);
-  z-index: 9;
 }
 
 /* ═══════════════════════════════════════════════════
@@ -5050,18 +4962,10 @@ select.input:focus {
     page-break-inside: avoid !important;
   }
 
-  /* Ensure background shapes render with colors */
-  .cf-bg {
-    position: absolute !important;
-    inset: 0 !important;
+  /* Polygon SVG shapes */
+  .cf-shapes-svg {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
-  }
-
-  /* Ensure SVG borders render */
-  .cf-border {
-    position: absolute !important;
-    inset: 0 !important;
   }
 
   /* Footer */

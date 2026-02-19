@@ -119,12 +119,35 @@ function StudentApp({ onBackToDashboard }) {
   const [autoMessage, setAutoMessage] = useState(null);
   const [historyOpen, setHistoryOpen] = useState(false);
 
+  // Persist session ID to localStorage so refresh stays on the same session
+  useEffect(() => {
+    if (sessionId) localStorage.setItem("hop_session_id", sessionId);
+  }, [sessionId]);
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
       setLoading(true);
       try {
-        // Try to resume an existing session first
+        const savedId = localStorage.getItem("hop_session_id");
+
+        if (savedId) {
+          // Try to load the previously active session
+          try {
+            const sessions = await API.listSessions();
+            if (cancelled) return;
+            const match = (sessions.sessions || []).find((s) => s.session_id === savedId);
+            if (match) {
+              setSessionId(match.session_id);
+              setActiveStep(match.active_step || 1);
+              setCompletedSteps(match.completed_steps || []);
+              setLoading(false);
+              return;
+            }
+          } catch {}
+        }
+
+        // Fallback: resume most recent session
         const resumed = await API.resumeSession();
         if (cancelled) return;
         if (resumed.found && resumed.session_id) {

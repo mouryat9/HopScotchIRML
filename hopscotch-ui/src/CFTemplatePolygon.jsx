@@ -26,27 +26,19 @@ export default function CFTemplatePolygon({ d, upd, updTopic, updFramework, E })
     <div className="cf-page">
       <div className="cf-diagram">
 
-        {/* ═══ Layer 1: Background polygon shapes ═══ */}
-        <div className="cf-bg cf-bg--blue" />
-        <div className="cf-bg cf-bg--orange" />
-        <div className="cf-bg cf-bg--lightblue" />
-        <div className="cf-bg cf-bg--yellow" />
-        <div className="cf-bg cf-bg--brown" />
-        <div className="cf-bg cf-bg--green" />
-        <div className="cf-bg cf-bg--teal" />
-        <div className="cf-bg cf-bg--red" />
-        <div className="cf-bg cf-bg--gray" />
-
-        {/* ═══ Layer 1b: Per-shape white border outlines ═══ */}
-        <svg className="cf-border" style={{zIndex:1}} viewBox="0 0 100 100" preserveAspectRatio="none"><polygon points="60.9,47.2 100,24.3 100,100 84.1,100 56.9,64.9"/></svg>
-        <svg className="cf-border" style={{zIndex:2}} viewBox="0 0 100 100" preserveAspectRatio="none"><polygon points="55.8,64.8 83.9,100 100,100 100,68.2 57.9,55.6"/></svg>
-        <svg className="cf-border" style={{zIndex:3}} viewBox="0 0 100 100" preserveAspectRatio="none"><polygon points="0,24.5 40,47.3 44,24.3 44,100 27.7,100 0,68.2"/></svg>
-        <svg className="cf-border" style={{zIndex:4}} viewBox="0 0 100 100" preserveAspectRatio="none"><polygon points="44.1,64.8 15.9,100 0,100 0,68.2 42.4,54.9"/></svg>
-        <svg className="cf-border" style={{zIndex:5}} viewBox="0 0 100 100" preserveAspectRatio="none"><polygon points="50.6,36.4 50.6,0 100,0 100,24.6 61,47.3"/></svg>
-        <svg className="cf-border" style={{zIndex:6}} viewBox="0 0 100 100" preserveAspectRatio="none"><polygon points="50.6,36.4 50.6,0 0,0 0,24.5 40,47.3"/></svg>
-        <svg className="cf-border" style={{zIndex:7}} viewBox="0 0 100 100" preserveAspectRatio="none"><polygon points="44.2,64.9 56.8,64.8 76.9,91.2 22.9,91.4"/></svg>
-        <svg className="cf-border" style={{zIndex:8}} viewBox="0 0 100 100" preserveAspectRatio="none"><polygon points="50.65,36.5 61,47.4 57,64.9 44,64.9 40.3,47.4"/></svg>
-        <svg className="cf-border" style={{zIndex:9}} viewBox="0 0 100 100" preserveAspectRatio="none"><polygon points="50.6,36.6 34.6,0 65.7,0"/></svg>
+        {/* ═══ Layer 1: Background polygon shapes + borders (single SVG for html2canvas compatibility) ═══ */}
+        <svg className="cf-shapes-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+          {/* Filled polygons (back to front by z-index) */}
+          <polygon points="60.9,47.2 100,24.3 100,100 84.1,100 56.9,64.9" fill="#6AA84F" stroke="#fff" strokeWidth="0.3"/>
+          <polygon points="55.8,64.8 83.9,100 100,100 100,68.2 57.9,55.6" fill="#0097A7" stroke="#fff" strokeWidth="0.3"/>
+          <polygon points="0,24.5 40,47.3 44,24.3 44,100 27.7,100 0,68.2" fill="#F1C232" stroke="#fff" strokeWidth="0.3"/>
+          <polygon points="44.1,64.8 15.9,100 0,100 0,68.2 42.4,54.9" fill="#7F6000" stroke="#fff" strokeWidth="0.3"/>
+          <polygon points="50.6,36.4 50.6,0 100,0 100,24.6 61,47.3" fill="#FFAB40" stroke="#fff" strokeWidth="0.3"/>
+          <polygon points="50.6,36.4 50.6,0 0,0 0,24.5 40,47.3" fill="#1C4587" stroke="#fff" strokeWidth="0.3"/>
+          <polygon points="44.2,64.9 56.8,64.8 76.9,91.2 22.9,91.4" fill="#CC0000" stroke="#fff" strokeWidth="0.3"/>
+          <polygon points="50.65,36.5 61,47.4 57,64.9 44,64.9 40.3,47.4" fill="#666666" stroke="#fff" strokeWidth="0.3"/>
+          <polygon points="50.6,36.6 34.6,0 65.7,0" fill="#CFE2F3" stroke="#fff" strokeWidth="0.3"/>
+        </svg>
 
         {/* ═══ Layer 2: Text content overlays ═══ */}
 
