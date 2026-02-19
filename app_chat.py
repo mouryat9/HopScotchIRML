@@ -652,6 +652,7 @@ class RegisterReq(BaseModel):
     password: str
     name: str
     role: str  # "student" or "teacher"
+    education_level: str = "high_school"  # "high_school" or "higher_ed"
 
 
 class LoginReq(BaseModel):
@@ -665,18 +666,22 @@ class AuthResp(BaseModel):
     username: Optional[str] = None
     name: str
     role: str
+    education_level: str = "high_school"
 
 
 @app.post("/auth/register", response_model=AuthResp)
 def register(req: RegisterReq):
     if req.role not in ("student", "teacher"):
         raise HTTPException(status_code=400, detail="Role must be 'student' or 'teacher'")
+    if req.education_level not in ("high_school", "higher_ed"):
+        raise HTTPException(status_code=400, detail="education_level must be 'high_school' or 'higher_ed'")
     if find_user_by_email(req.email):
         raise HTTPException(status_code=409, detail="Email already registered")
     pw_hash = hash_password(req.password)
-    create_user(req.email, pw_hash, req.role, req.name)
+    create_user(req.email, pw_hash, req.role, req.name, req.education_level)
     token = create_access_token({"sub": req.email})
-    return AuthResp(token=token, email=req.email, name=req.name, role=req.role)
+    return AuthResp(token=token, email=req.email, name=req.name,
+                    role=req.role, education_level=req.education_level)
 
 
 @app.post("/auth/login", response_model=AuthResp)
@@ -685,7 +690,9 @@ def login(req: LoginReq):
     if not user or not verify_password(req.password, user["password_hash"]):
         raise HTTPException(status_code=401, detail="Invalid email or password")
     token = create_access_token({"sub": req.email})
-    return AuthResp(token=token, email=req.email, name=user["name"], role=user["role"])
+    return AuthResp(token=token, email=req.email, name=user["name"],
+                    role=user["role"],
+                    education_level=user.get("education_level", "high_school"))
 
 
 @app.get("/auth/me")
@@ -695,6 +702,7 @@ def get_me(user: dict = Depends(get_current_user)):
         "username": user.get("username"),
         "name": user["name"],
         "role": user["role"],
+        "education_level": user.get("education_level", "high_school"),
     }
 
 
@@ -813,6 +821,7 @@ def classroom_login(req: ClassroomLoginReq):
         username=req.username,
         name=user["name"],
         role=user["role"],
+        education_level=user.get("education_level", "high_school"),
     )
 
 
@@ -848,15 +857,16 @@ def create_class_endpoint(req: CreateClassReq, user: dict = Depends(get_current_
 
     pw_hash = hash_password(req.password)
     teacher_id = str(user["_id"])
+    teacher_edu_level = user.get("education_level", "high_school")
 
     class_id = create_class_doc(teacher_id, req.class_name, class_code, pw_hash, req.password, req.student_count)
 
-    # Create student accounts
+    # Create student accounts — inherit teacher's education_level
     students = []
     for i in range(1, req.student_count + 1):
         username = f"{class_code}_{i:02d}"
         student_name = f"Student {i:02d}"
-        create_classroom_student(username, pw_hash, student_name, class_id)
+        create_classroom_student(username, pw_hash, student_name, class_id, education_level=teacher_edu_level)
         students.append({"username": username, "name": student_name})
 
     return {
@@ -903,6 +913,19 @@ def get_teacher_student_sessions(user: dict = Depends(get_current_user)):
         s["_id"] = str(s["_id"])
         if "user" in s and "_id" in s["user"]:
             s["user"]["_id"] = str(s["user"]["_id"])
+        # Compute completed steps from step_notes
+        step_notes = s.get("step_notes") or {}
+        completed = []
+        s1 = step_notes.get("1") or {}
+        if s1.get("worldview_id"):
+            completed.append(1)
+        for step_num in range(2, 10):
+            data = step_notes.get(str(step_num)) or {}
+            if data:
+                completed.append(step_num)
+        s["completed_steps"] = completed
+        # Remove step_notes from response (bulky)
+        s.pop("step_notes", None)
     return {"sessions": sessions}
 
 

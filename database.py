@@ -41,18 +41,21 @@ def find_user_by_username(username: str) -> Optional[Dict]:
     return users_col.find_one({"username": username})
 
 
-def create_user(email: str, password_hash: str, role: str, name: str) -> str:
+def create_user(email: str, password_hash: str, role: str, name: str,
+                education_level: str = "high_school") -> str:
     result = users_col.insert_one({
         "email": email,
         "password_hash": password_hash,
         "role": role,
         "name": name,
+        "education_level": education_level,
         "created_at": datetime.utcnow().isoformat(),
     })
     return str(result.inserted_id)
 
 
-def create_classroom_student(username: str, password_hash: str, name: str, class_id: str) -> str:
+def create_classroom_student(username: str, password_hash: str, name: str,
+                             class_id: str, education_level: str = "high_school") -> str:
     """Create a classroom student (no email, username-based login)."""
     result = users_col.insert_one({
         "username": username,
@@ -60,6 +63,7 @@ def create_classroom_student(username: str, password_hash: str, name: str, class
         "role": "classroom_student",
         "name": name,
         "class_id": class_id,
+        "education_level": education_level,
         "created_at": datetime.utcnow().isoformat(),
     })
     return str(result.inserted_id)
@@ -106,9 +110,10 @@ def get_students_in_class(class_id: str) -> List[Dict]:
 
 
 def get_all_student_sessions_for_teacher(teacher_id: str) -> List[Dict]:
-    """Get all sessions for all students in all classes belonging to this teacher."""
+    """Get all students in all classes belonging to this teacher, with their session data if any."""
     classes = get_classes_for_teacher(teacher_id)
-    class_ids = [str(c["_id"]) for c in classes]
+    class_map = {str(c["_id"]): c for c in classes}
+    class_ids = list(class_map.keys())
     if not class_ids:
         return []
     students = list(users_col.find(
@@ -118,14 +123,50 @@ def get_all_student_sessions_for_teacher(teacher_id: str) -> List[Dict]:
     student_ids = [str(s["_id"]) for s in students]
     if not student_ids:
         return []
+
+    # Fetch all sessions for these students
     sessions = list(sessions_col.find(
         {"user_id": {"$in": student_ids}},
         {"chat": 0},
     ).sort("created_at", -1))
-    user_map = {str(s["_id"]): s for s in students}
+
+    # Map: user_id -> list of sessions
+    session_map: Dict[str, List[Dict]] = {}
     for sess in sessions:
-        sess["user"] = user_map.get(sess.get("user_id"), {})
-    return sessions
+        uid = sess.get("user_id", "")
+        session_map.setdefault(uid, []).append(sess)
+
+    # Build result: one entry per student, with their latest session (or empty)
+    result = []
+    for student in students:
+        sid = str(student["_id"])
+        student_class_id = student.get("class_id", "")
+        cls = class_map.get(student_class_id, {})
+        student_sessions = session_map.get(sid, [])
+
+        if student_sessions:
+            # Student has sessions — include each one
+            for sess in student_sessions:
+                sess["user"] = student
+                sess["class_name"] = cls.get("class_name", "")
+                sess["class_code"] = cls.get("class_code", "")
+                result.append(sess)
+        else:
+            # Student hasn't logged in — create a placeholder entry
+            result.append({
+                "user": student,
+                "class_name": cls.get("class_name", ""),
+                "class_code": cls.get("class_code", ""),
+                "session_id": None,
+                "active_step": None,
+                "worldview_label": None,
+                "resolved_path": None,
+                "step_notes": {},
+                "created_at": student.get("created_at"),
+                "updated_at": None,
+                "_id": sid,
+            })
+    return result
 
 
 # --------------- Session CRUD ---------------

@@ -107,7 +107,7 @@ function StepDiagram({ activeStep, completedSteps = [], onStepChange }) {
 
 /* ----- Student App ----- */
 
-function StudentApp() {
+function StudentApp({ onBackToDashboard }) {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const [sessionId, setSessionId] = useState(null);
@@ -261,6 +261,14 @@ function StudentApp() {
             alt="Hopscotch 4 All"
             className="hop-logo"
           />
+          {onBackToDashboard && (
+            <button
+              className="hop-header__back-btn"
+              onClick={onBackToDashboard}
+            >
+              &larr; Dashboard
+            </button>
+          )}
           <button
             className="session-history-btn"
             onClick={() => setHistoryOpen(true)}
@@ -337,6 +345,7 @@ function StudentApp() {
           onCompletedStepsChange={setCompletedSteps}
           loading={loading}
           status={status}
+          educationLevel={user?.education_level || "high_school"}
         />
       </div>
 
@@ -356,6 +365,7 @@ function StudentApp() {
 
 export default function App() {
   const { user, loading } = useAuth();
+  const [teacherView, setTeacherView] = useState("dashboard");
 
   if (loading) {
     return (
@@ -368,6 +378,13 @@ export default function App() {
   }
 
   if (!user) return <LoginPage />;
-  if (user.role === "teacher") return <TeacherDashboard />;
+  // Higher Ed Faculty → straight to research design workspace (no class management)
+  // High School Teacher → dashboard with class creation + option to create designs
+  if (user.role === "teacher" && user.education_level !== "higher_ed") {
+    if (teacherView === "designs") {
+      return <StudentApp onBackToDashboard={() => setTeacherView("dashboard")} />;
+    }
+    return <TeacherDashboard onOpenDesigns={() => setTeacherView("designs")} />;
+  }
   return <StudentApp />;
 }

@@ -18,11 +18,11 @@ function authHeaders() {
 export const API = {
   // ---------- Auth ----------
 
-  async register({ email, password, name, role = "student" }) {
+  async register({ email, password, name, role = "student", education_level = "high_school" }) {
     const res = await fetch(`${API_BASE}/auth/register`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password, name, role }),
+      body: JSON.stringify({ email, password, name, role, education_level }),
     });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));

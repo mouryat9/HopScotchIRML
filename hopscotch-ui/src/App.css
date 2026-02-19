@@ -173,6 +173,27 @@ h1, h2, h3, h4, h5, h6 {
   animation: none;
 }
 
+.hop-header__back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  font-family: inherit;
+  border: 1.5px solid var(--hop-border);
+  border-radius: var(--hop-radius-pill);
+  background: transparent;
+  color: var(--hop-muted);
+  cursor: pointer;
+  transition: none;
+}
+
+.hop-header__back-btn:hover {
+  border-color: var(--hop-blue);
+  color: var(--hop-blue);
+}
+
 .hop-app-title {
   font-size: 18px;
   font-weight: 700;
@@ -798,7 +819,7 @@ h1, h2, h3, h4, h5, h6 {
 .pin-panel__content .embed-card {
   border: none;
   box-shadow: none;
-  padding: 0;
+  padding: 8px 8px 0;
   height: 100%;
   width: 100%;
   display: flex;
@@ -812,6 +833,7 @@ h1, h2, h3, h4, h5, h6 {
   width: 100%;
   aspect-ratio: auto;
   flex: 1;
+  min-height: 0;
 }
 
 .pin-panel__content .chat-wrap {
@@ -1084,6 +1106,49 @@ h1, h2, h3, h4, h5, h6 {
 .embed-placeholder {
   font-size: 0.9rem;
   color: var(--hop-muted);
+}
+
+/* Step title above tabs */
+.embed-step-title {
+  margin: 0 0 10px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--hop-navy);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+/* Video / Interactive Resource tab toggle */
+.embed-tabs {
+  display: flex;
+  gap: 0;
+  border: 1.5px solid var(--hop-border);
+  border-radius: var(--hop-radius-pill);
+  overflow: hidden;
+  width: fit-content;
+  margin-bottom: 10px;
+}
+
+.embed-tabs__btn {
+  padding: 0.4rem 1rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  font-family: inherit;
+  border: none;
+  background: transparent;
+  color: var(--hop-muted);
+  cursor: pointer;
+  transition: none;
+}
+
+.embed-tabs__btn--active {
+  background: var(--hop-blue);
+  color: white;
+}
+
+.embed-tabs__btn:not(.embed-tabs__btn--active):hover {
+  background: rgba(30, 39, 64, 0.04);
+  color: var(--hop-ink);
 }
 
 /* ========================================================
@@ -2259,35 +2324,55 @@ select.input:focus {
 }
 
 /* --- Role toggle on registration form --- */
-.login-role-toggle {
-  display: flex;
-  gap: 0;
-  border: 1.5px solid var(--hop-border);
-  border-radius: var(--hop-radius-pill);
-  overflow: hidden;
-  width: fit-content;
+/* Account type selector (2x2 grid) */
+.login-account-type {
+  margin-bottom: 0.5rem;
 }
 
-.login-role-btn {
-  padding: 0.5rem 1.5rem;
-  font-size: 0.85rem;
-  font-weight: 600;
-  font-family: inherit;
-  border: none;
+.login-account-type__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  margin-top: 0.35rem;
+}
+
+.login-account-type__btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.65rem 0.5rem;
+  border: 1.5px solid var(--hop-border);
+  border-radius: var(--hop-radius);
   background: transparent;
   color: var(--hop-muted);
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: none;
 }
 
-.login-role-btn--active {
-  background: var(--hop-blue);
-  color: white;
+.login-account-type__btn--active {
+  border-color: var(--hop-blue);
+  background: rgba(43, 94, 167, 0.08);
+  color: var(--hop-blue);
 }
 
-.login-role-btn:not(.login-role-btn--active):hover {
-  background: rgba(30, 39, 64, 0.04);
+.login-account-type__btn:not(.login-account-type__btn--active):hover {
+  border-color: var(--hop-muted);
+  background: rgba(30, 39, 64, 0.03);
   color: var(--hop-ink);
+}
+
+.login-account-type__icon {
+  font-size: 1.3rem;
+  line-height: 1;
+}
+
+.login-account-type__label {
+  line-height: 1.2;
+  text-align: center;
 }
 
 /* User identity (avatar + name) */
@@ -2896,6 +2981,21 @@ select.input:focus {
   font-size: 0.82rem;
 }
 
+.td-table__row--inactive {
+  opacity: 0.55;
+}
+
+.td-table__not-started {
+  display: inline-block;
+  padding: 2px 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: var(--hop-border);
+  color: var(--hop-muted);
+  border-radius: var(--hop-radius-sm);
+  white-space: nowrap;
+}
+
 /* ── Step badge (in progress table) ── */
 .td-step-badge {
   display: inline-block;
@@ -2928,12 +3028,187 @@ select.input:focus {
   background: var(--hop-green);
 }
 
+.td-dots__dot--active {
+  box-shadow: 0 0 0 2px white, 0 0 0 3.5px var(--hop-blue);
+}
+
 .td-dots__count {
   font-size: 0.7rem;
   color: var(--hop-muted);
   margin-left: 4px;
   font-weight: 600;
   white-space: nowrap;
+}
+
+/* Summary stat cards */
+.td-stats {
+  display: flex;
+  gap: 16px;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 20px 24px 0;
+}
+
+.td-stats__card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 18px 16px;
+  border-radius: var(--hop-radius-lg);
+  background: var(--hop-surface);
+  border: 1px solid var(--hop-border);
+  box-shadow: var(--hop-shadow-sm);
+}
+
+.td-stats__number {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--hop-blue);
+  line-height: 1;
+}
+
+.td-stats__label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--hop-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* Student avatar in progress table */
+.td-table__student {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.td-table__student-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--hop-blue);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+/* Progress bar + dots cell */
+.td-progress-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 140px;
+}
+
+.td-progress-bar {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--hop-border);
+  overflow: hidden;
+}
+
+.td-progress-bar__fill {
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(90deg, var(--hop-blue), var(--hop-green));
+  transition: width 0.3s ease;
+}
+
+.td-progress-dots {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.td-progress-pct {
+  font-size: 0.7rem;
+  color: var(--hop-muted);
+  font-weight: 600;
+  margin-left: 4px;
+  white-space: nowrap;
+}
+
+/* Step badge with colored border */
+.td-step-badge {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: var(--hop-radius);
+  background: var(--hop-surface);
+  border: 1px solid var(--hop-border);
+  border-left: 3px solid var(--hop-blue);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--hop-ink);
+  white-space: nowrap;
+}
+
+/* Progress filter bar */
+.td-progress__filter {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.td-progress__filter-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--hop-muted);
+}
+
+.td-progress__select {
+  padding: 6px 12px;
+  border-radius: var(--hop-radius);
+  border: 1.5px solid var(--hop-border);
+  background: var(--hop-surface);
+  font-family: inherit;
+  font-size: 0.82rem;
+  color: var(--hop-ink);
+  cursor: pointer;
+}
+
+.td-progress__select:focus {
+  outline: none;
+  border-color: var(--hop-blue);
+}
+
+/* Chart cards grid */
+.td-charts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.td-chart-card {
+  padding: 18px 20px;
+  border-radius: var(--hop-radius-lg);
+  background: var(--hop-surface);
+  border: 1px solid var(--hop-border);
+  box-shadow: var(--hop-shadow-sm);
+}
+
+.td-chart-card--wide {
+  grid-column: 1 / -1;
+}
+
+.td-chart-card__title {
+  margin: 0 0 2px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--hop-ink);
+}
+
+.td-chart-card__desc {
+  margin: 0 0 12px;
+  font-size: 0.75rem;
+  color: var(--hop-muted);
 }
 
 /* ── Teacher Dashboard responsive ── */
@@ -2967,6 +3242,13 @@ select.input:focus {
   }
   .td-class__date {
     margin-left: 0;
+  }
+  .td-charts {
+    grid-template-columns: 1fr;
+  }
+  .td-stats {
+    flex-direction: column;
+    gap: 10px;
   }
 }
 
@@ -4690,10 +4972,10 @@ select.input:focus {
     color-adjust: exact !important;
   }
 
-  /* Landscape, fill entire page */
+  /* Landscape preferred (desktop browsers); mobile will ignore this */
   @page {
     size: landscape;
-    margin: 0;
+    margin: 0.25in;
   }
 
   /* Hide everything except the diagram */
@@ -4702,38 +4984,56 @@ select.input:focus {
     display: none !important;
   }
 
-  /* Reset the overlay to fill the page */
+  /* Reset the overlay — static flow, no fixed positioning */
   .cf-overlay {
-    position: fixed !important;
-    inset: 0 !important;
+    position: static !important;
     background: #fff !important;
-    z-index: 999999 !important;
-    overflow: hidden !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
+    overflow: visible !important;
+    display: block !important;
+    z-index: auto !important;
   }
 
   .cf-page {
     padding: 0 !important;
     margin: 0 !important;
-    width: 100vw !important;
-    height: 100vh !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
+    width: 100% !important;
+    height: auto !important;
+    display: block !important;
   }
 
+  /* All diagram types: fill page width, maintain proportions */
   .cf-diagram {
-    width: 100vw !important;
-    height: 100vh !important;
+    width: 100% !important;
+    height: auto !important;
+    aspect-ratio: 10 / 6.25 !important;
     max-width: none !important;
-    max-height: none !important;
     box-shadow: none !important;
     border-radius: 0 !important;
     page-break-inside: avoid !important;
     position: relative !important;
-    overflow: hidden !important;
+    overflow: visible !important;
+  }
+
+  .cfb-diagram {
+    width: 100% !important;
+    height: auto !important;
+    aspect-ratio: 10 / 6.5 !important;
+    max-width: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    overflow: visible !important;
+    page-break-inside: avoid !important;
+  }
+
+  .cfe-diagram {
+    width: 100% !important;
+    height: auto !important;
+    aspect-ratio: 10 / 6.5 !important;
+    max-width: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    overflow: visible !important;
+    page-break-inside: avoid !important;
   }
 
   /* Ensure background shapes render with colors */
@@ -4773,15 +5073,7 @@ select.input:focus {
     box-shadow: none !important;
   }
 
-  /* ── Boxed template print ── */
-  .cfb-diagram {
-    width: 100vw !important;
-    height: 100vh !important;
-    max-width: none !important;
-    box-shadow: none !important;
-    border-radius: 0 !important;
-  }
-
+  /* Boxed template color elements */
   .cfb-card__header,
   .cfb-card__body,
   .cfb-lit-banner,
@@ -4796,15 +5088,7 @@ select.input:focus {
     print-color-adjust: exact !important;
   }
 
-  /* ── Extended template print ── */
-  .cfe-diagram {
-    width: 100vw !important;
-    height: 100vh !important;
-    max-width: none !important;
-    box-shadow: none !important;
-    border-radius: 0 !important;
-  }
-
+  /* Extended template color elements */
   .cfe-card__header,
   .cfe-card__body,
   .cfe-design-arrow,

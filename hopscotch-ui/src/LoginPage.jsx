@@ -17,7 +17,14 @@ export default function LoginPage() {
   const [showForm, setShowForm] = useState(false);
   // "login" | "register" | "forgot" | "reset" | "classroom"
   const [view, setView] = useState("login");
-  const [registerRole, setRegisterRole] = useState("student"); // "student" | "teacher"
+  // Account type: determines both role and education_level
+  const [accountType, setAccountType] = useState("hs_student");
+  const ACCOUNT_TYPES = {
+    hs_student:  { role: "student", education_level: "high_school",  label: "High School Student" },
+    hs_teacher:  { role: "teacher", education_level: "high_school",  label: "High School Teacher" },
+    he_student:  { role: "student", education_level: "higher_ed",    label: "Higher Ed Student" },
+    he_faculty:  { role: "teacher", education_level: "higher_ed",    label: "Higher Ed Faculty" },
+  };
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
@@ -88,7 +95,8 @@ export default function LoginPage() {
     setLoading(true);
     try {
       if (view === "register") {
-        const data = await API.register({ email, password, name, role: registerRole });
+        const { role, education_level } = ACCOUNT_TYPES[accountType];
+        const data = await API.register({ email, password, name, role, education_level });
         login(data);
       } else if (view === "login") {
         const data = await API.login({ email, password });
@@ -236,23 +244,22 @@ export default function LoginPage() {
           <p className="login-split__subtitle">{subtitle}</p>
 
           <form className="login-split__form" onSubmit={handleSubmit}>
-            {/* Role toggle — register only */}
+            {/* Account type selector — register only */}
             {view === "register" && (
-              <div className="login-role-toggle">
-                <button
-                  type="button"
-                  className={`login-role-btn${registerRole === "student" ? " login-role-btn--active" : ""}`}
-                  onClick={() => setRegisterRole("student")}
-                >
-                  Student
-                </button>
-                <button
-                  type="button"
-                  className={`login-role-btn${registerRole === "teacher" ? " login-role-btn--active" : ""}`}
-                  onClick={() => setRegisterRole("teacher")}
-                >
-                  Teacher
-                </button>
+              <div className="login-account-type">
+                <label className="login-field__label">I am a...</label>
+                <div className="login-account-type__grid">
+                  {Object.entries(ACCOUNT_TYPES).map(([key, { label }]) => (
+                    <button
+                      key={key}
+                      type="button"
+                      className={`login-account-type__btn${accountType === key ? " login-account-type__btn--active" : ""}`}
+                      onClick={() => setAccountType(key)}
+                    >
+                      <span className="login-account-type__label">{label}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
 

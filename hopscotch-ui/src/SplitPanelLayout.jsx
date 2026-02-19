@@ -15,6 +15,7 @@ export default function SplitPanelLayout({
   onCompletedStepsChange,
   loading,
   status,
+  educationLevel = "high_school",
 }) {
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true);
@@ -43,7 +44,7 @@ export default function SplitPanelLayout({
             </button>
           </div>
           <div className="pin-panel__content">
-            <StepResourcePanel activeStep={activeStep} />
+            <StepResourcePanel activeStep={activeStep} educationLevel={educationLevel} />
           </div>
         </div>
       </div>
