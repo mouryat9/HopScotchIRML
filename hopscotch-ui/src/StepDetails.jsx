@@ -30,7 +30,7 @@ To guide you through this process, please explore the interactive resource on th
  */
 const EMPTY_STEP_DATA = {
   1: { worldview: "" },
-  2: { topic: "", goals: "" },
+  2: { topic: "", personalGoals: "", practicalGoals: "", intellectualGoals: "" },
   3: { topicalResearch: "", theoreticalFrameworks: "" },
 };
 
@@ -148,7 +148,11 @@ export default function StepDetails({ step, sessionId, onChatRefresh, onAutoSend
 
   // Step 1: when worldview changes, tell backend to set worldview
   const onWorldviewChange = async (newValue) => {
-    updateField("worldview", newValue);
+    // Update local state only — do NOT call updateField() here because
+    // /step/save replaces the entire step_notes dict and would race with
+    // /worldview/set, potentially overwriting the worldview_id key that
+    // _compute_completed_steps needs.
+    setData((prev) => ({ ...prev, worldview: newValue }));
 
     setWorldviewStatus("");
     setSaveError("");
@@ -165,7 +169,10 @@ export default function StepDetails({ step, sessionId, onChatRefresh, onAutoSend
       }
       // Trigger a streaming welcome message in the chat
       const label = newValue.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
-      if (onAutoSend) onAutoSend(`I just selected ${label} as my worldview. Can you give me a personalised welcome explaining what this means for my research approach and methodology pathway?`);
+      if (onAutoSend) onAutoSend({
+        text: `I just selected ${label} as my worldview. Can you give me a personalised welcome explaining what this means for my research approach and methodology pathway?`,
+        event: `Worldview selected: ${label}`,
+      });
     } catch (e) {
       console.error("Failed to set worldview on backend", e);
       setSaveError("Worldview save failed. Check backend logs.");
@@ -268,14 +275,38 @@ export default function StepDetails({ step, sessionId, onChatRefresh, onAutoSend
           />
 
           <label className="hop-desc" style={{ display: "block", marginTop: 10 }}>
-            Research goals
+            Personal goals driving your study
           </label>
           <textarea
             className="textarea"
-            rows={3}
-            placeholder="Please describe your research goals…"
-            value={data.goals || ""}
-            onChange={(e) => updateField("goals", e.target.value)}
+            rows={2}
+            placeholder="What personal motivations drive this research?"
+            value={data.personalGoals || ""}
+            onChange={(e) => updateField("personalGoals", e.target.value)}
+            disabled={!sessionId}
+          />
+
+          <label className="hop-desc" style={{ display: "block", marginTop: 10 }}>
+            Practical goals driving your study
+          </label>
+          <textarea
+            className="textarea"
+            rows={2}
+            placeholder="What practical problems do you want to address?"
+            value={data.practicalGoals || ""}
+            onChange={(e) => updateField("practicalGoals", e.target.value)}
+            disabled={!sessionId}
+          />
+
+          <label className="hop-desc" style={{ display: "block", marginTop: 10 }}>
+            Intellectual goals driving your study
+          </label>
+          <textarea
+            className="textarea"
+            rows={2}
+            placeholder="What do you want to understand or contribute to the field?"
+            value={data.intellectualGoals || ""}
+            onChange={(e) => updateField("intellectualGoals", e.target.value)}
             disabled={!sessionId}
           />
 
@@ -285,7 +316,7 @@ export default function StepDetails({ step, sessionId, onChatRefresh, onAutoSend
               disabled={!sessionId || !data.topic}
               onClick={() => {
                 if (onAutoSend) onAutoSend(
-                  `I'm on Step 2. My research topic is: "${data.topic || ""}". My research goals are: "${data.goals || ""}". Can you give me feedback on my topic and goals, and help me refine them?`
+                  `I'm on Step 2. My research topic is: "${data.topic || ""}". My personal goals: "${data.personalGoals || ""}". My practical goals: "${data.practicalGoals || ""}". My intellectual goals: "${data.intellectualGoals || ""}". Can you give me feedback on my topic and goals, and help me refine them?`
                 );
               }}
             >
@@ -592,7 +623,10 @@ function StepFieldRenderer({ config, data, updateField, sessionId, disabled }) {
   if (field_type === "fields" && fields && fields.length > 0) {
     return (
       <div>
-        {fields.map((f) => (
+        {fields.map((f) => {
+          // Conditional visibility: skip if depends_on condition not met
+          if (f.depends_on && data[f.depends_on.field] !== f.depends_on.value) return null;
+          return (
           <div key={f.field_key} style={{ marginBottom: 12 }}>
             <label className="hop-desc" style={{ display: "block", marginTop: 4 }}>
               {f.label}
@@ -606,6 +640,67 @@ function StepFieldRenderer({ config, data, updateField, sessionId, disabled }) {
                 onChange={(e) => updateField(f.field_key, e.target.value)}
                 disabled={disabled}
               />
+            ) : f.type === "multi_select" && f.options ? (
+              <>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
+                  {f.options.map((opt) => {
+                    const sel = Array.isArray(data[f.field_key]) ? data[f.field_key] : [];
+                    const active = sel.includes(opt.id);
+                    return (
+                      <label key={opt.id} className="checkbox-label" style={{ marginBottom: 2 }}>
+                        <input
+                          type="checkbox"
+                          checked={active}
+                          onChange={() => {
+                            const next = active
+                              ? sel.filter((id) => id !== opt.id)
+                              : [...sel, opt.id];
+                            updateField(f.field_key, next);
+                          }}
+                          disabled={disabled}
+                        />
+                        <span>{opt.label}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+                {(Array.isArray(data[f.field_key]) ? data[f.field_key] : []).includes("other") && (
+                  <input
+                    className="input"
+                    type="text"
+                    placeholder="Please describe…"
+                    value={data[f.field_key + "_other"] || ""}
+                    onChange={(e) => updateField(f.field_key + "_other", e.target.value)}
+                    disabled={disabled}
+                    style={{ marginTop: 8 }}
+                  />
+                )}
+              </>
+            ) : f.type === "select" && f.options ? (
+              <>
+                <select
+                  className="input"
+                  value={data[f.field_key] || ""}
+                  onChange={(e) => updateField(f.field_key, e.target.value)}
+                  disabled={disabled}
+                >
+                  <option value="">{f.placeholder || "Select…"}</option>
+                  {f.options.map((opt) => (
+                    <option key={opt.id} value={opt.id}>{opt.label}</option>
+                  ))}
+                </select>
+                {data[f.field_key] === "other" && (
+                  <input
+                    className="input"
+                    type="text"
+                    placeholder="Please describe your method…"
+                    value={data[f.field_key + "_other"] || ""}
+                    onChange={(e) => updateField(f.field_key + "_other", e.target.value)}
+                    disabled={disabled}
+                    style={{ marginTop: 8 }}
+                  />
+                )}
+              </>
             ) : (
               <input
                 className="input"
@@ -617,7 +712,8 @@ function StepFieldRenderer({ config, data, updateField, sessionId, disabled }) {
               />
             )}
           </div>
-        ))}
+          );
+        })}
       </div>
     );
   }

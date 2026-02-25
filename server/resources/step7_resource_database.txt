@@ -1,0 +1,70 @@
+================================================================================
+HOPSCOTCH STEP 7: Step 7: How will I analyze data?
+================================================================================
+
+BROADER CONCEPTS AND TERMS
+----------------------------------------
+- Data Analysis in the Qualitative Method
+- Data Analysis in the Quantitative Method
+- Data analysis in the Mixed Methods
+
+SPECIFIC RESEARCH TERMS AND SUB-TOPICS
+----------------------------------------
+- Specific Qualitative Method/ Strategy/ Resource: Coding (Open coding, Axial coding, Selective coding), Memoing, Data Saturation, Content Analysis (Quotations), Thematic Analysis, Triangulation, Co- ocurrence analysis (Table or Sankey Diagram), Networks views, other
+- Specific Quantitative Method Statistic Analysis/ Resource: Descriptive statistics: Measures of Central Tendency (Mean, Median, Mode), Measures of Dispersion or Variability (Range, Interquartile Range, Variance, Standard Deviation, Coefficient of Variation), Measures of Relative Position (Percentiles, Quartiles, Deciles, Z-scores), Measures of Distribution Shape (Skewness, Kurtosis, Frequency), Measures Frequencies (Absolute, Relative and Cumulative Frequencies, Percentages), other. Inferential statistics (Correlation, ANOVA, Linear regression). Visualization Resources: Boxplots, Tables, Scatter plots, Histogram, Bar graphs, other.
+- Specific Quantitative Method Statistic Analysis/ Resource: Descriptive statistics: Measures of Central Tendency (Mean, Median, Mode), Measures of Dispersion or Variability (Range, Interquartile Range, Variance, Standard Deviation, Coefficient of Variation), Measures of Relative Position (Percentiles, Quartiles, Deciles, Z-scores), Measures of Distribution Shape (Skewness, Kurtosis, Frequency), Measures Frequencies (Absolute, Relative and Cumulative Frequencies, Percentages), other. Inferential statistics (Correlation, ANOVA, Linear regression). Visualization Resources: Boxplots, Tables, Scatter plots, Histogram, Bar graphs, other.
+
+DEFINITIONS AND KEY CONCEPTS
+----------------------------------------
+Analysis Organizing and interpreting the data to figure out what can be learned and make sense of what the data is displaying (Glesne, 2016). Describe, compare, create explanations, link data to other data, possibly pose hypotheses, develop theories, or conclusions. Level 2 - Narrower Concepts/Terms (Qualitative Data Analysis) Coding (Glesne, 2016): Progressive process of sorting and defining data into clumps labeled with a code to create a thematic organizational framework. Links thoughts and actions across bits of data. Discern themes, patterns, and processes to compare and build theoretical explanations. Memoing (Glesne, 2016): Informal notes taken by the researcher to track thoughts and ideas, possibly recorded. Data Saturation (Glesne, 2016): Successive examination of sources yields redundancy and completeness. Content Analysis (Hsieh & Shannon, 2005): Subjective interpretation of text data through systematic coding to identify themes or patterns. Thematic Analysis (Glesne, 2016): Searches for themes and patterns in data. Triangulation (Glesne, 2016): Use of multiple methods to validate findings. Quantitative Data Analysis: Descriptive statistics (Coolidge, 2021): Measuring data using graphs, tables, and descriptions such as means and averages; parameters include mean and standard deviation. Inferential statistics (Coolidge, 2021): Making inferences about a population from a sample. Mixed Methods Data Analysis (Creswell, 2014): Quantitative and qualitative data are analyzed separately then merged for comparison or transformation, often using joint displays or side-by-side results. Level 3 - Related Concepts/Terms Qualitative Data Analysis: Open coding – breaking data into parts and labeling concepts; Axial coding – connecting categories and subcategories; Selective coding – identifying the core category integrating all findings. Quantitative Data Analysis: Measures of central tendency (mean, median, mode); Measures of dispersion (range, variance, standard deviation, interquartile range); Measures of relative position (percentiles, quartiles, z-scores). Boxplots, tables, scatter plots, histograms, and bar graphs visualize data distribution. Inferential statistics: T-tests compare means; Correlation measures relationships (r value); ANOVA compares means across three or more groups; Linear regression models predict relationships between variables (Field, 2018; Creswell, 2014; Gravetter & Wallnau, 2016).
+
+INTERNAL HOPSCOTCH RESOURCES
+----------------------------------------
+Hopscotch 4-AP Research video Step 7: https://share.synthesia.io/97b73f09-c293-4416-b8a1-232bd18cb3a7
+
+Hopscotch 4-AP Research interactive resource Step 7: https://view.genially.com/6626b6c22b4ff000143872e2
+
+EXTERNAL LEARNING RESOURCES
+----------------------------------------
+Data Analysis and Statistics in Middle School Mathematics: https://oercommons.org/courseware/lesson/97451/overview
+
+Social Data Analysis: https://oercommons.org/courses/social-data-analysis
+
+Statistical Thinking and Data Analysis: https://ocw.mit.edu/courses/15-075j-statistical-thinking-and-data-analysis-fall-2011/
+
+Data Analysis and Workflows: https://dataoneorg.github.io/Education/lessons/09_analysis/index.html
+
+Analysis of univariate data: https://oercommons.org/courses/data-analysis-3
+
+Data Analysis and Visualization in R for Ecologists: https://oercommons.org/courses/data-carpentry-r-for-data-analysis-and-visualization-of-ecological-data
+
+Data Analysis: Visualization and Dashboard Design: https://oercommons.org/courses/data-analysis-visualization-and-dashboard-design
+
+TAGUETTE Qualitative data analysis: https://www.taguette.org
+
+Descriptive statistics: https://www.youtube.com/watch?v=jn3_I4Q6BdM&list=TLGGgtecsr16e08wNzExMjAyNQ
+
+RECOMMENDED AI TOOLS AND APIs
+----------------------------------------
+BioRender: https://www.biorender.com
+
+Napking: https://www.napkin.ai
+
+oTrabnscribe - Free AI Transciption: https://otranscribe.com/
+
+
+================================================================================
+ADDITIONAL CONTENT FROM EDUCATIONAL SOURCES
+================================================================================
+SCRAPED WEB CONTENT: Data Analysis
+
+From MIT OCW (Statistical Thinking and Data Analysis):
+This course covers statistical data analysis with topics: applied probability, sampling, estimation, hypothesis testing, linear regression, analysis of variance, categorical data analysis, and nonparametric statistics.
+
+From DataONE (Data Analysis and Workflows):
+Key concepts: Reproducibility in research processes, iterative analysis approaches, documentation practices, provenance tracking, and workflow processes (both informal conceptual and formal executable types).
+
+From AP Research Teacher-Recommended Resources:
+- PSPP: A free, open-source alternative to SPSS for statistical analysis
+- VassarStats: Students can manually enter or import data to run t-tests, calculate correlation, ANOVA, ANCOVA, and more
+- Rice Virtual Lab: Virtual lab with statistical textbooks for designing and choosing inquiry methods

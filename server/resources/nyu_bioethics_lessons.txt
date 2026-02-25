@@ -1,0 +1,75 @@
+================================================================================
+NYU HIGH SCHOOL BIOETHICS PROJECT - 20 LESSON PLANS
+================================================================================
+
+Source: NYU Langone Health, Section of Medical Ethics
+URL: https://med.nyu.edu/departments-institutes/population-health/divisions-sections-centers/medical-ethics/education/high-school-bioethics-project/lesson-plans
+
+These evidence-based resources integrate ethical analysis into life sciences, social sciences, public policy, and theology courses.
+
+LESSON 1: WHAT IS ETHICS?
+Introduces ethics as a practical, relevant subject rather than abstract philosophy, establishing foundations for all subsequent modules.
+
+LESSON 2: ANTIBIOTIC RESISTANCE
+Examines ethical dilemmas surrounding antibiotic misuse and bacterial evolution, exploring solutions to prevent superbugs while addressing responsible prescribing practices.
+
+LESSON 3: CHILDHOOD SPORTS PARTICIPATION
+Analyzes benefits and risks of early competitive sports participation, including potential injuries and long-term developmental impacts on young athletes.
+
+LESSON 4: COMPASSIONATE USE
+Explores expanded access to experimental drugs before FDA approval, emphasizing the tension between patient hope and rigorous drug testing protocols.
+
+LESSON 5: CONCEPTUAL FOUNDATIONS OF BIOETHICS
+Provides philosophical frameworks and ethical theories for analyzing bioethical questions about right, wrong, good, and bad.
+
+LESSON 6: CRISPR AND GENETIC MODIFICATION
+Examines moral implications of genetic editing technology, distinguishing between heritable germline and non-heritable somatic modifications.
+
+LESSON 7: ENVIRONMENTAL ETHICS AND CLIMATE CHANGE
+Addresses human contributions to climate change and explores ethical responsibilities regarding environmental sustainability and policy.
+
+LESSON 8: ETHICS OF ANIMAL USE IN RESEARCH
+Questions fundamental differences between humans and animals, examining justifications for differential treatment and animal rights perspectives.
+
+LESSON 9: GENDER VARIANCE
+Explores medical and social treatment of transgender and gender-nonconforming individuals through case studies and clinical ethics lenses.
+
+LESSON 10: GENETIC TESTING
+Investigates ethical concerns surrounding susceptibility testing, ancestry analysis, and disease prediction, including psychological impacts and information regulation.
+
+LESSON 11: LIFE, DEATH, AND THE TERRI SCHIAVO CASE
+Uses a landmark legal case to examine life support discontinuation decisions and end-of-life ethical frameworks.
+
+LESSON 12: ORGAN DONATION
+Addresses procurement ethics, allocation criteria, and fundamental questions about transplantation and playing God concerns.
+
+LESSON 13: PHYSICIAN AID IN DYING
+Examines physician-assisted death legalization across multiple states, exploring patient autonomy, terminal illness, and death with dignity principles.
+
+LESSON 14: PSYCHOPHARMACOLOGY AND THE SELF
+Questions whether psychotropic drugs alter authentic identity, examining cognitive enhancement, antidepressants, and lifestyle drug ethics.
+
+LESSON 15: REPRODUCTIVE ETHICS
+Explores assisted reproductive technologies, parental rights, pregnancy safety inequities across racial and economic lines.
+
+LESSON 16: SEX SELECTION, GENETIC ANALYSIS, AND DESIGNER BABIES
+Debates embryo selection for sex and disease resistance, examining where to draw lines on genetic engineering and trait selection.
+
+LESSON 17: STEM CELL RESEARCH
+Explores scientific implications and deep ethical questions about embryonic stem cell research and human personhood.
+
+LESSON 18: SYNTHETIC BIOLOGY
+Examines emerging field integrating engineering with biology, addressing applications and ethical risks of biological system design.
+
+LESSON 19: TEENS AND CHILDREN IN CLINICAL RESEARCH AND CARE
+Analyzes IRB and FDA regulations protecting minors in research, examining adolescent autonomy in medical decision-making.
+
+LESSON 20: VACCINE ETHICS
+Discusses immunization achievements and ethical dimensions of vaccine development and public health mandates.
+
+KEY ETHICAL PRINCIPLES FOR RESEARCH:
+1. Respect for Persons: Protecting individual autonomy and ensuring informed consent
+2. Beneficence: Doing no harm while maximizing benefits and minimizing risks
+3. Justice: Fair participant recruitment and distribution of research burdens and benefits
+4. Informed Consent: Participants must know the study's nature and voluntarily consent
+5. IRB Approval: Institutional Review Board oversight to protect human subjects

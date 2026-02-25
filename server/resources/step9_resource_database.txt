@@ -1,0 +1,58 @@
+================================================================================
+HOPSCOTCH STEP 9: Step 9 -How will I be ethical and safe in my study?
+================================================================================
+
+BROADER CONCEPTS AND TERMS
+----------------------------------------
+- Integrity and Ethics in conducting research
+
+SPECIFIC RESEARCH TERMS AND SUB-TOPICS
+----------------------------------------
+- IRB approval 
+Respect for persons
+Beneficence
+Justice
+
+DEFINITIONS AND KEY CONCEPTS
+----------------------------------------
+Level 1 - Broader Concepts/Terms: The moral integrity of the researcher is a critically important aspect of ensuring that the research process and the researcher’s findings are trustworthy and valid (Hesse-Biber, 2006). The ethical principles driving a study, whether quantitative, qualitative, or mixed, are closely tied to its standards for credibility and validity. Researchers must protect participants, build trust, maintain integrity, prevent misconduct, and navigate ethical challenges (Israel & Hay, 2006, as cited in Creswell, 2014). Level 2 - Narrower Concepts/Terms: Respect for persons involves protecting individual autonomy and ensuring informed consent. People should be treated as autonomous and given full information to decide about participation (AVAC, 2025). People with diminished autonomy (e.g., children, the ill, or cognitively impaired) should be specially protected and only included under specific, ethical conditions. Beneficence requires doing no harm while maximizing benefits and minimizing risks to participants (AVAC, 2025). Justice refers to fair participant recruitment, trial location, and distribution of research burdens and benefits (AVAC, 2025). Level 3 - Related Concepts/Terms: Do No Harm – Ensure no participants are harmed. Stop the study if adverse effects are noticed. Privacy & Anonymity – Protect participants' identities and seek permission before disclosure. Confidentiality – Maintain secrecy unless emergency conditions require otherwise; handle minors' data with extra care. Informed Consent – Participants must know the study’s nature and voluntarily consent. The consent form should include researcher and institution ID, purpose, benefits, involvement, risks, confidentiality, right to withdraw, and contacts (Sarantakos, 2005, as cited in Creswell, 2014). Rapport & Friendship – Establish professional rapport without creating false perceptions of friendship. Intrusiveness – Researchers should not intrude excessively into participants’ lives. Inappropriate Behavior – Avoid personal or romantic entanglements with participants; maintain ethical boundaries. Data Interpretation – Analyze data truthfully and ensure credibility. Data Ownership & Rewards – Researchers usually own their work but may consider ethical sharing if there are significant gains.
+
+INTERNAL HOPSCOTCH RESOURCES
+----------------------------------------
+Hopscotch 4-AP Research video Step 9: https://share.synthesia.io/d9104c4d-75cd-4fde-bf9a-c5c85c7ad706
+
+Hopscotch 4-AP Research interactive resource Step 9: https://view.genially.com/6626b6f22aa76200143a6d36
+
+EXTERNAL LEARNING RESOURCES
+----------------------------------------
+Hopscotch 4-AP Research Design Assistant: https://tinyurl.com/Hopscotch4AP-ResearchAssistant
+
+Guidelines for ethical conduct Involving Human Participants by High School Students: https://www.apa.org/about/policy/guidelines-ethical-conduct-high-school-students.pdf
+
+High School Bioethics Project Lesson Plans: https://med.nyu.edu/departments-institutes/population-health/divisions-sections-centers/medical-ethics/education/high-school-bioethics-project/lesson-plans
+
+Ethics in Research and Programming with Adolescents: https://publichealth.jhu.edu/sites/default/files/2025-05/Ethics-in-Research-and-Programming-with-Adolescents-Capturing-the-Perspectives-of-International-Organizations.pdf
+
+Ethical Research in the Secondary School Classroom: https://eric.ed.gov/?id=EJ1222631
+
+Belmont Report: https://www.hhs.gov/ohrp/regulations-and-policy/belmont-report/read-the-belmont-report/index.html
+
+RECOMMENDED AI TOOLS AND APIs
+----------------------------------------
+Consent Form Generator: https://pages.nyu.edu/irb/forms/consent/
+
+
+================================================================================
+ADDITIONAL CONTENT FROM EDUCATIONAL SOURCES
+================================================================================
+SCRAPED WEB CONTENT: Research Ethics
+
+From ERIC (Ethical Research in Secondary School Classrooms, Briggs 2019):
+Two fundamental ethical principles for classroom-based research:
+1. Voluntary Participation: Participants should be able to freely choose whether or not they participate in the research
+2. Informed Consent: Researchers must ensure participants are thoroughly and accurately informed of the purpose, processes and dissemination of findings
+
+From NYU High School Bioethics Project (20 Lesson Plans):
+Comprehensive bioethics lesson plans for high school students covering: What Is Ethics, Antibiotic Resistance, Compassionate Use, CRISPR and Genetic Modification, Environmental Ethics and Climate Change, Ethics of Animal Use in Research, Genetic Testing, Organ Donation, Physician Aid in Dying, Reproductive Ethics, Stem Cell Research, Synthetic Biology, Teens and Children in Clinical Research and Care, Vaccine Ethics.
+
+Key ethical principles: respect for persons, beneficence, justice, informed consent, IRB approval.

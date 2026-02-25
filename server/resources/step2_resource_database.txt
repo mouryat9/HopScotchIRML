@@ -1,0 +1,57 @@
+================================================================================
+HOPSCOTCH STEP 2: Step 2: What am I wondering about?
+================================================================================
+
+BROADER CONCEPTS AND TERMS
+----------------------------------------
+- Research Topic/Area of Study
+- Research Goals
+
+SPECIFIC RESEARCH TERMS AND SUB-TOPICS
+----------------------------------------
+- Statement of: Elements under investigation, Concepts under study
+- Personal goals/Practical goals/Intellectual goals
+
+DEFINITIONS AND KEY CONCEPTS
+----------------------------------------
+Research Topic: A research topic is the broad, general area of interest or inquiry that a study seeks to explore. It represents the initial starting point of the research process—a thematic umbrella under which more specific problems, questions, and objectives are later defined. It answers the basic question: “What is this research about?” 
+
+Research Goals: Maxwell (2008) states that goals include motives, desires, and purposes—anything that leads you to do the study or that you hope to accomplish by doing it. 
+
+Problem Statement: The problem statement identifies a specific issue, gap, or concern that needs investigation. It clearly articulates what’s wrong, what’s missing, or what’s misunderstood in the current state of knowledge, practice, or theory. In essence, it’s the why this study needs to exist. A good problem statement: Defines the context and background of the proposed study: Describes what the topic and/or problem under study is; Indicates the significance or consequences of not addressing it, and; Points toward a knowledge or practice gap. 
+
+Purpose Statement: The purpose statement flows directly from the problem statement and articulates the intent of the study. It lays out what the researcher plans to accomplish—clearly, concisely, and with direction. It typically answers: What is the study trying to achieve? What is being studied (variables, population, setting), and; What is the methodological approach (qualitative, quantitative, mixed)? 
+
+Research question: A research question is the foundational, guiding inquiry that drives a research study. It articulates exactly what the researcher seeks to understand, explain, predict, or explore within the scope of a specific problem and purpose. It usually emerges after the problem has been identified and the purpose has been established. In essence, the research question translates the purpose into a focused, answerable inquiry. 
+
+Hypothesis: A hypothesis is a clear, testable, and predictive statement about the expected relationship between two or more variables. It is formulated in response to a research question, particularly in quantitative research, and reflects a theoretical expectation based on prior evidence or reasoning. In essence, it’s a tentative answer to the research question—one that can be supported or refuted through systematic investigation.
+
+INTERNAL HOPSCOTCH RESOURCES
+----------------------------------------
+Hopscotch 4-AP Research video Step 2: https://share.synthesia.io/bbc3d87a-2b09-4920-a3f8-bc6b868717bf
+
+Hopscotch 4-AP Research interactive resource Step 2: https://view.genially.com/6626b5ff75024b0014c9c279
+
+EXTERNAL LEARNING RESOURCES
+----------------------------------------
+Hopscotch 4-AP Research Design Assistant: https://tinyurl.com/Hopscotch4AP-ResearchAssistant
+
+Consensus selected papers on research topic: https://consensus.app/search/definition-of-research-topic-for-a-study/7xCMKEL7TMS5veQzYA6XeQ/?utm_source=share&utm_medium=clipboard
+
+RECOMMENDED AI TOOLS AND APIs
+----------------------------------------
+Free AI Brainstorming Generator can be used to get help bringing your ideas to life with Grammarly’s AI-powered content idea generator, which helps you brainstorm ideas for all your business, school, and personal needs: https://www.grammarly.com/ai/ai-writing-tools/brainstorming-generator
+
+Consensus could be used to assist users in the identification of relevant topics that have been published in peer-reviewed articles. Consensus is an AI-powered search engine designed to take in research questions, find relevant insights within research papers, and synthesize the results using large language models. It is not a chatbot. Consensus only searches through peer-reviewed scientific research articles to find the most credible insights to your queries: https://consensus.app/search/
+
+Carrot2 could be used to identify potential research topics. Carrot2 organizes your search results into topics. With an instant overview of what's available, you will quickly find what you're looking for: https://search.carrot2.org/#/search/web
+
+
+================================================================================
+ADDITIONAL CONTENT FROM EDUCATIONAL SOURCES
+================================================================================
+SCRAPED WEB CONTENT: Developing Research Questions
+
+From Emory AP Research Guide:
+The AP Research course is a capstone experience where students deeply explore an academic topic, problem, issue, or idea of individual interest. The yearlong investigation culminates in an academic paper of 4,000-5,000 words and a presentation with an oral defense.
+Students develop competencies in research methodology and design, ethical research practices, accessing, analyzing, and synthesizing information, and reflection and documentation of scholarly processes.

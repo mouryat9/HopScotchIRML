@@ -3,6 +3,7 @@ import React, { useEffect, useState, useRef, useMemo } from "react";
 import { useAuth } from "./AuthContext";
 import { useTheme } from "./ThemeContext";
 import { API } from "./api";
+import StudentDesignView from "./StudentDesignView";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend,
@@ -20,7 +21,8 @@ const STEP_COLORS = [
 
 function timeAgo(dateStr) {
   if (!dateStr) return "";
-  const diff = Date.now() - new Date(dateStr).getTime();
+  const ts = dateStr.endsWith("Z") ? dateStr : dateStr + "Z";
+  const diff = Date.now() - new Date(ts).getTime();
   const mins = Math.floor(diff / 60000);
   if (mins < 1) return "Just now";
   if (mins < 60) return `${mins}m ago`;
@@ -53,6 +55,9 @@ export default function TeacherDashboard({ onOpenDesigns }) {
   const [loadingSessions, setLoadingSessions] = useState(false);
   const [sessionsError, setSessionsError] = useState("");
   const [progressFilter, setProgressFilter] = useState("all");
+
+  // Student design view overlay
+  const [viewingStudent, setViewingStudent] = useState(null); // { session_id, name, class_name }
 
   useEffect(() => {
     let cancelled = false;
@@ -551,6 +556,7 @@ export default function TeacherDashboard({ onOpenDesigns }) {
                       <th>Current Step</th>
                       <th>Progress</th>
                       <th>Last Activity</th>
+                      <th></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -607,6 +613,20 @@ export default function TeacherDashboard({ onOpenDesigns }) {
                           <td className="td-table__muted">
                             {!s.session_id ? "Never" : timeAgo(s.updated_at || s.created_at)}
                           </td>
+                          <td>
+                            {s.session_id && (
+                              <button
+                                className="td-btn td-btn--outline td-btn--sm"
+                                onClick={() => setViewingStudent({
+                                  session_id: s.session_id,
+                                  name: s.user?.username || s.user?.name || "Student",
+                                  class_name: s.class_name || "",
+                                })}
+                              >
+                                View
+                              </button>
+                            )}
+                          </td>
                         </tr>
                       );
                     })}
@@ -617,6 +637,16 @@ export default function TeacherDashboard({ onOpenDesigns }) {
           </div>
         )}
       </main>
+
+      {/* Student Design View overlay */}
+      {viewingStudent && (
+        <StudentDesignView
+          sessionId={viewingStudent.session_id}
+          studentName={viewingStudent.name}
+          className={viewingStudent.class_name}
+          onClose={() => setViewingStudent(null)}
+        />
+      )}
     </div>
   );
 }

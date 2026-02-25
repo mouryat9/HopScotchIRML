@@ -27,7 +27,7 @@ import json
 import logging
 
 import requests
-from fastapi import FastAPI, HTTPException, Body, Query, Depends
+from fastapi import FastAPI, HTTPException, Body, Query, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, Response
 from pydantic import BaseModel, Field
@@ -41,10 +41,11 @@ from email.mime.multipart import MIMEMultipart
 
 from auth import (
     hash_password, verify_password, create_access_token, get_current_user,
-    create_password_reset_token, decode_token,
+    create_password_reset_token, decode_token, require_admin,
 )
 from database import (
     ensure_indexes, find_user_by_email, find_user_by_username,
+    find_user_by_id,
     create_user, create_classroom_student, update_user_password,
     find_session, create_session_doc, update_session,
     get_sessions_for_user,
@@ -52,6 +53,18 @@ from database import (
     get_session_summaries_for_user,
     create_class_doc, find_class_by_code, get_classes_for_teacher,
     get_students_in_class, get_all_student_sessions_for_teacher,
+    # Admin / login tracking
+    record_login, get_recent_logins, get_login_locations,
+    get_logins_for_user, get_all_users, update_user_fields,
+    delete_user_by_id, get_user_counts_by_role, get_signups_over_time,
+    get_total_sessions_count, get_total_classes_count,
+    get_active_users_last_n_days, get_step_completion_across_all,
+    record_admin_action, get_admin_audit_log,
+    # Admin: classes, sessions, user detail, geo stats
+    get_all_classes, delete_class_by_id,
+    get_all_sessions, get_session_full,
+    get_user_detail,
+    get_login_stats_by_country, get_login_stats_by_region,
 )
 
 # -------------------------------------------------
@@ -109,8 +122,12 @@ logger = logging.getLogger("uvicorn.error")
 # Ollama / LLM config
 # -------------------------------------------------
 OLLAMA_URL = "http://127.0.0.1:11434/api/chat"
+OLLAMA_BASE = "http://127.0.0.1:11434"
 LLM_MODEL = "qwen2.5:14b"
 LLM_TEMP = 0.4
+
+import time as _time_mod
+_SERVER_START_TIME = _time_mod.time()
 
 # runtime globals for RAG
 _embedder = None
@@ -462,11 +479,76 @@ def _retrieve(query: str, k: int = 5) -> List[Dict[str, Any]]:
     return _keyword_fallback(query, k=k)
 
 
+# ---- GeoIP resolution (ip-api.com, free, no key) ----
+
+_GEO_CACHE: Dict[str, Dict] = {}
+
+def _resolve_geo(ip: str) -> dict:
+    """Resolve IP to geo data. Returns {} on failure."""
+    if not ip or ip in ("127.0.0.1", "::1", "localhost"):
+        return {}
+    if ip in _GEO_CACHE:
+        return _GEO_CACHE[ip]
+    try:
+        resp = requests.get(
+            f"http://ip-api.com/json/{ip}?fields=status,city,regionName,country,lat,lon",
+            timeout=3,
+        )
+        data = resp.json()
+        if data.get("status") == "success":
+            geo = {
+                "city": data.get("city", ""),
+                "regionName": data.get("regionName", ""),
+                "country": data.get("country", ""),
+                "lat": data.get("lat"),
+                "lng": data.get("lon"),
+            }
+            _GEO_CACHE[ip] = geo
+            return geo
+    except Exception as e:
+        logger.warning("GeoIP lookup failed for %s: %s", ip, e)
+    return {}
+
+
+def _extract_client_ip(request: Request) -> str:
+    """Extract real client IP, accounting for Cloudflare / proxies."""
+    return (
+        request.headers.get("CF-Connecting-IP")
+        or request.headers.get("X-Forwarded-For", "").split(",")[0].strip()
+        or (request.client.host if request.client else "")
+    )
+
+
+# ---- Admin seed from env vars ----
+
+ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL")
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD")
+
+def _seed_admin():
+    """Auto-create admin user from env vars on startup if not exists."""
+    if not ADMIN_EMAIL or not ADMIN_PASSWORD:
+        logger.info("ADMIN_EMAIL/ADMIN_PASSWORD not set — skipping admin seed.")
+        return
+    existing = find_user_by_email(ADMIN_EMAIL)
+    if existing:
+        if existing.get("role") != "admin":
+            from database import update_user_fields
+            update_user_fields(str(existing["_id"]), {"role": "admin"})
+            logger.info("Promoted existing user %s to admin.", ADMIN_EMAIL)
+        else:
+            logger.info("Admin user %s already exists.", ADMIN_EMAIL)
+        return
+    pw_hash = hash_password(ADMIN_PASSWORD)
+    create_user(ADMIN_EMAIL, pw_hash, "admin", "Administrator", "higher_ed")
+    logger.info("Created admin user: %s", ADMIN_EMAIL)
+
+
 @app.on_event("startup")
 def _startup():
     ensure_indexes()
     _build_index()
     load_paths_config()
+    _seed_admin()
     # Pre-warm the LLM so the first chat request doesn't cold-start
     _warm_ollama_model()
 
@@ -560,20 +642,54 @@ def build_ollama_payload(worldview_profile, step_context, user_msg, passages,
         "9. How will I be ethical? — Plan for IRB, Belmont principles (respect, "
         "beneficence, justice), informed consent, and confidentiality.\n\n"
 
+        "CRITICAL RULE — GROUND EVERYTHING IN THE STUDENT'S DESIGN:\n"
+        "The student drafts their research design in the 'My Research Design' panel. "
+        "Below you will see their current inputs for each step (topic, goals, worldview, "
+        "literature, methodology, etc.). You MUST reference and build upon what they have "
+        "already written. Do NOT invent or generate design content independently.\n"
+        "- If the student has filled in a field, refer to their SPECIFIC inputs by name "
+        "(e.g. 'Your topic about X…', 'Since you chose the pragmatist worldview…') and "
+        "help them refine, strengthen, or expand what they wrote.\n"
+        "- If a field is empty, encourage the student to write their initial thoughts in "
+        "the 'My Research Design' panel first, then come back for feedback.\n"
+        "- Never produce a full research design from scratch — your role is to coach and "
+        "give feedback on what the student has drafted, not to do the work for them.\n\n"
+
+        "QUESTION-DRIVEN COACHING (Steps 2, 3, and 4):\n"
+        "For Steps 2, 3, and 4 you MUST be question-driven. Do NOT suggest or recommend "
+        "specific research topics, literature, theoretical frameworks, or methodologies. "
+        "The student must come up with their own ideas first.\n"
+        "- Step 2 (Topic & Goals): Do NOT suggest topics. Ask guiding questions like "
+        "'What issues in your field interest you the most?', 'What problem have you "
+        "observed that you want to explore?', 'What would you like to change or understand "
+        "better?' — let the student discover their own topic through reflection.\n"
+        "- Step 3 (Literature Review): Do NOT recommend specific studies, authors, or "
+        "frameworks. Instead ask 'What research have you already read on this topic?', "
+        "'What theories from your coursework connect to your topic?', 'What gaps have you "
+        "noticed in the existing research?' — guide them to identify their own sources.\n"
+        "- Step 4 (Methodology): Do NOT prescribe a methodology. Ask 'Based on your "
+        "worldview, what approach feels most natural?', 'Are you trying to measure "
+        "something or understand experiences?', 'What type of data would best answer your "
+        "question?' — let the student reason toward a methodology.\n"
+        "- Once the student HAS written something in their design, THEN you may give "
+        "substantive feedback, point out strengths, identify gaps, and suggest refinements. "
+        "But always wait for their input first.\n\n"
+
         "YOUR APPROACH:\n"
-        "- Be substantive: explain concepts, give examples, and connect ideas to the "
-        "student's specific worldview and topic. Do NOT just ask questions back.\n"
-        "- When explaining a worldview, discuss its ontology, epistemology, axiology, "
-        "and methodology implications with concrete examples.\n"
-        "- Lead with helpful content first, then ask 1-2 follow-up questions to "
-        "deepen understanding.\n"
-        "- Use the student's previous step inputs (topic, goals, worldview, etc.) "
-        "to give personalised guidance rather than generic advice.\n"
-        "- Reference specific methodologies, frameworks, and scholars when relevant.\n"
+        "- When explaining a worldview (Step 1), be substantive: discuss its ontology, "
+        "epistemology, axiology, and methodology implications with concrete examples.\n"
+        "- For Steps 2-4: lead with guiding questions, then give feedback ONLY after "
+        "the student has written their own content in 'My Research Design'.\n"
+        "- For Steps 5-9: be substantive — explain concepts, give examples, and help "
+        "the student refine their design with specific feedback.\n"
+        "- Reference specific methodologies, frameworks, and scholars when relevant "
+        "(only in response to what the student has already written, not as suggestions).\n"
         "- Use a warm, encouraging tone — the student may be new to research.\n"
         "- Keep responses focused but thorough (2-4 paragraphs typically).\n"
-        "- At the end, append '**Quick references from our notes:**' with 2-5 "
-        "bullets sourced from the IRML resource snippets provided.\n"
+        "- For Steps 4-9 ONLY: at the end, append '**Quick references from our notes:**' "
+        "with 2-5 bullets sourced from the IRML resource snippets provided.\n"
+        "- For Steps 1, 2, and 3: do NOT include '**Quick references from our notes:**' "
+        "or any article/source recommendations. The student must find their own sources.\n"
     )
 
     # Inject step-specific guidance
@@ -582,11 +698,18 @@ def build_ollama_payload(worldview_profile, step_context, user_msg, passages,
         if step_llm_guidance:
             system_msg += f"\nStep-specific instructions:\n{step_llm_guidance}\n"
 
-    context_msg = (
-        f"Student context:\n{worldview_profile}\n\n"
-        f"Step inputs:\n{step_context}\n\n"
-        f"IRML resource snippets:\n{ctx_text}"
-    )
+    # Steps 1-3: no resource snippets — student must find their own sources
+    if active_step and active_step <= 3:
+        context_msg = (
+            f"Student context:\n{worldview_profile}\n\n"
+            f"STUDENT'S RESEARCH DESIGN (from 'My Research Design' panel — reference these directly):\n{step_context}\n"
+        )
+    else:
+        context_msg = (
+            f"Student context:\n{worldview_profile}\n\n"
+            f"STUDENT'S RESEARCH DESIGN (from 'My Research Design' panel — reference these directly):\n{step_context}\n\n"
+            f"IRML resource snippets:\n{ctx_text}"
+        )
 
     # Build messages: system + context + conversation history + latest user msg
     messages = [
@@ -595,13 +718,22 @@ def build_ollama_payload(worldview_profile, step_context, user_msg, passages,
     ]
 
     # Include recent conversation history (last 20 turns to stay within context)
+    # For Steps 1-3: strip "Quick references" sections from prior assistant messages
+    # so the LLM doesn't mimic that pattern
+    strip_refs = active_step and active_step <= 3
     if chat_history:
         recent = chat_history[-20:]
         for turn in recent:
             # Skip the very last user message — we append it separately below
             if turn is recent[-1] and turn.role == "user" and turn.content == user_msg:
                 continue
-            messages.append({"role": turn.role, "content": turn.content})
+            content = turn.content
+            if strip_refs and turn.role == "assistant" and content:
+                marker = "**Quick references from our notes:**"
+                ix = content.find(marker)
+                if ix != -1:
+                    content = content[:ix].rstrip()
+            messages.append({"role": turn.role, "content": content})
 
     messages.append({"role": "user", "content": user_msg})
 
@@ -685,10 +817,22 @@ def register(req: RegisterReq):
 
 
 @app.post("/auth/login", response_model=AuthResp)
-def login(req: LoginReq):
+def login(req: LoginReq, request: Request):
+    client_ip = _extract_client_ip(request)
+    user_agent = request.headers.get("User-Agent", "")
     user = find_user_by_email(req.email)
     if not user or not verify_password(req.password, user["password_hash"]):
+        if user:
+            record_login(str(user["_id"]), req.email, client_ip, {}, user_agent, success=False)
         raise HTTPException(status_code=401, detail="Invalid email or password")
+    if not user.get("is_active", True):
+        raise HTTPException(status_code=403, detail="Account deactivated. Contact your administrator.")
+    geo = _resolve_geo(client_ip)
+    record_login(str(user["_id"]), req.email, client_ip, geo, user_agent, success=True)
+    update_user_fields(str(user["_id"]), {
+        "last_login_at": datetime.utcnow().isoformat() + "Z",
+        "last_login_ip": client_ip,
+    })
     token = create_access_token({"sub": req.email})
     return AuthResp(token=token, email=req.email, name=user["name"],
                     role=user["role"],
@@ -808,13 +952,24 @@ class ClassroomLoginReq(BaseModel):
 
 
 @app.post("/auth/classroom-login", response_model=AuthResp)
-def classroom_login(req: ClassroomLoginReq):
+def classroom_login(req: ClassroomLoginReq, request: Request):
     """Login for classroom (username-based) students."""
+    client_ip = _extract_client_ip(request)
+    user_agent = request.headers.get("User-Agent", "")
     user = find_user_by_username(req.username)
     if not user or user.get("role") != "classroom_student":
         raise HTTPException(status_code=401, detail="Invalid username or password")
     if not verify_password(req.password, user["password_hash"]):
+        record_login(str(user["_id"]), req.username, client_ip, {}, user_agent, success=False)
         raise HTTPException(status_code=401, detail="Invalid username or password")
+    if not user.get("is_active", True):
+        raise HTTPException(status_code=403, detail="Account deactivated. Contact your administrator.")
+    geo = _resolve_geo(client_ip)
+    record_login(str(user["_id"]), req.username, client_ip, geo, user_agent, success=True)
+    update_user_fields(str(user["_id"]), {
+        "last_login_at": datetime.utcnow().isoformat() + "Z",
+        "last_login_ip": client_ip,
+    })
     token = create_access_token({"sub": req.username, "sub_type": "username"})
     return AuthResp(
         token=token,
@@ -927,6 +1082,212 @@ def get_teacher_student_sessions(user: dict = Depends(get_current_user)):
         # Remove step_notes from response (bulky)
         s.pop("step_notes", None)
     return {"sessions": sessions}
+
+
+# ============================================================
+# Teacher: View Student Design & Feedback
+# ============================================================
+
+def _verify_teacher_owns_student(session_id: str, teacher_user: dict):
+    """Verify that the teacher owns the class the student (session owner) belongs to.
+    Returns (session_doc, student_user) or raises 403."""
+    from bson import ObjectId as _ObjId
+    from database import classes_col as _classes_col
+
+    doc = find_session(session_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Session not found")
+    student_user_id = doc.get("user_id")
+    if not student_user_id:
+        raise HTTPException(status_code=404, detail="Session has no user")
+    student = find_user_by_id(student_user_id)
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found")
+    student_class_id = student.get("class_id")
+    if not student_class_id:
+        raise HTTPException(status_code=403, detail="Student is not in a class")
+    cls = _classes_col.find_one({"_id": _ObjId(student_class_id)})
+    if not cls:
+        raise HTTPException(status_code=404, detail="Class not found")
+    if cls.get("teacher_id") != str(teacher_user["_id"]):
+        raise HTTPException(status_code=403, detail="You do not own this student's class")
+    return doc, student
+
+
+@app.get("/teacher/student-session/{session_id}")
+def get_teacher_student_session(session_id: str, user: dict = Depends(get_current_user)):
+    """Return full session data for a student (teacher/admin view — excludes chat)."""
+    if user.get("role") not in ("teacher", "admin"):
+        raise HTTPException(status_code=403, detail="Only teachers/admins can view student sessions")
+    if user.get("role") == "admin":
+        doc = find_session(session_id)
+        if not doc:
+            raise HTTPException(status_code=404, detail="Session not found")
+        student = find_user_by_id(doc.get("user_id", ""))
+        if not student:
+            raise HTTPException(status_code=404, detail="Student not found")
+    else:
+        doc, student = _verify_teacher_owns_student(session_id, user)
+
+    step_notes = doc.get("step_notes") or {}
+    completed = _compute_completed_steps_from_doc(doc)
+
+    return {
+        "session_id": doc["session_id"],
+        "student_name": student.get("username") or student.get("name", ""),
+        "student_username": student.get("username") or student.get("email") or "",
+        "worldview_label": doc.get("worldview_label"),
+        "resolved_path": doc.get("resolved_path"),
+        "chosen_methodology": doc.get("chosen_methodology"),
+        "active_step": doc.get("active_step", 1),
+        "completed_steps": completed,
+        "step_notes": step_notes,
+        "teacher_feedback": doc.get("teacher_feedback", []),
+    }
+
+
+@app.get("/teacher/student-step-config")
+def get_teacher_student_step_config(
+    session_id: str = Query(...),
+    step: int = Query(...),
+    user: dict = Depends(get_current_user),
+):
+    """Return step config for a student's session (teacher/admin view — same logic as /step/config)."""
+    if user.get("role") not in ("teacher", "admin"):
+        raise HTTPException(status_code=403, detail="Only teachers/admins can view student step config")
+    if user.get("role") == "teacher":
+        _verify_teacher_owns_student(session_id, user)
+
+    # Reuse the same config logic
+    sess = _require_session(session_id)
+    paths_cfg = load_paths_config()
+
+    if step <= 3:
+        return StepConfigResp(step=step)
+
+    resolved = sess.resolved_path
+    if not resolved:
+        return StepConfigResp(step=step, title=f"Step {step}",
+                              directions="Student has not selected a worldview yet.")
+
+    all_paths = paths_cfg.get("paths", {})
+    path_data = all_paths.get(resolved, {})
+    step_key = str(step)
+    step_cfg = path_data.get("steps", {}).get(step_key, {})
+
+    if resolved == "mixed" and step >= 5 and step_cfg.get("inherits_from_chosen_methodology"):
+        chosen = sess.chosen_methodology
+        if not chosen:
+            return StepConfigResp(step=step, path="mixed", title=f"Step {step}",
+                                  directions="Student has not chosen a methodology yet.")
+        inherited_cfg = all_paths.get(chosen, {}).get("steps", {}).get(step_key, {})
+        guidance = inherited_cfg.get("llm_guidance", "")
+        addendum = step_cfg.get("llm_guidance_addendum", "")
+        if addendum:
+            guidance = f"{guidance}\n{addendum}" if guidance else addendum
+        return StepConfigResp(
+            step=step, path="mixed",
+            title=inherited_cfg.get("title", f"Step {step}"),
+            directions=inherited_cfg.get("directions", ""),
+            field_type=inherited_cfg.get("field_type"),
+            field_key=inherited_cfg.get("field_key"),
+            options=inherited_cfg.get("options"),
+            fields=inherited_cfg.get("fields"),
+            llm_guidance=guidance or None,
+        )
+
+    quant_opts = None
+    qual_opts = None
+    if resolved == "mixed" and step == 4:
+        quant_opts = all_paths.get("quantitative", {}).get("steps", {}).get("4", {}).get("options")
+        qual_opts = all_paths.get("qualitative", {}).get("steps", {}).get("4", {}).get("options")
+
+    return StepConfigResp(
+        step=step, path=resolved,
+        title=step_cfg.get("title", f"Step {step}"),
+        directions=step_cfg.get("directions", ""),
+        field_type=step_cfg.get("field_type"),
+        field_key=step_cfg.get("field_key"),
+        options=step_cfg.get("options"),
+        fields=step_cfg.get("fields"),
+        llm_guidance=step_cfg.get("llm_guidance"),
+        quantitative_options=quant_opts,
+        qualitative_options=qual_opts,
+    )
+
+
+class TeacherFeedbackReq(BaseModel):
+    session_id: str
+    step: Optional[int] = None
+    text: str
+
+
+@app.post("/teacher/feedback")
+def post_teacher_feedback(req: TeacherFeedbackReq, user: dict = Depends(get_current_user)):
+    """Teacher/admin submits feedback for a student's session."""
+    if user.get("role") not in ("teacher", "admin"):
+        raise HTTPException(status_code=403, detail="Only teachers/admins can post feedback")
+    if user.get("role") == "teacher":
+        _verify_teacher_owns_student(req.session_id, user)
+
+    feedback_item = {
+        "id": str(uuid.uuid4()),
+        "teacher_id": str(user["_id"]),
+        "teacher_name": user.get("name", "Teacher"),
+        "step": req.step,
+        "text": req.text,
+        "created_at": datetime.utcnow().isoformat() + "Z",
+        "read": False,
+    }
+
+    from database import sessions_col
+    sessions_col.update_one(
+        {"session_id": req.session_id},
+        {"$push": {"teacher_feedback": feedback_item}},
+    )
+
+    return {"ok": True, "feedback": feedback_item}
+
+
+@app.get("/teacher/feedback/{session_id}")
+def get_teacher_feedback(session_id: str, user: dict = Depends(get_current_user)):
+    """Get all teacher feedback for a student's session."""
+    if user.get("role") != "teacher":
+        raise HTTPException(status_code=403, detail="Only teachers can view feedback")
+    _verify_teacher_owns_student(session_id, user)
+    doc = find_session(session_id)
+    return {"feedback": doc.get("teacher_feedback", []) if doc else []}
+
+
+# ---- Student feedback endpoints ----
+
+@app.get("/student/feedback")
+def get_student_feedback(user: dict = Depends(get_current_user)):
+    """Return feedback for the current student's session."""
+    user_id = str(user["_id"])
+    from database import get_latest_session_for_user
+    doc = get_latest_session_for_user(user_id)
+    if not doc:
+        return {"feedback": [], "unread_count": 0}
+    feedback = doc.get("teacher_feedback", [])
+    unread = sum(1 for f in feedback if not f.get("read"))
+    return {"feedback": feedback, "unread_count": unread}
+
+
+@app.post("/student/feedback/mark-read")
+def mark_student_feedback_read(user: dict = Depends(get_current_user)):
+    """Mark all feedback as read for the current student's session."""
+    user_id = str(user["_id"])
+    from database import get_latest_session_for_user, sessions_col
+    doc = get_latest_session_for_user(user_id)
+    if not doc:
+        return {"ok": True}
+    sessions_col.update_one(
+        {"session_id": doc["session_id"], "teacher_feedback": {"$exists": True}},
+        {"$set": {"teacher_feedback.$[elem].read": True}},
+        array_filters=[{"elem.read": False}],
+    )
+    return {"ok": True}
 
 
 # ============================================================
@@ -1119,7 +1480,9 @@ def set_worldview(req: WorldviewSetReq, user: dict = Depends(get_current_user)):
     sess.worldview_label = WORLDVIEW_LABELS[wid]
 
     # Also store into step 1 notes so you can use it later
-    sess.step_notes["1"] = {**(sess.step_notes.get("1") or {}), "worldview_id": wid}
+    # Save both "worldview_id" (used by _compute_completed_steps) and
+    # "worldview" (used by the frontend dropdown to display selection)
+    sess.step_notes["1"] = {**(sess.step_notes.get("1") or {}), "worldview_id": wid, "worldview": wid}
 
     # Resolve research path from worldview
     paths_cfg = load_paths_config()
@@ -1288,11 +1651,18 @@ def _render_step_context(sess: SessionData) -> str:
         label = WORLDVIEW_LABELS.get(worldview_id, worldview_id)
         lines.append(f"Step 1 worldview: {label}")
 
-    # Step 2: topic and goals
+    # Step 2: topic and goals (personal, practical, intellectual)
     s2 = notes.get("2") or {}
     if s2.get("topic"):
         lines.append(f"Step 2 research topic: {s2['topic']}")
-    if s2.get("goals"):
+    if s2.get("personalGoals"):
+        lines.append(f"Step 2 personal goals: {s2['personalGoals']}")
+    if s2.get("practicalGoals"):
+        lines.append(f"Step 2 practical goals: {s2['practicalGoals']}")
+    if s2.get("intellectualGoals"):
+        lines.append(f"Step 2 intellectual goals: {s2['intellectualGoals']}")
+    # backward compat: old single "goals" field
+    if s2.get("goals") and not s2.get("personalGoals"):
         lines.append(f"Step 2 research goals: {s2['goals']}")
 
     # Step 3: literature review
@@ -1463,6 +1833,16 @@ def export_research_design_pdf(
     sess = _require_session(session_id)
     steps_data = sess.step_notes
 
+    # Look up the student who owns this session (so teachers downloading get correct name)
+    raw_doc = find_session(session_id)
+    session_owner_id = raw_doc.get("user_id") if raw_doc else None
+    if session_owner_id:
+        session_owner = find_user_by_id(session_owner_id)
+    else:
+        session_owner = None
+    # Use session owner info if available, otherwise fall back to current_user
+    pdf_user = session_owner or current_user
+
     # Determine research path/methodology
     resolved_path = sess.resolved_path or "qualitative"  # Default to qualitative
     chosen_methodology = sess.chosen_methodology
@@ -1497,8 +1877,8 @@ def export_research_design_pdf(
 
     # Base template data (common to all templates)
     template_data = {
-        "name": current_user.get("name", "Student"),
-        "email": current_user.get("email") or current_user.get("username") or "",
+        "name": pdf_user.get("username") or pdf_user.get("name", "Student"),
+        "email": pdf_user.get("email") or pdf_user.get("username") or "",
         "date": datetime.now().strftime("%B %d, %Y"),
         "step1": worldview.title(),
         "step2_topic": step2_topic,
@@ -1583,64 +1963,67 @@ def export_research_design_pdf(
 
 def _structure_cf_via_llm(sess: SessionData, raw_fields: dict) -> dict:
     """
-    Always call the LLM to structure ALL conceptual framework fields.
-    The LLM extracts short titles from long text, generates missing fields
-    from chat history, and returns clean structured data for the diagram.
+    Call the LLM to condense/structure ONLY the fields the student has actually
+    filled in.  Empty fields stay empty — the LLM must NOT invent content.
     """
     import json as _json
 
-    # Gather chat history for Steps 1-5 as context
-    history = _get_chat(sess)
-    chat_context = []
-    for turn in history:
-        if turn.step and turn.step <= 5:
-            prefix = f"[Step {turn.step}] " if turn.step else ""
-            chat_context.append(f"{prefix}{turn.role}: {turn.content[:500]}")
+    # Determine which fields the student actually filled in
+    filled = {k: v for k, v in raw_fields.items() if v and str(v).strip()}
+    if not filled:
+        # Nothing to structure — return all empty
+        return raw_fields
 
-    chat_text = "\n".join(chat_context[-40:])
+    # Build the data block — only include filled fields
+    data_lines = []
+    field_labels = {
+        "topic": "Topic",
+        "worldview": "Worldview",
+        "personal_goals": "Personal Goals",
+        "topical_raw": "Topical Research (raw)",
+        "theoretical_raw": "Theoretical Frameworks (raw)",
+        "gaps": "Gaps",
+        "problem_statement": "Problem Statement",
+        "research_questions": "Research Questions",
+        "research_design": "Research Design",
+    }
+    for key, label in field_labels.items():
+        val = raw_fields.get(key, "")
+        if val and str(val).strip():
+            data_lines.append(f"  {label}: {str(val)[:600]}")
 
-    # Build prompt — always ask LLM to structure everything
+    data_block = "\n".join(data_lines)
+
     prompt = (
         "You are helping create a Conceptual Framework diagram for a research methods student.\n"
-        "Based on ALL the data below (conversation history, step notes, and raw field values), "
-        "extract and structure the following fields.\n\n"
-        "IMPORTANT RULES:\n"
-        "- 'topics' must be an array of exactly 5 SHORT titles (3-8 words each) representing "
-        "key topical areas from the student's literature review. Extract themes from the raw text.\n"
-        "- 'frameworks' must be an array of exactly 5 SHORT titles (3-8 words each) representing "
-        "theoretical frameworks relevant to the student's study. Name specific theories.\n"
-        "- 'topic' should be ONE concise sentence (max 15 words) summarizing their research topic.\n"
-        "- 'gaps' should be 1-2 sentences about literature gaps found.\n"
-        "- 'problem_statement' should be 1-2 sentences defining the problem.\n"
-        "- 'personal_goals' should be 1-2 sentences about their motivations.\n"
-        "- 'research_questions' should be the main research question (1-2 sentences).\n"
-        "- 'research_design' should name the methodology in 1 sentence.\n"
-        "- 'worldview' should be ONE word (e.g. Constructivist, Post-Positivist, Pragmatist).\n\n"
-        f"RAW DATA FROM STUDENT'S SESSION:\n"
-        f"  Topic: {raw_fields.get('topic', '')[:300]}\n"
-        f"  Worldview: {raw_fields.get('worldview', '')}\n"
-        f"  Personal Goals: {raw_fields.get('personal_goals', '')[:200]}\n"
-        f"  Topical Research (raw): {raw_fields.get('topical_raw', '')[:600]}\n"
-        f"  Theoretical Frameworks (raw): {raw_fields.get('theoretical_raw', '')[:400]}\n"
-        f"  Gaps: {raw_fields.get('gaps', '')[:200]}\n"
-        f"  Problem Statement: {raw_fields.get('problem_statement', '')[:200]}\n"
-        f"  Research Questions: {raw_fields.get('research_questions', '')[:300]}\n"
-        f"  Research Design: {raw_fields.get('research_design', '')[:200]}\n\n"
-        "STEP NOTES (JSON):\n"
-        f"{_json.dumps({k: v for k, v in sess.step_notes.items() if k in ('1','2','3','4','5')}, default=str, indent=2)[:2000]}\n\n"
-        "CONVERSATION HISTORY:\n"
-        f"{chat_text[:3000]}\n\n"
+        "Condense ONLY the fields shown below into short, diagram-friendly text.\n\n"
+        "CRITICAL RULE: ONLY structure fields that have data below. If a field is NOT "
+        "listed in the student's data, return an EMPTY STRING for it. Do NOT invent, "
+        "guess, or generate content for missing fields.\n\n"
+        "FORMATTING RULES:\n"
+        "- 'topics': array of up to 5 SHORT titles (3-8 words each) from their topical research. "
+        "If 'Topical Research' is not provided, return an empty array [].\n"
+        "- 'frameworks': array of up to 5 SHORT titles (3-8 words each) from their theoretical "
+        "frameworks. If 'Theoretical Frameworks' is not provided, return an empty array [].\n"
+        "- 'topic': ONE concise sentence (max 15 words). Empty string if not provided.\n"
+        "- 'gaps': 1-2 sentences. Empty string if not provided.\n"
+        "- 'problem_statement': 1-2 sentences. Empty string if not provided.\n"
+        "- 'personal_goals': 1-2 sentences. Empty string if not provided.\n"
+        "- 'research_questions': 1-2 sentences. Empty string if not provided.\n"
+        "- 'research_design': 1 sentence. Empty string if not provided.\n"
+        "- 'worldview': ONE word. Empty string if not provided.\n\n"
+        f"STUDENT'S DATA (from 'My Research Design' panel):\n{data_block}\n\n"
         "Respond with ONLY valid JSON. No markdown, no explanation:\n"
         "{\n"
-        '  "topic": "concise research topic title",\n'
-        '  "worldview": "Worldview Name",\n'
-        '  "personal_goals": "1-2 sentences",\n'
-        '  "topics": ["Short Title 1", "Short Title 2", "Short Title 3", "Short Title 4", "Short Title 5"],\n'
-        '  "frameworks": ["Theory Name 1", "Theory Name 2", "Theory Name 3", "Theory Name 4", "Theory Name 5"],\n'
-        '  "gaps": "1-2 sentences about gaps",\n'
-        '  "problem_statement": "1-2 sentences",\n'
-        '  "research_questions": "main research question",\n'
-        '  "research_design": "methodology in 1 sentence"\n'
+        '  "topic": "",\n'
+        '  "worldview": "",\n'
+        '  "personal_goals": "",\n'
+        '  "topics": [],\n'
+        '  "frameworks": [],\n'
+        '  "gaps": "",\n'
+        '  "problem_statement": "",\n'
+        '  "research_questions": "",\n'
+        '  "research_design": ""\n'
         "}\n"
     )
 
@@ -1687,7 +2070,19 @@ def _gather_cf_data(session_id: str, current_user: dict) -> dict:
 
     step2_data = steps_data.get("2", {})
     topic = step2_data.get("topic", "")
-    personal_goals = (step2_data.get("personal_goals") or step2_data.get("personalGoals") or "")
+    # Three separate goal fields (new) with fallback to old single "goals" field
+    pg = step2_data.get("personalGoals") or step2_data.get("personal_goals") or ""
+    pr = step2_data.get("practicalGoals") or step2_data.get("practical_goals") or ""
+    ig = step2_data.get("intellectualGoals") or step2_data.get("intellectual_goals") or ""
+    # Combine for CF — or fall back to old single field
+    if pg or pr or ig:
+        goal_parts = []
+        if pg: goal_parts.append(f"Personal: {pg}")
+        if pr: goal_parts.append(f"Practical: {pr}")
+        if ig: goal_parts.append(f"Intellectual: {ig}")
+        personal_goals = "; ".join(goal_parts)
+    else:
+        personal_goals = step2_data.get("goals", "")
 
     step3_data = steps_data.get("3", {})
     topical_raw = step3_data.get("topicalResearch") or step3_data.get("topical_research") or ""
@@ -1720,38 +2115,38 @@ def _gather_cf_data(session_id: str, current_user: dict) -> dict:
     # Always call LLM to structure the data properly
     structured = _structure_cf_via_llm(sess, raw_fields)
 
-    # Extract topics/frameworks — LLM should return arrays, but if it failed
-    # we fall back to splitting the raw text into lines
-    topics = structured.get("topics", [])
-    if not topics:
-        raw_t = structured.get("topical_raw") or topical_raw
-        if raw_t:
-            lines = [l.strip(" -•·\t") for l in raw_t.split("\n") if l.strip(" -•·\t")]
+    # Extract topics/frameworks — only if the student wrote topical/theoretical data
+    topics = []
+    if topical_raw.strip():
+        topics = structured.get("topics", [])
+        if not topics:
+            lines = [l.strip(" -•·\t") for l in topical_raw.split("\n") if l.strip(" -•·\t")]
             topics = lines[:5]
     topics = (topics + [""] * 5)[:5]
 
-    frameworks = structured.get("frameworks", [])
-    if not frameworks:
-        raw_f = structured.get("theoretical_raw") or theoretical_raw
-        if raw_f:
-            lines = [l.strip(" -•·\t") for l in raw_f.split("\n") if l.strip(" -•·\t")]
+    frameworks = []
+    if theoretical_raw.strip():
+        frameworks = structured.get("frameworks", [])
+        if not frameworks:
+            lines = [l.strip(" -•·\t") for l in theoretical_raw.split("\n") if l.strip(" -•·\t")]
             frameworks = lines[:5]
     frameworks = (frameworks + [""] * 5)[:5]
 
-    wv = structured.get("worldview", worldview) or "Not specified"
+    # Only use structured values for fields the student actually filled in
+    wv = (structured.get("worldview") if worldview.strip() else "") or ""
     return {
         "email": email,
         "name": name,
         "date": timestamp,
-        "topic": structured.get("topic", topic) or "",
-        "worldview": wv.title() if isinstance(wv, str) else str(wv),
-        "personal_goals": structured.get("personal_goals", personal_goals) or "",
+        "topic": (structured.get("topic") if topic.strip() else "") or "",
+        "worldview": wv.title() if wv else "",
+        "personal_goals": (structured.get("personal_goals") if personal_goals.strip() else "") or "",
         "topics": topics,
         "frameworks": frameworks,
-        "gaps": structured.get("gaps", gaps) or "",
-        "problem_statement": structured.get("problem_statement", problem) or "",
-        "research_questions": structured.get("research_questions", research_questions) or "",
-        "research_design": structured.get("research_design", research_design) or "",
+        "gaps": (structured.get("gaps") if gaps.strip() else "") or "",
+        "problem_statement": (structured.get("problem_statement") if problem.strip() else "") or "",
+        "research_questions": (structured.get("research_questions") if research_questions.strip() else "") or "",
+        "research_design": (structured.get("research_design") if research_design.strip() else "") or "",
     }
 
 
@@ -1812,6 +2207,396 @@ def export_conceptual_framework(
         media_type="application/vnd.openxmlformats-officedocument.presentationml.presentation",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'}
     )
+
+
+# ============================================================
+# Admin endpoints
+# ============================================================
+
+
+@app.get("/admin/stats")
+def admin_stats(admin: dict = Depends(require_admin)):
+    """Aggregate stats for admin dashboard."""
+    role_counts = get_user_counts_by_role()
+    total_users = sum(role_counts.values())
+    return {
+        "total_users": total_users,
+        "role_counts": role_counts,
+        "total_sessions": get_total_sessions_count(),
+        "total_classes": get_total_classes_count(),
+        "active_users_7d": get_active_users_last_n_days(7),
+        "active_users_30d": get_active_users_last_n_days(30),
+    }
+
+
+@app.get("/admin/signups")
+def admin_signups(days: int = Query(30), admin: dict = Depends(require_admin)):
+    """Daily signup counts for chart."""
+    return {"signups": get_signups_over_time(days)}
+
+
+@app.get("/admin/step-completion")
+def admin_step_completion(admin: dict = Depends(require_admin)):
+    """Step completion across all students."""
+    return {"steps": get_step_completion_across_all()}
+
+
+@app.get("/admin/login-activity")
+def admin_login_activity(
+    limit: int = Query(100),
+    skip: int = Query(0),
+    admin: dict = Depends(require_admin),
+):
+    """Recent login history log."""
+    return {"logins": get_recent_logins(limit, skip)}
+
+
+@app.get("/admin/login-map")
+def admin_login_map(admin: dict = Depends(require_admin)):
+    """Geo-located login data for world map."""
+    return {"locations": get_login_locations()}
+
+
+@app.get("/admin/geo/countries")
+def admin_geo_countries(admin: dict = Depends(require_admin)):
+    """User/login counts aggregated by country."""
+    return {"countries": get_login_stats_by_country()}
+
+
+@app.get("/admin/geo/regions")
+def admin_geo_regions(admin: dict = Depends(require_admin)):
+    """User/login counts aggregated by city/region."""
+    return {"regions": get_login_stats_by_region()}
+
+
+@app.get("/admin/users")
+def admin_list_users(
+    skip: int = Query(0),
+    limit: int = Query(50),
+    role: Optional[str] = Query(None),
+    search: Optional[str] = Query(None),
+    admin: dict = Depends(require_admin),
+):
+    """Paginated user list with optional role filter and search."""
+    users, total = get_all_users(skip, limit, role, search)
+    for u in users:
+        u["_id"] = str(u["_id"])
+    return {"users": users, "total": total}
+
+
+@app.get("/admin/users/{user_id}")
+def admin_get_user(user_id: str, admin: dict = Depends(require_admin)):
+    """Single user detail + recent logins."""
+    user = find_user_by_id(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    user["_id"] = str(user["_id"])
+    user.pop("password_hash", None)
+    logins = get_logins_for_user(user_id, limit=20)
+    return {"user": user, "logins": logins}
+
+
+class AdminCreateUserReq(BaseModel):
+    email: str
+    password: str
+    name: str
+    role: str
+    education_level: str = "high_school"
+
+
+@app.post("/admin/users")
+def admin_create_user(req: AdminCreateUserReq, admin: dict = Depends(require_admin)):
+    """Create a new user (any role including admin)."""
+    if req.role not in ("student", "teacher", "admin"):
+        raise HTTPException(status_code=400, detail="Invalid role")
+    if find_user_by_email(req.email):
+        raise HTTPException(status_code=409, detail="Email already registered")
+    pw_hash = hash_password(req.password)
+    user_id = create_user(req.email, pw_hash, req.role, req.name, req.education_level)
+    record_admin_action(
+        str(admin["_id"]), admin.get("email", ""),
+        "create_user", user_id, req.email, {"role": req.role}
+    )
+    return {"ok": True, "user_id": user_id}
+
+
+class AdminUpdateUserReq(BaseModel):
+    name: Optional[str] = None
+    role: Optional[str] = None
+    education_level: Optional[str] = None
+    is_active: Optional[bool] = None
+
+
+@app.patch("/admin/users/{user_id}")
+def admin_update_user(user_id: str, req: AdminUpdateUserReq, admin: dict = Depends(require_admin)):
+    """Update user fields."""
+    user = find_user_by_id(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    fields = {}
+    details = {}
+    if req.name is not None:
+        fields["name"] = req.name
+        details["name"] = req.name
+    if req.role is not None:
+        if req.role not in ("student", "teacher", "admin", "classroom_student"):
+            raise HTTPException(status_code=400, detail="Invalid role")
+        details["old_role"] = user.get("role")
+        details["new_role"] = req.role
+        fields["role"] = req.role
+    if req.education_level is not None:
+        fields["education_level"] = req.education_level
+    if req.is_active is not None:
+        fields["is_active"] = req.is_active
+        details["is_active"] = req.is_active
+    if not fields:
+        raise HTTPException(status_code=400, detail="No fields to update")
+    update_user_fields(user_id, fields)
+    action = "update_user"
+    if req.is_active is False:
+        action = "deactivate"
+    elif req.is_active is True:
+        action = "reactivate"
+    if req.role and req.role != user.get("role"):
+        action = "change_role"
+    record_admin_action(
+        str(admin["_id"]), admin.get("email", ""),
+        action, user_id, user.get("email") or user.get("username", ""), details
+    )
+    return {"ok": True}
+
+
+class AdminResetPasswordReq(BaseModel):
+    new_password: str
+
+
+@app.post("/admin/users/{user_id}/reset-password")
+def admin_reset_password(user_id: str, req: AdminResetPasswordReq, admin: dict = Depends(require_admin)):
+    """Admin force-resets a user's password."""
+    user = find_user_by_id(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if len(req.new_password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+    new_hash = hash_password(req.new_password)
+    email = user.get("email")
+    if email:
+        update_user_password(email, new_hash)
+    else:
+        update_user_fields(user_id, {"password_hash": new_hash})
+    record_admin_action(
+        str(admin["_id"]), admin.get("email", ""),
+        "reset_password", user_id,
+        user.get("email") or user.get("username", ""), {}
+    )
+    return {"ok": True}
+
+
+@app.delete("/admin/users/{user_id}")
+def admin_delete_user(user_id: str, admin: dict = Depends(require_admin)):
+    """Hard-delete a user."""
+    user = find_user_by_id(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if str(admin["_id"]) == user_id:
+        raise HTTPException(status_code=400, detail="Cannot delete your own account")
+    record_admin_action(
+        str(admin["_id"]), admin.get("email", ""),
+        "delete_user", user_id,
+        user.get("email") or user.get("username", ""),
+        {"role": user.get("role"), "name": user.get("name")}
+    )
+    delete_user_by_id(user_id)
+    return {"ok": True}
+
+
+@app.get("/admin/audit-log")
+def admin_audit_log(
+    limit: int = Query(100),
+    skip: int = Query(0),
+    admin: dict = Depends(require_admin),
+):
+    return {"log": get_admin_audit_log(limit, skip)}
+
+
+# ── Admin: Class Management ─────────────────────────────
+
+@app.get("/admin/classes")
+def admin_list_classes(
+    skip: int = Query(0),
+    limit: int = Query(50),
+    search: str = Query(""),
+    admin: dict = Depends(require_admin),
+):
+    classes, total = get_all_classes(skip, limit, search or None)
+    # Sanitize ObjectId and hide password_hash
+    for c in classes:
+        c.pop("password_hash", None)
+    return {"classes": classes, "total": total}
+
+
+@app.delete("/admin/classes/{class_id}")
+def admin_delete_class(class_id: str, admin: dict = Depends(require_admin)):
+    from database import get_students_in_class as _get_students
+    students = _get_students(class_id)
+    record_admin_action(
+        str(admin["_id"]), admin.get("email", ""),
+        "delete_class", class_id, "",
+        {"student_count": len(students)}
+    )
+    ok = delete_class_by_id(class_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Class not found")
+    return {"ok": True}
+
+
+# ── Admin: Session / Design Viewer ──────────────────────
+
+@app.get("/admin/sessions")
+def admin_list_sessions(
+    skip: int = Query(0),
+    limit: int = Query(50),
+    user_id: str = Query(""),
+    admin: dict = Depends(require_admin),
+):
+    sessions, total = get_all_sessions(skip, limit, user_id or None)
+    return {"sessions": sessions, "total": total}
+
+
+@app.get("/admin/sessions/{session_id}")
+def admin_get_session(session_id: str, admin: dict = Depends(require_admin)):
+    """Get full session data for admin viewer (reuses teacher endpoint logic)."""
+    raw = find_session(session_id)
+    if not raw:
+        raise HTTPException(status_code=404, detail="Session not found")
+    owner = find_user_by_id(raw.get("user_id", ""))
+    return {
+        "session_id": raw.get("session_id"),
+        "user_name": (owner.get("username") or owner.get("name", "")) if owner else "",
+        "user_email": (owner.get("email") or owner.get("username", "")) if owner else "",
+        "active_step": raw.get("active_step"),
+        "worldview_label": raw.get("worldview_label"),
+        "resolved_path": raw.get("resolved_path"),
+        "chosen_methodology": raw.get("chosen_methodology"),
+        "step_notes": raw.get("step_notes", {}),
+        "created_at": raw.get("created_at"),
+        "updated_at": raw.get("updated_at"),
+    }
+
+
+# ── Admin: System Health ────────────────────────────────
+
+@app.get("/admin/health")
+def admin_system_health(admin: dict = Depends(require_admin)):
+    import time
+    health = {
+        "server": "ok",
+        "uptime_seconds": int(time.time() - _SERVER_START_TIME),
+    }
+
+    # MongoDB
+    try:
+        from database import client as mongo_client
+        mongo_client.admin.command("ping")
+        health["mongodb"] = "ok"
+    except Exception as e:
+        health["mongodb"] = f"error: {e}"
+
+    # Ollama / LLM
+    try:
+        r = requests.get(f"{OLLAMA_BASE}/api/tags", timeout=3)
+        models = [m.get("name", "") for m in r.json().get("models", [])]
+        health["ollama"] = "ok"
+        health["ollama_models"] = models
+    except Exception as e:
+        health["ollama"] = f"error: {e}"
+        health["ollama_models"] = []
+
+    # RAG
+    health["rag_available"] = RAG_AVAILABLE
+    health["rag_index_loaded"] = _faiss_index is not None
+
+    # Disk
+    import shutil
+    usage = shutil.disk_usage("/")
+    health["disk_total_gb"] = round(usage.total / (1024**3), 1)
+    health["disk_free_gb"] = round(usage.free / (1024**3), 1)
+
+    return health
+
+
+# ── Admin: CSV Data Export ──────────────────────────────
+
+@app.get("/admin/export/users.csv")
+def admin_export_users_csv(admin: dict = Depends(require_admin)):
+    import csv, io
+    users, _ = get_all_users(skip=0, limit=100000)
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(["Name", "Email", "Username", "Role", "Education", "Active", "Created", "Last Login"])
+    for u in users:
+        writer.writerow([
+            u.get("name", ""), u.get("email", ""), u.get("username", ""),
+            u.get("role", ""), u.get("education_level", ""),
+            "Yes" if u.get("is_active", True) else "No",
+            u.get("created_at", ""), u.get("last_login_at", ""),
+        ])
+    return Response(
+        content=buf.getvalue(),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=hopscotch_users.csv"},
+    )
+
+
+@app.get("/admin/export/sessions.csv")
+def admin_export_sessions_csv(admin: dict = Depends(require_admin)):
+    import csv, io
+    sessions, _ = get_all_sessions(skip=0, limit=100000)
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(["Session ID", "User", "Email", "Active Step", "Worldview", "Path", "Methodology", "Created", "Updated"])
+    for s in sessions:
+        writer.writerow([
+            s.get("session_id", ""), s.get("user_name", ""), s.get("user_email", ""),
+            s.get("active_step", ""), s.get("worldview_label", ""),
+            s.get("resolved_path", ""), s.get("chosen_methodology", ""),
+            s.get("created_at", ""), s.get("updated_at", ""),
+        ])
+    return Response(
+        content=buf.getvalue(),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=hopscotch_sessions.csv"},
+    )
+
+
+@app.get("/admin/export/logins.csv")
+def admin_export_logins_csv(admin: dict = Depends(require_admin)):
+    import csv, io
+    logins = get_recent_logins(limit=100000)
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(["User", "IP", "City", "Region", "Country", "Time", "Success"])
+    for l in logins:
+        writer.writerow([
+            l.get("email", ""), l.get("ip", ""),
+            l.get("city", ""), l.get("region", ""), l.get("country", ""),
+            l.get("login_at", ""), "Yes" if l.get("success") else "No",
+        ])
+    return Response(
+        content=buf.getvalue(),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=hopscotch_logins.csv"},
+    )
+
+
+# ── Admin: User Detail Drill-Down ──────────────────────
+
+@app.get("/admin/users/{user_id}/detail")
+def admin_user_detail(user_id: str, admin: dict = Depends(require_admin)):
+    detail = get_user_detail(user_id)
+    if not detail:
+        raise HTTPException(status_code=404, detail="User not found")
+    return detail
 
 
 def _replace_pptx_text(shape, replacements: dict):

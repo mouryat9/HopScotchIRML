@@ -1,0 +1,96 @@
+================================================================================
+HOPSCOTCH STEP 5: Step 5: What is my research question?
+================================================================================
+
+BROADER CONCEPTS AND TERMS
+----------------------------------------
+- Research Question /Hypothesis /Issue
+
+SPECIFIC RESEARCH TERMS AND SUB-TOPICS
+----------------------------------------
+- Qualitative research question
+- Quantitative research - aim+hypothesis
+- Mixed Methods research: Qualitative questions and Quantitative aim+hypothesis
+- Other structures of the question
+
+DEFINITIONS AND KEY CONCEPTS
+----------------------------------------
+Research Question: 
+
+The question that the study or research project aims to answer (Bouchrika, 2025). 
+Addresses a specific issue or problem that can be answered in the study’s conclusion (Bouchrika, 2025). 
+Outlines various aspects of the study, including the population, variables to be studied, and the problem the study addresses (Bouchrika, 2025). 
+Comes from a gap in the research or conflicting research results in literature (Creswell, 2014). 
+States the specific issue or problem that the study or research project will focus on (Monash University, 2025) 
+The question around which the study or research project is centered around (George Mason University Writing Center, 2024) 
+
+
+Hypothesis:
+
+Predictions about what the results of the study or research project will show and is usually about the relationship between the variables (Creswell, 2014). 
+Developed by reviewing existing evidence and then inferring what could happen within the specific context of the study or research project (Price et al., 2018) 
+Can be tested through empirical investigation 
+Two different types of hypotheses include alternative and null hypothesis (Creswell, 2014). 
+Alternative hypotheses specify the results or relationships that are expected between the variables. 
+Null hypotheses indicate no expected difference or no relationship between the variables. 
+
+Issue: 
+A research issue in qualitative research refers to the broad area of concern, tension, or interest that prompts inquiry. It is the starting point—a real-world problem, social phenomenon, or area of ambiguity—that the researcher wants to explore in depth. Unlike a tightly defined problem in quantitative research, a qualitative research issue is often open-ended, complex, and interpretive. It reflects something worth understanding rather than solving or measuring. "
+
+
+Qualitative research question: 
+
+Linked to the research design/tradition while being adaptable, non-directional, and more flexible than quantitative research questions (Creswell, 2014). 
+Two different forms of qualitative research questions are central question and associated subquestions (Creswell, 2014). 
+Central research question is broad and focuses on exploring the central phenomenon or concept in the study. 
+Subquestions assists in narrowing the focus of the study while leaving it open for varied perspectives or meanings. 
+Begins with words such as how or what and use exploratory verbs, such as explore, understand, or discover. 
+
+
+Quantitative research question: 
+Inquire about the relationships between variables that the research study is investigating (Creswell, 2014). 
+Develops a link between the research question and the research design (Bouchrika, 2025). 
+Usually categorized into three different types: descriptive, comparative, and relationship (Bouchrika, 2025). 
+Descriptive research questions try to measure the responses of the research study’s population to one or more variables or describe the variables the research will measure. 
+
+Typically begins with what. 
+
+Comparative research questions try to discover the differences between two or more groups for an outcome variable. Example: Comparing a group who received the treatment vs. another group that did not. 
+Relationship research questions try to explore and define trends and interactions between two or more variables. 
+Typically use words such as association or trends as the question includes both independent and dependent variables. 
+
+
+Mixed methods research question:
+Directly addresses the mixing of the quantitative and qualitative strands of the research (Creswell, 2014). 
+Known as hybrid or integrated question (Tashakkori & Creswell, 2007). 
+Emphasize the methods or the content of the study or both (Creswell, 2014).
+
+INTERNAL HOPSCOTCH RESOURCES
+----------------------------------------
+Hopscotch 4-AP Research video Step 5: https://share.synthesia.io/53d60b55-659c-4cf7-bf76-2161982d24b1
+
+Hopscotch 4-AP Research interactive resource Step 5: https://view.genially.com/6626b6792aa762001439fe8f
+
+AP Research Library Step 5: https://libguides.kennesaw.edu/c.php?g=1461811&p=10871657
+
+EXTERNAL LEARNING RESOURCES
+----------------------------------------
+Monash University-Developing research questions: https://www.monash.edu/library/help/assignments-research/developing-research-questions
+
+RECOMMENDED AI TOOLS AND APIs
+----------------------------------------
+Consensus could be used to identify research questions that have been used in previously published studies. Consensus is an AI-powered search engine designed to take in research questions, find relevant insights within research papers, and synthesize the results using large language models. It is not a chatbot. Consensus only searches through peer-reviewed scientific research articles to find the most credible insights to your queries.: https://consensus.app/search/
+
+
+================================================================================
+ADDITIONAL CONTENT FROM EDUCATIONAL SOURCES
+================================================================================
+SCRAPED WEB CONTENT: Research Questions
+
+From Psychology Research Methods (Portland State University):
+Chapter 2 covers the Scientific Method including research topic selection, question generation, hypothesis development, study design, data analysis, and result reporting.
+Research questions drive the entire research process. A well-formulated research question should be:
+- Specific and focused
+- Researchable with available methods
+- Relevant to the field of study
+- Feasible within time and resource constraints

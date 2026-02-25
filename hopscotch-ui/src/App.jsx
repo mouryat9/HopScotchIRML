@@ -9,6 +9,8 @@ import LoginPage from "./LoginPage";
 import TeacherDashboard from "./TeacherDashboard";
 import SessionHistoryPanel from "./SessionHistoryPanel";
 import ConceptualFrameworkEditor from "./ConceptualFrameworkEditor";
+import FeedbackPanel from "./FeedbackPanel";
+import AdminDashboard from "./AdminDashboard";
 
 /* Small local UI helpers */
 const Btn = ({ className = "", ...p }) => (
@@ -311,6 +313,7 @@ function StudentApp({ onBackToDashboard }) {
               <span className="hop-user__name">{user.name}</span>
             </div>
           )}
+          <FeedbackPanel />
           <button className="theme-toggle" onClick={toggleTheme} aria-label="Toggle dark mode" title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}>
             {theme === "dark" ? "\u2600" : "\u263E"}
           </button>
@@ -401,6 +404,7 @@ export default function App() {
   }
 
   if (!user) return <LoginPage />;
+  if (user.role === "admin") return <AdminDashboard />;
   // All teachers/faculty get dashboard + ability to create research designs
   if (user.role === "teacher") {
     if (teacherView === "designs") {

@@ -114,6 +114,58 @@ export const API = {
     return res.json();
   },
 
+  async getStudentSession(sessionId) {
+    const res = await fetch(`${API_BASE}/teacher/student-session/${sessionId}`, {
+      headers: authHeaders(),
+    });
+    if (!res.ok) throw new Error(`Failed to load student session: ${res.status}`);
+    return res.json();
+  },
+
+  async getStudentStepConfig(sessionId, step) {
+    const params = new URLSearchParams({ session_id: sessionId, step: String(step) });
+    const res = await fetch(`${API_BASE}/teacher/student-step-config?${params}`, {
+      headers: authHeaders(),
+    });
+    if (!res.ok) throw new Error(`Failed to load student step config: ${res.status}`);
+    return res.json();
+  },
+
+  async postTeacherFeedback(sessionId, step, text) {
+    const res = await fetch(`${API_BASE}/teacher/feedback`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify({ session_id: sessionId, step, text }),
+    });
+    if (!res.ok) throw new Error(`Failed to post feedback: ${res.status}`);
+    return res.json();
+  },
+
+  async getTeacherFeedback(sessionId) {
+    const res = await fetch(`${API_BASE}/teacher/feedback/${sessionId}`, {
+      headers: authHeaders(),
+    });
+    if (!res.ok) throw new Error(`Failed to load feedback: ${res.status}`);
+    return res.json();
+  },
+
+  async getStudentFeedback() {
+    const res = await fetch(`${API_BASE}/student/feedback`, {
+      headers: authHeaders(),
+    });
+    if (!res.ok) throw new Error(`Failed to load feedback: ${res.status}`);
+    return res.json();
+  },
+
+  async markFeedbackRead() {
+    const res = await fetch(`${API_BASE}/student/feedback/mark-read`, {
+      method: "POST",
+      headers: authHeaders(),
+    });
+    if (!res.ok) throw new Error(`Failed to mark feedback read: ${res.status}`);
+    return res.json();
+  },
+
   // ---------- Sessions + Chat ----------
 
   async createSession() {
@@ -288,5 +340,204 @@ export const API = {
     a.click();
     document.body.removeChild(a);
     window.URL.revokeObjectURL(url);
+  },
+
+  // ---------- Admin ----------
+
+  async adminGetStats() {
+    const res = await fetch(`${API_BASE}/admin/stats`, { headers: authHeaders() });
+    if (!res.ok) throw new Error(`Failed to load admin stats: ${res.status}`);
+    return res.json();
+  },
+
+  async adminGetSignups(days = 30) {
+    const res = await fetch(`${API_BASE}/admin/signups?days=${days}`, { headers: authHeaders() });
+    if (!res.ok) throw new Error(`Failed to load signups: ${res.status}`);
+    return res.json();
+  },
+
+  async adminGetStepCompletion() {
+    const res = await fetch(`${API_BASE}/admin/step-completion`, { headers: authHeaders() });
+    if (!res.ok) throw new Error(`Failed to load step completion: ${res.status}`);
+    return res.json();
+  },
+
+  async adminGetLoginActivity(limit = 100, skip = 0) {
+    const params = new URLSearchParams({ limit: String(limit), skip: String(skip) });
+    const res = await fetch(`${API_BASE}/admin/login-activity?${params}`, { headers: authHeaders() });
+    if (!res.ok) throw new Error(`Failed to load login activity: ${res.status}`);
+    return res.json();
+  },
+
+  async adminGetLoginMap() {
+    const res = await fetch(`${API_BASE}/admin/login-map`, { headers: authHeaders() });
+    if (!res.ok) throw new Error(`Failed to load login map: ${res.status}`);
+    return res.json();
+  },
+
+  async adminGetGeoCountries() {
+    const res = await fetch(`${API_BASE}/admin/geo/countries`, { headers: authHeaders() });
+    if (!res.ok) throw new Error(`Failed to load geo countries: ${res.status}`);
+    return res.json();
+  },
+
+  async adminGetGeoRegions() {
+    const res = await fetch(`${API_BASE}/admin/geo/regions`, { headers: authHeaders() });
+    if (!res.ok) throw new Error(`Failed to load geo regions: ${res.status}`);
+    return res.json();
+  },
+
+  async adminGetUsers({ skip = 0, limit = 50, role = "", search = "" } = {}) {
+    const params = new URLSearchParams({ skip: String(skip), limit: String(limit) });
+    if (role) params.set("role", role);
+    if (search) params.set("search", search);
+    const res = await fetch(`${API_BASE}/admin/users?${params}`, { headers: authHeaders() });
+    if (!res.ok) throw new Error(`Failed to load users: ${res.status}`);
+    return res.json();
+  },
+
+  async adminGetUser(userId) {
+    const res = await fetch(`${API_BASE}/admin/users/${userId}`, { headers: authHeaders() });
+    if (!res.ok) throw new Error(`Failed to load user: ${res.status}`);
+    return res.json();
+  },
+
+  async adminCreateUser({ email, password, name, role, education_level }) {
+    const res = await fetch(`${API_BASE}/admin/users`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify({ email, password, name, role, education_level }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.detail || `Failed to create user: ${res.status}`);
+    }
+    return res.json();
+  },
+
+  async adminUpdateUser(userId, fields) {
+    const res = await fetch(`${API_BASE}/admin/users/${userId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify(fields),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.detail || `Failed to update user: ${res.status}`);
+    }
+    return res.json();
+  },
+
+  async adminResetPassword(userId, newPassword) {
+    const res = await fetch(`${API_BASE}/admin/users/${userId}/reset-password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify({ new_password: newPassword }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.detail || `Failed to reset password: ${res.status}`);
+    }
+    return res.json();
+  },
+
+  async adminDeleteUser(userId) {
+    const res = await fetch(`${API_BASE}/admin/users/${userId}`, {
+      method: "DELETE",
+      headers: authHeaders(),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.detail || `Failed to delete user: ${res.status}`);
+    }
+    return res.json();
+  },
+
+  async adminGetAuditLog(limit = 100, skip = 0) {
+    const params = new URLSearchParams({ limit: String(limit), skip: String(skip) });
+    const res = await fetch(`${API_BASE}/admin/audit-log?${params}`, { headers: authHeaders() });
+    if (!res.ok) throw new Error(`Failed to load audit log: ${res.status}`);
+    return res.json();
+  },
+
+  // ---------- Admin: Classes ----------
+
+  async adminGetClasses({ skip = 0, limit = 50, search = "" } = {}) {
+    const params = new URLSearchParams({ skip: String(skip), limit: String(limit) });
+    if (search) params.set("search", search);
+    const res = await fetch(`${API_BASE}/admin/classes?${params}`, { headers: authHeaders() });
+    if (!res.ok) throw new Error(`Failed to load classes: ${res.status}`);
+    return res.json();
+  },
+
+  async adminDeleteClass(classId) {
+    const res = await fetch(`${API_BASE}/admin/classes/${classId}`, {
+      method: "DELETE",
+      headers: authHeaders(),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.detail || `Failed to delete class: ${res.status}`);
+    }
+    return res.json();
+  },
+
+  // ---------- Admin: Sessions ----------
+
+  async adminGetSessions({ skip = 0, limit = 50, user_id = "" } = {}) {
+    const params = new URLSearchParams({ skip: String(skip), limit: String(limit) });
+    if (user_id) params.set("user_id", user_id);
+    const res = await fetch(`${API_BASE}/admin/sessions?${params}`, { headers: authHeaders() });
+    if (!res.ok) throw new Error(`Failed to load sessions: ${res.status}`);
+    return res.json();
+  },
+
+  async adminGetSession(sessionId) {
+    const res = await fetch(`${API_BASE}/admin/sessions/${sessionId}`, { headers: authHeaders() });
+    if (!res.ok) throw new Error(`Failed to load session: ${res.status}`);
+    return res.json();
+  },
+
+  // ---------- Admin: Health ----------
+
+  async adminGetHealth() {
+    const res = await fetch(`${API_BASE}/admin/health`, { headers: authHeaders() });
+    if (!res.ok) throw new Error(`Failed to load health: ${res.status}`);
+    return res.json();
+  },
+
+  // ---------- Admin: CSV Export ----------
+
+  async adminExportCSV(type) {
+    const res = await fetch(`${API_BASE}/admin/export/${type}.csv`, { headers: authHeaders() });
+    if (!res.ok) throw new Error(`Failed to export ${type}: ${res.status}`);
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `hopscotch_${type}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  },
+
+  // ---------- Admin: User Detail ----------
+
+  async adminGetUserDetail(userId) {
+    const res = await fetch(`${API_BASE}/admin/users/${userId}/detail`, { headers: authHeaders() });
+    if (!res.ok) throw new Error(`Failed to load user detail: ${res.status}`);
+    return res.json();
+  },
+
+  // ---------- Admin: Student Step Config (reuse teacher endpoint) ----------
+
+  async adminGetStudentStepConfig(sessionId, step) {
+    const params = new URLSearchParams({ session_id: sessionId, step: String(step) });
+    const res = await fetch(`${API_BASE}/teacher/student-step-config?${params}`, {
+      headers: authHeaders(),
+    });
+    if (!res.ok) throw new Error(`Failed to load student step config: ${res.status}`);
+    return res.json();
   },
 };

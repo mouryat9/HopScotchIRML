@@ -14,6 +14,8 @@ db = client[DB_NAME]
 users_col = db["users"]
 sessions_col = db["sessions"]
 classes_col = db["classes"]
+login_history_col = db["login_history"]
+admin_audit_col = db["admin_audit_log"]
 
 
 def ensure_indexes():
@@ -29,9 +31,21 @@ def ensure_indexes():
     sessions_col.create_index("user_id")
     classes_col.create_index("class_code", unique=True)
     classes_col.create_index("teacher_id")
+    login_history_col.create_index("user_id")
+    login_history_col.create_index("login_at")
+    login_history_col.create_index([("lat", 1), ("lng", 1)])
+    admin_audit_col.create_index("timestamp")
 
 
 # --------------- User CRUD ---------------
+
+def find_user_by_id(user_id: str) -> Optional[Dict]:
+    from bson import ObjectId
+    try:
+        return users_col.find_one({"_id": ObjectId(user_id)})
+    except Exception:
+        return None
+
 
 def find_user_by_email(email: str) -> Optional[Dict]:
     return users_col.find_one({"email": email})
@@ -49,7 +63,7 @@ def create_user(email: str, password_hash: str, role: str, name: str,
         "role": role,
         "name": name,
         "education_level": education_level,
-        "created_at": datetime.utcnow().isoformat(),
+        "created_at": datetime.utcnow().isoformat() + "Z",
     })
     return str(result.inserted_id)
 
@@ -64,7 +78,7 @@ def create_classroom_student(username: str, password_hash: str, name: str,
         "name": name,
         "class_id": class_id,
         "education_level": education_level,
-        "created_at": datetime.utcnow().isoformat(),
+        "created_at": datetime.utcnow().isoformat() + "Z",
     })
     return str(result.inserted_id)
 
@@ -89,7 +103,7 @@ def create_class_doc(teacher_id: str, class_name: str, class_code: str,
         "password_hash": password_hash,
         "password": password,
         "student_count": student_count,
-        "created_at": datetime.utcnow().isoformat(),
+        "created_at": datetime.utcnow().isoformat() + "Z",
     })
     return str(result.inserted_id)
 
@@ -179,8 +193,8 @@ def create_session_doc(session_id: str, user_id: str) -> Dict:
     doc = {
         "session_id": session_id,
         "user_id": user_id,
-        "created_at": datetime.utcnow().isoformat(),
-        "updated_at": datetime.utcnow().isoformat(),
+        "created_at": datetime.utcnow().isoformat() + "Z",
+        "updated_at": datetime.utcnow().isoformat() + "Z",
         "chat": [],
         "worldview_band": None,
         "worldview_label": None,
@@ -194,7 +208,7 @@ def create_session_doc(session_id: str, user_id: str) -> Dict:
 
 
 def update_session(session_id: str, update: Dict[str, Any]):
-    update["updated_at"] = datetime.utcnow().isoformat()
+    update["updated_at"] = datetime.utcnow().isoformat() + "Z"
     sessions_col.update_one({"session_id": session_id}, {"$set": update})
 
 
@@ -215,3 +229,300 @@ def get_session_summaries_for_user(user_id: str) -> List[Dict]:
         {"user_id": user_id},
         {"chat": 0, "_id": 0},
     ).sort("created_at", -1))
+
+
+# --------------- Login History ---------------
+
+def record_login(user_id: str, email_or_username: str, ip: str,
+                 geo: Dict, user_agent: str, success: bool = True):
+    """Record a login attempt."""
+    login_history_col.insert_one({
+        "user_id": user_id,
+        "email": email_or_username,
+        "ip": ip,
+        "city": geo.get("city", ""),
+        "region": geo.get("regionName", ""),
+        "country": geo.get("country", ""),
+        "lat": geo.get("lat"),
+        "lng": geo.get("lng"),
+        "user_agent": user_agent or "",
+        "login_at": datetime.utcnow().isoformat() + "Z",
+        "success": success,
+    })
+
+
+def get_recent_logins(limit: int = 100, skip: int = 0) -> List[Dict]:
+    return list(login_history_col.find(
+        {}, {"_id": 0}
+    ).sort("login_at", -1).skip(skip).limit(limit))
+
+
+def get_login_locations() -> List[Dict]:
+    """Aggregate login locations for world map."""
+    return list(login_history_col.aggregate([
+        {"$match": {"lat": {"$ne": None}, "lng": {"$ne": None}, "success": True}},
+        {"$group": {
+            "_id": {"lat": "$lat", "lng": "$lng"},
+            "city": {"$first": "$city"},
+            "country": {"$first": "$country"},
+            "count": {"$sum": 1},
+            "last_login": {"$max": "$login_at"},
+            "users": {"$addToSet": "$email"},
+        }},
+        {"$project": {
+            "_id": 0,
+            "lat": "$_id.lat",
+            "lng": "$_id.lng",
+            "city": 1, "country": 1, "count": 1,
+            "last_login": 1,
+            "users": {"$slice": ["$users", 5]},
+        }},
+    ]))
+
+
+def get_logins_for_user(user_id: str, limit: int = 50) -> List[Dict]:
+    return list(login_history_col.find(
+        {"user_id": user_id}, {"_id": 0}
+    ).sort("login_at", -1).limit(limit))
+
+
+def get_login_stats_by_country() -> List[Dict]:
+    """Aggregate unique users and total logins per country."""
+    return list(login_history_col.aggregate([
+        {"$match": {"country": {"$ne": ""}, "success": True}},
+        {"$group": {
+            "_id": "$country",
+            "logins": {"$sum": 1},
+            "users": {"$addToSet": "$user_id"},
+        }},
+        {"$project": {
+            "_id": 0,
+            "country": "$_id",
+            "logins": 1,
+            "unique_users": {"$size": "$users"},
+        }},
+        {"$sort": {"unique_users": -1}},
+    ]))
+
+
+def get_login_stats_by_region() -> List[Dict]:
+    """Aggregate unique users and total logins per city/region."""
+    return list(login_history_col.aggregate([
+        {"$match": {"city": {"$ne": ""}, "success": True}},
+        {"$group": {
+            "_id": {"city": "$city", "region": "$region", "country": "$country"},
+            "logins": {"$sum": 1},
+            "users": {"$addToSet": "$user_id"},
+        }},
+        {"$project": {
+            "_id": 0,
+            "city": "$_id.city",
+            "region": "$_id.region",
+            "country": "$_id.country",
+            "logins": 1,
+            "unique_users": {"$size": "$users"},
+        }},
+        {"$sort": {"unique_users": -1}},
+        {"$limit": 30},
+    ]))
+
+
+# --------------- Admin: User Management ---------------
+
+def get_all_users(skip: int = 0, limit: int = 50,
+                  role_filter: Optional[str] = None,
+                  search: Optional[str] = None):
+    """Return (users, total) for admin dashboard."""
+    query: Dict[str, Any] = {}
+    if role_filter:
+        query["role"] = role_filter
+    if search:
+        query["$or"] = [
+            {"email": {"$regex": search, "$options": "i"}},
+            {"username": {"$regex": search, "$options": "i"}},
+            {"name": {"$regex": search, "$options": "i"}},
+        ]
+    cursor = users_col.find(query, {"password_hash": 0}).sort("created_at", -1).skip(skip).limit(limit)
+    total = users_col.count_documents(query)
+    return list(cursor), total
+
+
+def update_user_fields(user_id: str, fields: Dict) -> bool:
+    """Update arbitrary fields on a user document."""
+    from bson import ObjectId
+    result = users_col.update_one(
+        {"_id": ObjectId(user_id)},
+        {"$set": fields}
+    )
+    return result.modified_count > 0
+
+
+def delete_user_by_id(user_id: str) -> bool:
+    """Hard-delete a user."""
+    from bson import ObjectId
+    result = users_col.delete_one({"_id": ObjectId(user_id)})
+    return result.deleted_count > 0
+
+
+# --------------- Admin: Analytics ---------------
+
+def get_user_counts_by_role() -> Dict[str, int]:
+    pipeline = [{"$group": {"_id": "$role", "count": {"$sum": 1}}}]
+    return {doc["_id"]: doc["count"] for doc in users_col.aggregate(pipeline)}
+
+
+def get_signups_over_time(days: int = 30) -> List[Dict]:
+    from datetime import timedelta
+    cutoff = (datetime.utcnow() - timedelta(days=days)).isoformat()
+    pipeline = [
+        {"$match": {"created_at": {"$gte": cutoff}}},
+        {"$project": {"date": {"$substr": ["$created_at", 0, 10]}}},
+        {"$group": {"_id": "$date", "count": {"$sum": 1}}},
+        {"$sort": {"_id": 1}},
+    ]
+    return [{"date": doc["_id"], "count": doc["count"]} for doc in users_col.aggregate(pipeline)]
+
+
+def get_total_sessions_count() -> int:
+    return sessions_col.count_documents({})
+
+
+def get_total_classes_count() -> int:
+    return classes_col.count_documents({})
+
+
+def get_active_users_last_n_days(days: int = 7) -> int:
+    from datetime import timedelta
+    cutoff = (datetime.utcnow() - timedelta(days=days)).isoformat()
+    return len(login_history_col.distinct(
+        "user_id", {"login_at": {"$gte": cutoff}, "success": True}
+    ))
+
+
+def get_step_completion_across_all() -> List[Dict]:
+    """For all sessions, count how many completed each step (1-9)."""
+    pipeline = [
+        {"$project": {"step_notes": {"$objectToArray": "$step_notes"}}},
+        {"$unwind": "$step_notes"},
+        {"$match": {"step_notes.v": {"$ne": {}}}},
+        {"$group": {"_id": "$step_notes.k", "count": {"$sum": 1}}},
+        {"$sort": {"_id": 1}},
+    ]
+    return [{"step": int(doc["_id"]), "count": doc["count"]}
+            for doc in sessions_col.aggregate(pipeline)]
+
+
+# --------------- Admin: Audit Log ---------------
+
+def record_admin_action(admin_user_id: str, admin_email: str, action: str,
+                        target_user_id: str, target_email: str,
+                        details: Optional[Dict] = None):
+    admin_audit_col.insert_one({
+        "admin_user_id": admin_user_id,
+        "admin_email": admin_email,
+        "action": action,
+        "target_user_id": target_user_id,
+        "target_email": target_email,
+        "details": details or {},
+        "timestamp": datetime.utcnow().isoformat() + "Z",
+    })
+
+
+def get_admin_audit_log(limit: int = 100, skip: int = 0) -> List[Dict]:
+    return list(admin_audit_col.find(
+        {}, {"_id": 0}
+    ).sort("timestamp", -1).skip(skip).limit(limit))
+
+
+# --------------- Admin: Class Management ---------------
+
+def get_all_classes(skip: int = 0, limit: int = 50,
+                    search: Optional[str] = None) -> tuple:
+    """Return (classes, total) for admin dashboard."""
+    query: Dict[str, Any] = {}
+    if search:
+        query["$or"] = [
+            {"class_name": {"$regex": search, "$options": "i"}},
+            {"class_code": {"$regex": search, "$options": "i"}},
+        ]
+    cursor = classes_col.find(query).sort("created_at", -1).skip(skip).limit(limit)
+    total = classes_col.count_documents(query)
+    results = []
+    for cls in cursor:
+        cls["_id"] = str(cls["_id"])
+        # Count actual students
+        cls["actual_students"] = users_col.count_documents({
+            "class_id": cls["_id"], "role": "classroom_student"
+        })
+        # Resolve teacher name
+        teacher = find_user_by_id(cls.get("teacher_id", ""))
+        cls["teacher_name"] = teacher.get("name", "") if teacher else ""
+        cls["teacher_email"] = teacher.get("email", "") if teacher else ""
+        results.append(cls)
+    return results, total
+
+
+def delete_class_by_id(class_id: str) -> bool:
+    """Delete a class and all its students."""
+    from bson import ObjectId
+    # Delete students in this class
+    users_col.delete_many({"class_id": class_id, "role": "classroom_student"})
+    # Delete sessions for those students
+    # (students are already deleted, but clean up orphan sessions)
+    result = classes_col.delete_one({"_id": ObjectId(class_id)})
+    return result.deleted_count > 0
+
+
+# --------------- Admin: Session Browsing ---------------
+
+def get_all_sessions(skip: int = 0, limit: int = 50,
+                     user_id: Optional[str] = None) -> tuple:
+    """Return (sessions, total) for admin."""
+    query: Dict[str, Any] = {}
+    if user_id:
+        query["user_id"] = user_id
+    cursor = sessions_col.find(query, {"chat": 0}).sort("created_at", -1).skip(skip).limit(limit)
+    total = sessions_col.count_documents(query)
+    results = []
+    for sess in cursor:
+        sess["_id"] = str(sess["_id"])
+        # Resolve user
+        owner = find_user_by_id(sess.get("user_id", ""))
+        sess["user_name"] = (owner.get("username") or owner.get("name", "")) if owner else ""
+        sess["user_email"] = (owner.get("email") or owner.get("username", "")) if owner else ""
+        results.append(sess)
+    return results, total
+
+
+def get_session_full(session_id: str) -> Optional[Dict]:
+    """Return a full session including chat (for admin viewer)."""
+    return sessions_col.find_one({"session_id": session_id})
+
+
+# --------------- Admin: User Detail Drill-Down ---------------
+
+def get_user_detail(user_id: str) -> Optional[Dict]:
+    """Return user profile with session summaries and login history."""
+    from bson import ObjectId
+    user = find_user_by_id(user_id)
+    if not user:
+        return None
+    user["_id"] = str(user["_id"])
+    user.pop("password_hash", None)
+
+    # Get session summaries
+    sessions = list(sessions_col.find(
+        {"user_id": user_id},
+        {"chat": 0}
+    ).sort("created_at", -1))
+    for s in sessions:
+        s["_id"] = str(s["_id"])
+
+    # Get recent logins
+    logins = get_logins_for_user(user_id, limit=20)
+
+    return {
+        "user": user,
+        "sessions": sessions,
+        "logins": logins,
+    }

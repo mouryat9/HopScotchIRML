@@ -87,6 +87,14 @@ const ChatBubble = memo(function ChatBubble({ turn, streaming }) {
   const stepColor = STEP_COLORS[turn.step] || null;
   const borderStyle = stepColor ? { borderLeft: `4px solid ${stepColor}` } : {};
 
+  if (turn.role === "system") {
+    return (
+      <div className="chat-row system">
+        <div className="chat-event">{turn.content}</div>
+      </div>
+    );
+  }
+
   if (turn.role === "user") {
     return (
       <div className="chat-row user">
@@ -176,6 +184,15 @@ function StepGroup({ group, isActive, streaming }) {
 
 
 
+/* ---------- Hide auto-generated prompts from display ---------- */
+function isAutoPrompt(msg) {
+  if (msg.role !== "user") return false;
+  const c = msg.content || "";
+  if (c.startsWith("I just selected ") && c.includes("as my worldview")) return true;
+  if (c.startsWith("I'm on Step ") && c.includes("Can you give me feedback")) return true;
+  return false;
+}
+
 /* ---------- Main chat component ---------- */
 
 export default function ChatBox({ sessionId, activeStep, refreshKey, autoMessage, onAutoMessageSent }) {
@@ -185,18 +202,21 @@ export default function ChatBox({ sessionId, activeStep, refreshKey, autoMessage
   const sendingRef = useRef(false);           // synchronous guard against double-sends
   const [err, setErr] = useState("");
   const scrollRef = useRef(null);
+  const scrolledToResponse = useRef(false);  // tracks if we've scrolled to the new response start
+  const justFinishedSending = useRef(false); // prevents scroll-to-bottom after streaming ends
   const [historyReady, setHistoryReady] = useState(false);
 
   // Load history when we get a session
   useEffect(() => {
     let cancelled = false;
     setHistoryReady(false);
+    justFinishedSending.current = false;  // allow scroll-to-bottom on history load
     (async () => {
       setErr("");
       if (!sessionId) return;
       try {
         const h = await API.history(sessionId);
-        if (!cancelled) setHistory(h.history || []);
+        if (!cancelled) setHistory((h.history || []).filter(m => !isAutoPrompt(m)));
       } catch (e) {
         console.error(e);
         if (!cancelled) setErr("Could not load chat history.");
@@ -207,18 +227,38 @@ export default function ChatBox({ sessionId, activeStep, refreshKey, autoMessage
     return () => { cancelled = true; };
   }, [sessionId, refreshKey]);
 
-  // Auto-scroll to bottom when history changes
+  // Auto-scroll: scroll to bottom on history load, scroll to response start when streaming
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    const chatBody = scrollRef.current;
+    if (!chatBody) return;
+
+    if (sending && !scrolledToResponse.current) {
+      // Streaming just started — scroll to the START of the new assistant response
+      // so the user can read from the beginning
+      const rows = chatBody.querySelectorAll('.chat-row.assistant');
+      const lastRow = rows[rows.length - 1];
+      if (lastRow && lastRow.textContent) {
+        lastRow.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        scrolledToResponse.current = true;
+      }
+    } else if (!sending && !justFinishedSending.current) {
+      // Only scroll to bottom on initial history load / session switch,
+      // NOT after streaming just finished
+      chatBody.scrollTop = chatBody.scrollHeight;
     }
-  }, [history]);
+  }, [history, sending]);
 
   // Auto-send message triggered by parent (e.g. worldview selection)
   // Waits until history is loaded to avoid the API response overwriting streamed content
   useEffect(() => {
     if (autoMessage && sessionId && historyReady && !sendingRef.current) {
-      send(autoMessage, { hideUserBubble: true });
+      const msg = typeof autoMessage === "string" ? autoMessage : autoMessage.text;
+      const event = typeof autoMessage === "object" ? autoMessage.event : null;
+      // Insert a system event message (e.g. "Worldview selected: Pragmatist")
+      if (event) {
+        setHistory((prev) => [...prev, { role: "system", content: event, step: activeStep }]);
+      }
+      send(msg, { hideUserBubble: true });
       if (onAutoMessageSent) onAutoMessageSent();
     }
   }, [autoMessage, historyReady]);
@@ -229,6 +269,7 @@ export default function ChatBox({ sessionId, activeStep, refreshKey, autoMessage
     if (!msg || !sessionId || sendingRef.current) return;
 
     sendingRef.current = true;
+    scrolledToResponse.current = false;  // reset so we scroll to the new response start
     setSending(true);
     if (!forcedText) setInput("");
     setErr("");
@@ -297,6 +338,7 @@ export default function ChatBox({ sessionId, activeStep, refreshKey, autoMessage
       });
     } finally {
       sendingRef.current = false;
+      justFinishedSending.current = true;  // prevent scroll-to-bottom when sending flips to false
       setSending(false);
     }
   }

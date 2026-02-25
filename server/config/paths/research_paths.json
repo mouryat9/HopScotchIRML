@@ -44,28 +44,34 @@
         },
         "6": {
           "title": "Step 6: What data will I collect? (Quantitative Collection)",
-          "directions": "Select your data collection method(s). These should align with your quantitative design.",
-          "field_type": "multi_select",
-          "field_key": "data_collection_methods",
-          "options": [
-            {"id": "experiments", "label": "Experiments"},
-            {"id": "questionnaires", "label": "Questionnaires"},
-            {"id": "surveys", "label": "Surveys"},
-            {"id": "systematic_observations", "label": "Systematic Observations"},
-            {"id": "instrumental_measurements", "label": "Instrumental Measurements"},
-            {"id": "other", "label": "Other"}
+          "directions": "Describe your data collection plan including your method, participants, and sampling strategy.",
+          "field_type": "fields",
+          "fields": [
+            {"field_key": "collection_method", "label": "Collection Method", "type": "multi_select", "placeholder": "Select all that apply…", "options": [
+              {"id": "experiments", "label": "Experiments"},
+              {"id": "questionnaires", "label": "Questionnaires"},
+              {"id": "surveys", "label": "Surveys"},
+              {"id": "systematic_observations", "label": "Systematic Observations"},
+              {"id": "instrumental_measurements", "label": "Instrumental Measurements"},
+              {"id": "other", "label": "Other"}
+            ]},
+            {"field_key": "participants", "label": "Participants", "type": "textarea", "placeholder": "Describe the participants of your study (e.g., who they are, how many, inclusion/exclusion criteria)..."},
+            {"field_key": "sampling_method", "label": "Sampling Method", "type": "textarea", "placeholder": "What sampling method will you use? (e.g., random, stratified, convenience, purposive)..."}
           ],
-          "llm_guidance": "Help the student select appropriate quantitative data collection methods for their chosen design and research question. Explain how each method works and when it is most suitable. Consider sample size, feasibility, and alignment with their hypothesis."
+          "llm_guidance": "Help the student plan their quantitative data collection. Guide them on choosing appropriate collection methods, defining their participant population, and selecting a sampling strategy aligned with their design and hypothesis. Consider sample size, feasibility, and representativeness."
         },
         "7": {
           "title": "Step 7: How will I analyze the data? (Quantitative Analysis)",
-          "directions": "Select the analysis approach(es) you plan to use for your quantitative data.",
-          "field_type": "multi_select",
-          "field_key": "analysis_methods",
-          "options": [
-            {"id": "descriptive_stats", "label": "Descriptive Statistics", "description": "Central tendency, dispersion, relative position, distribution shape, frequencies"},
-            {"id": "inferential_stats", "label": "Inferential Statistics", "description": "Correlation, ANOVA, linear regression"},
-            {"id": "visualization", "label": "Data Visualization", "description": "Boxplots, tables, scatter plots, histograms, bar graphs"}
+          "directions": "Select the analysis approach you plan to use for your quantitative data.",
+          "field_type": "fields",
+          "fields": [
+            {"field_key": "analysis_method", "label": "Analysis Method", "type": "select", "placeholder": "Select an analysis method…", "options": [
+              {"id": "descriptive_stats", "label": "Descriptive Statistics"},
+              {"id": "inferential_stats", "label": "Inferential Statistics"},
+              {"id": "visualization", "label": "Data Visualization"},
+              {"id": "other", "label": "Other"}
+            ]},
+            {"field_key": "analysis_notes", "label": "Describe your analysis plan", "type": "textarea", "placeholder": "How will you analyze your data? What specific techniques will you use?"}
           ],
           "llm_guidance": "Help the student choose quantitative analysis techniques that match their design, data collection approach, and research question. Explain when to use descriptive vs inferential statistics. Suggest appropriate visualization techniques for their data type."
         },
@@ -86,15 +92,26 @@
         "9": {
           "title": "Step 9: How will I be ethical? (Integrity & Ethics)",
           "directions": "Consider the ethical dimensions of your proposed research.",
-          "field_type": "multi_select",
-          "field_key": "ethics_considerations",
-          "options": [
-            {"id": "irb", "label": "IRB Approval"},
-            {"id": "respect_for_persons", "label": "Respect for Persons"},
-            {"id": "beneficence", "label": "Beneficence"},
-            {"id": "justice", "label": "Justice"}
+          "field_type": "fields",
+          "fields": [
+            {"field_key": "involves_humans", "label": "Does your study involve human participants?", "type": "select", "placeholder": "Select…", "options": [
+              {"id": "yes", "label": "Yes"},
+              {"id": "no", "label": "No"}
+            ]},
+            {"field_key": "ethics_approach", "label": "Ethics & Integrity Considerations", "type": "multi_select", "placeholder": "Select all that apply…", "options": [
+              {"id": "irb", "label": "IRB Approval"},
+              {"id": "respect_for_persons", "label": "Respect for Persons"},
+              {"id": "beneficence", "label": "Beneficence"},
+              {"id": "justice", "label": "Justice"},
+              {"id": "informed_consent", "label": "Informed Consent"},
+              {"id": "confidentiality", "label": "Confidentiality"},
+              {"id": "data_ethics", "label": "Data Ethics"},
+              {"id": "academic_integrity", "label": "Academic Integrity"},
+              {"id": "other", "label": "Other"}
+            ]},
+            {"field_key": "ethics_notes", "label": "Describe your ethics plan", "type": "textarea", "placeholder": "How will you ensure your research is ethical and safe?"}
           ],
-          "llm_guidance": "Help the student plan for ethical research conduct. Cover IRB requirements, the Belmont principles (respect for persons, beneficence, justice), informed consent, confidentiality, and any special considerations for their specific study design and population."
+          "llm_guidance": "First check the student's answer to whether their study involves human participants. If the student said YES: help them plan for ethical research with human subjects — cover IRB requirements, the Belmont principles (respect for persons, beneficence, justice), informed consent, confidentiality, and any special considerations for their population. If the student said NO: acknowledge that and help them consider other ethical dimensions relevant to their study (data ethics, environmental impact, academic integrity, responsible use of existing data, etc.)."
         }
       }
     },
@@ -131,37 +148,44 @@
         },
         "6": {
           "title": "Step 6: What data will I collect? (Qualitative Collection)",
-          "directions": "Select your data collection method(s). These should align with your qualitative design.",
-          "field_type": "multi_select",
-          "field_key": "data_collection_methods",
-          "options": [
-            {"id": "interview", "label": "Interview"},
-            {"id": "field_notes", "label": "Field Notes"},
-            {"id": "document_analysis", "label": "Document Analysis"},
-            {"id": "images", "label": "Images"},
-            {"id": "focus_groups", "label": "Focus Groups"},
-            {"id": "surveys_open", "label": "Surveys (open-ended)"},
-            {"id": "observation_naturalistic", "label": "Observation (naturalistic)"},
-            {"id": "geo_narratives", "label": "Geo-narratives"},
-            {"id": "photo_elicitation", "label": "Photo-elicitation"},
-            {"id": "performance", "label": "Performance (Spoken Word, Poetry, Graffiti)"}
+          "directions": "Describe your data collection plan including your method, participants, and sampling strategy.",
+          "field_type": "fields",
+          "fields": [
+            {"field_key": "collection_method", "label": "Collection Method", "type": "multi_select", "placeholder": "Select all that apply…", "options": [
+              {"id": "interview", "label": "Interview"},
+              {"id": "field_notes", "label": "Field Notes"},
+              {"id": "document_analysis", "label": "Document Analysis"},
+              {"id": "images", "label": "Images"},
+              {"id": "focus_groups", "label": "Focus Groups"},
+              {"id": "surveys_open", "label": "Surveys (open-ended)"},
+              {"id": "observation_naturalistic", "label": "Observation (naturalistic)"},
+              {"id": "geo_narratives", "label": "Geo-narratives"},
+              {"id": "photo_elicitation", "label": "Photo-elicitation"},
+              {"id": "performance", "label": "Performance (Spoken Word, Poetry, Graffiti)"},
+              {"id": "other", "label": "Other"}
+            ]},
+            {"field_key": "participants", "label": "Participants", "type": "textarea", "placeholder": "Describe the participants of your study (e.g., who they are, how many, selection criteria)..."},
+            {"field_key": "sampling_method", "label": "Sampling Method", "type": "textarea", "placeholder": "What sampling method will you use? (e.g., purposive, snowball, criterion, maximum variation)..."}
           ],
-          "llm_guidance": "Help the student select appropriate qualitative data collection methods for their chosen design. Explain how interviews, field notes, document analysis, focus groups, observations, and other methods work. Consider what kind of data their design typically requires."
+          "llm_guidance": "Help the student plan their qualitative data collection. Guide them on choosing appropriate collection methods, defining their participants, and selecting a sampling strategy aligned with their design and research question. Consider feasibility, access, and data richness."
         },
         "7": {
           "title": "Step 7: How will I analyze the data? (Qualitative Analysis)",
-          "directions": "Select the analysis approach(es) you plan to use for your qualitative data.",
-          "field_type": "multi_select",
-          "field_key": "analysis_methods",
-          "options": [
-            {"id": "coding", "label": "Coding (Open, Axial, Selective)"},
-            {"id": "memoing", "label": "Memoing"},
-            {"id": "data_saturation", "label": "Data Saturation"},
-            {"id": "content_analysis", "label": "Content Analysis (Quotations)"},
-            {"id": "thematic_analysis", "label": "Thematic Analysis"},
-            {"id": "triangulation", "label": "Triangulation"},
-            {"id": "co_occurrence", "label": "Co-occurrence Analysis (Table or Sankey Diagram)"},
-            {"id": "network_views", "label": "Network Views"}
+          "directions": "Select the analysis approach you plan to use for your qualitative data.",
+          "field_type": "fields",
+          "fields": [
+            {"field_key": "analysis_method", "label": "Analysis Method", "type": "select", "placeholder": "Select an analysis method…", "options": [
+              {"id": "coding", "label": "Coding (Open, Axial, Selective)"},
+              {"id": "memoing", "label": "Memoing"},
+              {"id": "data_saturation", "label": "Data Saturation"},
+              {"id": "content_analysis", "label": "Content Analysis (Quotations)"},
+              {"id": "thematic_analysis", "label": "Thematic Analysis"},
+              {"id": "triangulation", "label": "Triangulation"},
+              {"id": "co_occurrence", "label": "Co-occurrence Analysis (Table or Sankey Diagram)"},
+              {"id": "network_views", "label": "Network Views"},
+              {"id": "other", "label": "Other"}
+            ]},
+            {"field_key": "analysis_notes", "label": "Describe your analysis plan", "type": "textarea", "placeholder": "How will you analyze your data? What specific techniques will you use?"}
           ],
           "llm_guidance": "Help the student choose qualitative analysis techniques appropriate for their design and data collection. Explain coding approaches (open, axial, selective), thematic analysis, content analysis, and how triangulation strengthens findings. Connect analysis choices back to their research question."
         },
@@ -181,15 +205,27 @@
         "9": {
           "title": "Step 9: How will I be ethical? (Integrity & Ethics)",
           "directions": "Consider the ethical dimensions of your proposed research.",
-          "field_type": "multi_select",
-          "field_key": "ethics_considerations",
-          "options": [
-            {"id": "irb", "label": "IRB Approval"},
-            {"id": "respect_for_persons", "label": "Respect for Persons"},
-            {"id": "beneficence", "label": "Beneficence"},
-            {"id": "justice", "label": "Justice"}
+          "field_type": "fields",
+          "fields": [
+            {"field_key": "involves_humans", "label": "Does your study involve human participants?", "type": "select", "placeholder": "Select…", "options": [
+              {"id": "yes", "label": "Yes"},
+              {"id": "no", "label": "No"}
+            ]},
+            {"field_key": "ethics_approach", "label": "Ethics & Integrity Considerations", "type": "multi_select", "placeholder": "Select all that apply…", "options": [
+              {"id": "irb", "label": "IRB Approval"},
+              {"id": "respect_for_persons", "label": "Respect for Persons"},
+              {"id": "beneficence", "label": "Beneficence"},
+              {"id": "justice", "label": "Justice"},
+              {"id": "informed_consent", "label": "Informed Consent"},
+              {"id": "confidentiality", "label": "Confidentiality"},
+              {"id": "positionality", "label": "Positionality & Reflexivity"},
+              {"id": "data_ethics", "label": "Data Ethics"},
+              {"id": "academic_integrity", "label": "Academic Integrity"},
+              {"id": "other", "label": "Other"}
+            ]},
+            {"field_key": "ethics_notes", "label": "Describe your ethics plan", "type": "textarea", "placeholder": "How will you ensure your research is ethical and safe?"}
           ],
-          "llm_guidance": "Help the student plan for ethical research conduct. Cover IRB requirements, the Belmont principles (respect for persons, beneficence, justice), informed consent, confidentiality, positionality, and any special considerations for qualitative research with human participants."
+          "llm_guidance": "First check the student's answer to whether their study involves human participants. If the student said YES: help them plan for ethical research with human subjects — cover IRB requirements, the Belmont principles (respect for persons, beneficence, justice), informed consent, confidentiality, positionality, and any special considerations for qualitative research with human participants. If the student said NO: acknowledge that and help them consider other ethical dimensions relevant to their study (data ethics, environmental impact, academic integrity, responsible use of existing data, etc.)."
         }
       }
     },

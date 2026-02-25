@@ -1,0 +1,60 @@
+================================================================================
+HOPSCOTCH STEP 8: Step 8: How will I ensure the evidence is trustworthy?
+================================================================================
+
+BROADER CONCEPTS AND TERMS
+----------------------------------------
+- Trustworthiness - Qualitative Research
+- Validity & Reliability - Quantitative Research
+
+SPECIFIC RESEARCH TERMS AND SUB-TOPICS
+----------------------------------------
+- Trustworthiness in qualitative research includes but no limited by: Credibility, Transferability , Dependability and Confirmability.
+- Validity in quantitative research includes several types such us: Internal and external Validity/ generalizability based on sampling (random sampling, stratified sampling, cluster sampling, convenience sampling, accidental sampling) and construct and content validity.
+- Reliability in quantitative research is expressed through: Test- retest reliability, inter- rate reliability, internal consistency.
+
+DEFINITIONS AND KEY CONCEPTS
+----------------------------------------
+Level 1 - Broader Concepts/Terms: The integrity and ethical aspects of the process in conducting the research. Researchers need to protect their research participants, develop trust with them; promote the integrity of research; guard against misconduct and impropriety that might reflect on their organizations or institutions; and cope with new, challenging problems (Israel & Hay, 2006, as cited in Creswell, 2014). Level 2 - Narrower Concepts/Terms: Qualitative Research - Credibility: Refers to the truthfulness and believability of findings from the participants' perspective. Ensures the study accurately represents the lived experiences or meanings shared by participants (e.g., prolonged engagement, triangulation, member checking, peer debriefing). Transferability: Addresses the extent to which findings can apply to other contexts through rich, thick description (e.g., detailed contextualization of participants, setting, and findings). Dependability: Focuses on the stability and consistency of the research process over time (e.g., maintaining an audit trail). Confirmability: Ensures findings reflect participants’ experiences, not researcher bias (e.g., audit trails, reflexive journaling, triangulation). Quantitative Research - Validity: The accuracy and integrity of the research—whether it measures what it claims to measure. Includes internal validity (causal inference), external validity (generalizability), construct validity (accurate definition and measurement), and content validity (comprehensive coverage of concepts). Reliability: The consistency and stability of measurement. Includes test-retest reliability (over time), inter-rater reliability (between observers), and internal consistency (e.g., Cronbach’s alpha). Sampling: The process of selecting participants to ensure representativeness and support generalizability and unbiased estimation.
+
+INTERNAL HOPSCOTCH RESOURCES
+----------------------------------------
+Hopscotch 4-AP Research video Step 8: https://share.synthesia.io/80fa7610-b9f2-481f-8160-e9086db5ef63
+
+Hopscotch 4-AP Research interactive resource Step 8: https://view.genially.com/6626b6e02b4ff0001438901b
+
+AP Research Library Step 8: https://libguides.kennesaw.edu/c.php?g=1461811&p=10871660
+
+EXTERNAL LEARNING RESOURCES
+----------------------------------------
+Hopscotch 4-AP Research Design Assistant: https://tinyurl.com/Hopscotch4AP-ResearchAssistant
+
+Reliability & Validity in Selection Methods: https://oercommons.org/courseware/lesson/72696/overview
+
+Evidence vs. "Truthiness": https://oercommons.org/courseware/lesson/68529/overview
+
+Risk of Bias in Reports of In Vivo Research: A Focus for Improvement: https://oercommons.org/courses/risk-of-bias-in-reports-of-in-vivo-research-a-focus-for-improvement
+
+
+Types of Research Designs Noba Project: https://nobaproject.com/modules/research-designs
+
+Introduction to Research Methods and Design: https://pressbooks.bccampus.ca/psyo270/
+
+Qualitative study design: https://deakin.libguides.com/qualitative-study-designs
+
+Mixed Methods Design: https://www.youtube.com/watch?v=ydTw25cmTgg
+
+Psychology Research Methods: https://pdx.pressbooks.pub/psych-research-methods/
+
+Research Methods in Psychology - 4th American Edition: https://open.umn.edu/opentextbooks/textbooks/research-methods-in-psychology-3rd-american-edition"
+
+
+================================================================================
+ADDITIONAL CONTENT FROM EDUCATIONAL SOURCES
+================================================================================
+SCRAPED WEB CONTENT: Trustworthiness, Validity, and Reliability
+
+From AP Research Teacher-Recommended Resources:
+Trustworthiness in qualitative research includes credibility, transferability, dependability, and confirmability.
+Validity in quantitative research includes internal validity, external validity, construct validity, and content validity.
+Reliability in quantitative research is expressed through test-retest reliability, inter-rater reliability, and internal consistency.

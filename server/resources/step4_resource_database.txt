@@ -1,0 +1,80 @@
+================================================================================
+HOPSCOTCH STEP 4: Step 4: How will I study it?
+================================================================================
+
+BROADER CONCEPTS AND TERMS
+----------------------------------------
+- Qualitative Methodological Approach
+- Quantitative Methodological Approach
+- Mixed-Methods Approach
+- Other Designs (Data Agnostic)
+
+SPECIFIC RESEARCH TERMS AND SUB-TOPICS
+----------------------------------------
+- Research Design: Narrative, Phenomenology, Phenomenography, Ethnography, School Ethnography, Grounded theory, Case study research , Action research, Design-Based Research
+- Research Design: Descriptive design, Correlational design, Cross-sectional survey design, Pre-experimental design , Quasi-experimental design, Experimental design
+- Research Design: Convergent Parallel Design, Exploratory Sequential Design, Explanatory Sequential Design, Embedded Design
+- Research Design: Experimental, Formal, Design-based, Intervention, Descriptive, Performance design, Participatory, HCI methods, Algorithm design, Framework design, Theoretical proof, Clinical study"
+
+DEFINITIONS AND KEY CONCEPTS
+----------------------------------------
+Quantitative research gathers a range of numeric data, and uses a set of strategies, techniques, and assumptions to explore numeric patterns to investigate why something occurs. The researcher seeks to establish the overall tendency, to identify a trend, or to determine the differences among observed to explain the relationships among variables. 
+Qualitative research is an approach to inquiry that seeks to understand how people make sense of their experiences, social worlds, and cultural meanings. It prioritizes depth over breadth, focusing on rich, contextualized data collected in natural settings. It is interpretive, inductive, and often constructivist or transformative in nature—meaning it assumes that reality is socially constructed and best understood through the perspectives of those who live it, and that it can be transformed through inquiry. 
+
+Mixed-methods research is an approach to inquiry that integrates both quantitative (numeric, measurable) and qualitative (textual, contextual) data collection and analysis within a single study or research program. It is used when neither quantitative nor qualitative methods alone are sufficient to fully understand a research problem. At its core, mixed-methods research is pragmatic—it values methodological pluralism and chooses the approach (or combination of approaches) best suited to answering the research questions.
+
+INTERNAL HOPSCOTCH RESOURCES
+----------------------------------------
+Hopscotch 4-AP Research video Step 4: https://share.synthesia.io/9504ed58-2e8c-468f-b034-9f131594d9ff
+
+Hopscotch 4-AP Research interactive resource Step 4: https://view.genially.com/6626b6648a9b7d0014fd0809 
+
+AP Research Library Step 4: https://libguides.kennesaw.edu/c.php?g=1461811&p=10871656
+
+Decision tree: https://view.genially.com/66ff2cbbfa0b5cdaef88a8b2
+
+Periodic table of research designs: https://view.genially.com/68f4f378704c36a044c35eef
+
+Hopscotch Model Designs: https://kennesawedu.sharepoint.com/:f:/r/sites/Team-NSF_RITEL_Hopscotch_for_APwithAITechnology/Shared%20Documents/General/Grand%20Challenges%20Interdisciplinary%20Seed%20Grants/Data/Hopscotch%20Data?csf=1&web=1&e=9Hi3hk
+
+EXTERNAL LEARNING RESOURCES
+----------------------------------------
+Hopscotch 4-AP Research Design Assistant: https://tinyurl.com/Hopscotch4AP-ResearchAssistant
+
+Types of Research Designs Noba Project: https://nobaproject.com/modules/research-designs
+
+Archival Research, Case Studies, and Developmental Research Designs: https://oercommons.org/courseware/lesson/52447/overview
+
+Introduction to Research Methods and Design: https://pressbooks.bccampus.ca/psyo270/
+
+Qualitative study design: https://deakin.libguides.com/qualitative-study-designs
+
+Mixed Methods Design: https://www.youtube.com/watch?v=ydTw25cmTgg
+
+Psychology Research Methods: https://pdx.pressbooks.pub/psych-research-methods/
+
+Research Methods in Psychology - 4th American Edition: https://open.umn.edu/opentextbooks/textbooks/research-methods-in-psychology-3rd-american-edition
+
+RECOMMENDED AI TOOLS AND APIs
+----------------------------------------
+Consensus could be used to assist users in the identification of the research designs 
+employed in papers published in peer-reviewed articles. Consensus is an AI-powered search engine designed to take in research questions, find relevant insights within research papers, and synthesize the results using large language models. It is not a chatbot. Consensus only searches through peer-reviewed scientific research articles to find the most credible insights to your queries: https://consensus.app/search
+
+
+================================================================================
+ADDITIONAL CONTENT FROM EDUCATIONAL SOURCES
+================================================================================
+SCRAPED WEB CONTENT: Research Designs
+
+From Noba Project (Research Designs):
+Experimental Research involves researchers actively manipulating an independent variable and observing effects on a dependent variable. Experiments allow researchers to make causal inferences. Random assignment is critical—participants are placed into conditions by chance rather than choice.
+Correlational Research involves passive observation and measurement without intervention. Researchers identify patterns between variables but cannot determine causation. A key limitation: correlation does not mean causation.
+Quasi-Experimental Designs resemble experiments but lack random assignment. Instead, researchers use existing group memberships as independent variables.
+Longitudinal Studies track the same individuals over extended periods, from weeks to decades.
+Qualitative Designs include participant observation, case studies, and narrative analysis.
+Surveys gather information through questionnaires or online methods, reaching large populations cost-effectively.
+
+From Deakin University (Qualitative Study Designs):
+A qualitative study design is a research method for understanding complex, contextual, and subjective phenomena. Qualitative research prioritizes depth and insight, addressing why and how questions rather than frequency counts.
+Eight qualitative methodologies: phenomenology, grounded theory, ethnography, historical research, narrative inquiry, action research, case studies, and field research.
+Five primary data collection methods: focus groups, observation, document analysis, surveys/questionnaires, and interviews.

@@ -85,7 +85,7 @@ export default function StepResourcePanel({ activeStep, educationLevel = "high_s
         </button>
       </div>
 
-      <div className="embed-frame-wrap">
+      <div className={`embed-frame-wrap${tab === "video" ? " embed-frame-wrap--video" : ""}`}>
         {tab === "video" && videoUrl && (
           <iframe
             src={videoUrl}

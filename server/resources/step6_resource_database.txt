@@ -1,0 +1,66 @@
+================================================================================
+HOPSCOTCH STEP 6: Step 6: What is the data to collect?
+================================================================================
+
+BROADER CONCEPTS AND TERMS
+----------------------------------------
+- Qualitative Research Data Collection Methods/Techniques
+- Quantitative Research Data Collection Methods/Techniques
+- Mixed Methods Research Data Collection Methods/Techniques
+
+SPECIFIC RESEARCH TERMS AND SUB-TOPICS
+----------------------------------------
+- Specific Qualitative Method/Technique: Interview, Field Notes, Document Analysis, Images, Focus groups, Surveys (open), Observation (naturalistic), Geo-narratives, Photo-elicitation, Performance (Spoken Word; Poetry; Graffiti...), other
+- Specific Quantitative Method/Technique: Experiments, Questionnaires, Surveys, Systematic Observations, Instrumental Measurements, other
+- Specific Qualitative Method/Technique: Interview, Field Notes, Document Analysis, Images, Focus groups, Surveys (open), Observation (naturalistic), Geo-narratives, Photo-elicitation, Performance: Spoken Word; Poetry; Graffiti, other 
+
+Specific Quantitative Method/Technique: Experiments, Questionnaires, Surveys, Systematic Observations, Instrumental Measurements, other
+
+DEFINITIONS AND KEY CONCEPTS
+----------------------------------------
+Data collection methods Systematic process of gathering information needed to address the research question(s) Information can be in the form of observations, analysis of documents, responses to interviews, and quantifiable measurements. Includes boundaries for the study, collecting information, and establishing protocol (Creswell, 2014) Methods of data or evidence collection The overall framework for gathering the data including (Creswell, 2014): participants/variables materials/instruments procedures measures Examples include: Surveys or questionnaires Interviews Focus groups Observations Document/audio and visual analysis Controlled experimentation Existing published data Instruments The device used by investigators for collecting data (Hsu & Sandford, 2010). Examples include: Surveys or questionnaires Interview script Focus group script Observation checklist/protocol Pre/Post Test Codebook Data recording forms/tables Measuring devices Instrumentation The process of developing, selecting, and validating the instrument. Focused on how and why instruments are selected and applied Tools or means by which investigators attempt to measure variables or items of interest in the data-collection process (Hsu & Sandford, 2010). Related not only to instrument design, selection, construction, and assessment, but also the conditions under which the designated instruments are administered. Research Tools The tools needed to collect data. Examples include: Interview guides Focus group protocols Observation checklists Field note recording document Audio/video recorder Transcription software Survey/questionnaire Tests Measuring devices Data collection document Data Gathering The process of collecting data Process will vary depending on type of research methods Level 2 - Narrower Concepts/Terms Qualitative Research Researcher plays an active role in the data collection process Can be considered a research instrument Purpose of data collection is to explore meaning, experiences, or perspectives (Creswell, 2014). Uses open-ended questions that emerge throughout data collection process (Creswell, 2014). Descriptive data collected Types of data: Words Images Observation of behaviors/actions Quantitative Research Researcher does not influence the data being collected Must remain objective and detached Purpose is to measure relationships between and among variables (Creswell, 2014). Data is close-ended Use empirical data such as numerical/measurable data. Mixed Methods Research Research serves as both objective and detached from the data as well as an active role in the data collection process where they serve as a research instrument. Purpose is to mix or combine both quantitative and qualitative data as both provide different types of information and have both different limitations and strengths (Creswell, 2014). Data collected provides a stronger understanding of the problem or question than quantitative or qualitative data alone (Creswell, 2014). Multiple forms of data to draw on all possibilities: Empirical data such as numerical/measurable data Descriptive data such as words, images, and behaviors/actions
+
+INTERNAL HOPSCOTCH RESOURCES
+----------------------------------------
+Hopscotch 4-AP Research video Step 6: https://share.synthesia.io/321e953d-68e2-4bdd-8a24-5fe3c5951618
+
+Hopscotch 4-AP Research interactive resource Step 6: https://view.genially.com/6626b6a92b4ff00014385a51
+
+AP Research Library Step 6: https://libguides.kennesaw.edu/c.php?g=1461811&p=10871658
+
+EXTERNAL LEARNING RESOURCES
+----------------------------------------
+Interview warmup: https://grow.google/certificates/interview-warmup/
+
+Collecting and Mapping Data for Environmental Applications: https://wisc.pb.unizin.org/maps/
+
+Class Activity - Collecting Data: https://oercommons.org/courseware/lesson/64641/overview
+
+Collecting and Analyzing Data for Bar Graphs: https://oercommons.org/authoring/21865-collecting-and-analyzing-data-for-bar-graphs/view
+
+Sensory Data Collection: https://serc.carleton.edu/integrate/teaching_materials/map_sense/unit3.html
+
+RECOMMENDED AI TOOLS AND APIs
+----------------------------------------
+"Semantic Scholar API: https://www.semanticscholar.org/product/api
+
+Asta API , agentic ecosystem that advances scientific discovery: https://allenai.org/asta
+
+Open Alex (API): https://docs.openalex.org/how-to-use-the-api/api-overview
+
+SCITE AI (API): https://docs.openalex.org/how-to-use-the-api/api-overview"
+
+
+================================================================================
+ADDITIONAL CONTENT FROM EDUCATIONAL SOURCES
+================================================================================
+SCRAPED WEB CONTENT: Data Collection Methods
+
+From SERC (Science Education Resource Center):
+Data collection involves developing protocols for consistent collection of data, planning and executing field collection, analyzing collected data, and communicating findings.
+Students should understand: distinguishing qualitative from quantitative data, objective versus subjective observations, and basic data recording techniques.
+
+From AP Research Teacher-Recommended Resources (College Board):
+- MIDSS: Database of social science data collection instruments
+- General Social Survey (GSS): National survey with data from the 1970s onward
+- Data.gov: U.S. government database with 235,000+ datasets

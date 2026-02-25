@@ -1,0 +1,77 @@
+================================================================================
+RESEARCH METHODS IN PSYCHOLOGY - COMPREHENSIVE TEXTBOOK SUMMARY
+================================================================================
+
+Source: Portland State University Open Textbook (Creative Commons)
+
+CHAPTER 1: THE SCIENCE OF PSYCHOLOGY
+Methods of knowing, understanding science, goals of science, and distinctions between experimental and clinical psychology.
+
+CHAPTER 2: OVERVIEW OF THE SCIENTIFIC METHOD
+Research topic selection, question generation, hypothesis development, study design, data analysis, and result reporting.
+
+CHAPTER 3: RESEARCH ETHICS
+Moral foundations, ethics codes, and practical implementation of ethical standards. Key principles include: respect for persons, beneficence, justice, informed consent, and IRB approval.
+
+CHAPTER 4: PSYCHOLOGICAL MEASUREMENT
+Understanding measurement, reliability, validity, and practical measurement strategies.
+- Reliability: The consistency of a measure. Types include test-retest reliability, inter-rater reliability, and internal consistency.
+- Validity: The extent to which a measure actually measures what it claims to measure. Types include construct validity, content validity, criterion validity, internal validity, and external validity.
+
+CHAPTER 5: EXPERIMENTAL RESEARCH
+Experiment fundamentals, design approaches, validity considerations, and practical implementation. Experiments involve manipulating an independent variable and measuring its effect on a dependent variable while controlling confounding variables. Random assignment is critical for establishing causal relationships.
+
+CHAPTER 6: NON-EXPERIMENTAL RESEARCH
+Correlational studies examine relationships between variables without manipulation. Qualitative methods include participant observation, case studies, and narrative analysis. Observational techniques involve systematic recording of behavior.
+
+CHAPTER 7: SURVEY RESEARCH
+Survey overview, construction methods, and conducting procedures. Surveys can gather data from large samples efficiently but are limited to self-reported data.
+
+CHAPTER 8: QUASI-EXPERIMENTAL RESEARCH
+One-group designs and non-equivalent control group designs. These resemble experiments but lack random assignment, making causal inference more challenging.
+
+CHAPTER 9: FACTORIAL DESIGNS
+Setting up factorial experiments and interpreting results. Factorial designs examine the effects of two or more independent variables simultaneously.
+
+CHAPTER 10: SINGLE-SUBJECT RESEARCH
+Overview, specific designs, and group research comparisons. Used when studying individual cases in depth.
+
+CHAPTER 11: PRESENTING YOUR RESEARCH
+APA style formatting, research report writing, and alternative presentation formats.
+
+CHAPTER 12: DESCRIPTIVE STATISTICS
+- Measures of Central Tendency: Mean, median, mode
+- Measures of Dispersion: Range, variance, standard deviation
+- Measures of Relative Position: Percentiles, z-scores
+- Distribution Shape: Skewness, kurtosis
+- Frequencies: Frequency tables, histograms, bar graphs
+
+CHAPTER 13: INFERENTIAL STATISTICS
+- Null Hypothesis Testing: Setting up null and alternative hypotheses, determining significance levels
+- Basic Tests: t-tests, ANOVA, correlation, chi-square
+- Additional Considerations: Effect sizes, confidence intervals, power analysis
+- Open Science: Replication, pre-registration, data sharing
+
+================================================================================
+AP RESEARCH: TEACHER-RECOMMENDED RESOURCES (College Board)
+================================================================================
+
+DATA SOURCES FOR STUDENT RESEARCH:
+- Data.gov: U.S. government database with 235,000+ datasets covering agriculture, climate, education, health
+- General Social Survey (GSS): National survey data from the 1970s onward on political attitudes, well-being
+- Pew Research Center: Public opinion data on media, religion, race, and social trends
+- NCES: Education-focused datasets on enrollment, finances, and student characteristics
+
+STATISTICAL ANALYSIS TOOLS:
+- PSPP: A free, open-source alternative to SPSS
+- VassarStats: Statistical testing tool for t-tests, correlation, ANOVA, ANCOVA
+- Rice Virtual Lab: Virtual lab with statistical textbooks
+
+RESEARCH SUPPORT:
+- MIDSS: Database of social science data collection instruments
+- Purdue OWL: Citation and writing assistance for APA/MLA formats
+- WorldCat: Source finder supporting multiple citation formats
+
+PUBLICATION OPPORTUNITIES FOR STUDENTS:
+- Harvard Journal of Emerging Investigators: Peer-reviewed journal for secondary students
+- The Young Researcher: Peer-reviewed journal for high school student research

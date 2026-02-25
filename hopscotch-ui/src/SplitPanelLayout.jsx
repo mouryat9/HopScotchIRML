@@ -51,6 +51,7 @@ export default function SplitPanelLayout({
 
       {/* Center: Workspace (always visible, flexes to fill) */}
       <div className="pin-layout__main">
+        <h2 className="pin-layout__main-title">My Research Design</h2>
         <StepDetails
           step={activeStep}
           sessionId={sessionId}

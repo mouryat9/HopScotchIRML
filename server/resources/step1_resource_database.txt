@@ -1,0 +1,71 @@
+================================================================================
+HOPSCOTCH STEP 1: Step 1: Who am I as a researcher
+================================================================================
+
+BROADER CONCEPTS AND TERMS
+----------------------------------------
+- Worldview/Paradigm/Paradigmatic view (Knowledge)/Paradigmatic positioning/Research Identity
+
+SPECIFIC RESEARCH TERMS AND SUB-TOPICS
+----------------------------------------
+- Positivism
+- Post-Positivism
+- Constructivism
+- Pragmatism
+- Transformative
+
+DEFINITIONS AND KEY CONCEPTS
+----------------------------------------
+Worldview, paradigm, or paradigmatic positioning (definitions & main ones) 
+-A Worldview is a basic set of beliefs that guide action (Guba, 1990, p. 17) 
+-Creswell (2007) defines a worldview as a fundamental set of beliefs or assumptions that guide how a researcher approaches and conducts their inquiry. These beliefs shape the researcher's understanding of the world, influencing their research design, data collection methods, and interpretation of findings. 
+-Positivist worldview: A paradigm that views knowledge as objective and measurable, emphasizing empirical observation, quantifiable data, and the scientific method to uncover universal laws. 
+-Post-Positivist worldview: An evolution of positivism that recognizes the limitations of absolute objectivity. It values empirical inquiry but acknowledges that all observations are theory-laden and subject to potential bias. 
+-Constructivist worldview: A worldview that sees knowledge as socially constructed and subjective. It emphasizes understanding individuals’ experiences and meanings through qualitative methods and contextual interpretation 
+-Pragmatic worldview: A practical and flexible paradigm that focuses on research questions and real-world outcomes, often combining qualitative and quantitative methods to find workable solutions. 
+-Transformative worldview: A paradigm rooted in social justice and advocacy. It aims to challenge inequality and empower marginalized groups, often using participatory and critical research approaches.
+
+INTERNAL HOPSCOTCH RESOURCES
+----------------------------------------
+Hopscotch 4-AP Research video Step 1: https://share.synthesia.io/29442014-85bd-4e46-993b-c27216013d33
+
+Hopscotch 4-AP Research interactive resource Step 1: https://view.genially.com/6626b5edb31fe80014324408
+
+
+Positivist-Post-Positivist pathway example: https://partyrock.aws/u/ijorrina/dLXYSwGjr/Hopscotch-4-AP-Research-Design-Assistant/snapshot/Ym0GbAESg
+
+Constructivist – Transformative pathway example: https://partyrock.aws/u/ijorrina/dLXYSwGjr/Hopscotch-4-AP-Research-Design-Assistant/snapshot/cZ3RvbEe8
+
+Pragmatic pathway example: https://partyrock.aws/u/ijorrina/dLXYSwGjr/Hopscotch-4-AP-Research-Design-Assistant/snapshot/0ehHpajX3
+
+EXTERNAL LEARNING RESOURCES
+----------------------------------------
+Hopscotch 4-AP Research Design Assistant: https://tinyurl.com/Hopscotch4AP-ResearchAssistant
+
+Consensus selected papers on worldviews: https://consensus.app/search/researcher-worldview-and-paradigmatic-positioning/Or45jGrMRKqNjiOZk3MYGg/?utm_source=share&utm_medium=clipboard
+
+RECOMMENDED AI TOOLS AND APIs
+----------------------------------------
+Semantic Scholar API: https://www.semanticscholar.org/product/api
+
+Asta API , agentic ecosystem that advances scientific discovery: https://allenai.org/asta
+
+Open Alex (API): https://docs.openalex.org/how-to-use-the-api/api-overview
+
+SCITE AI (API): https://docs.openalex.org/how-to-use-the-api/api-overview
+
+
+================================================================================
+ADDITIONAL CONTENT FROM EDUCATIONAL SOURCES
+================================================================================
+SCRAPED WEB CONTENT: Researcher Worldview and Paradigmatic Positioning
+
+From AP Research Library (Kennesaw State University):
+Step 1 focuses on understanding who you are as a researcher through paradigmatic positioning. 
+A paradigm or worldview is a basic set of beliefs that guide action (Guba, 1990).
+The five main worldviews in research are:
+- Positivism: Views knowledge as objective and measurable, emphasizing empirical observation and the scientific method
+- Post-Positivism: Recognizes limitations of absolute objectivity, values empirical inquiry but acknowledges theory-laden observations
+- Constructivism: Sees knowledge as socially constructed, emphasizes understanding individual experiences through qualitative methods
+- Pragmatism: Focuses on research questions and real-world outcomes, often combining qualitative and quantitative methods
+- Transformative: Rooted in social justice, aims to challenge inequality and empower marginalized groups

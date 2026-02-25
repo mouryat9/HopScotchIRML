@@ -1,0 +1,130 @@
+================================================================================
+HOPSCOTCH STEP 3: Step 3: What do I already know? What others have discovered?
+================================================================================
+
+BROADER CONCEPTS AND TERMS
+----------------------------------------
+- Literature Review or Conceptual Framework
+
+SPECIFIC RESEARCH TERMS AND SUB-TOPICS
+----------------------------------------
+- Topical Research
+- Theoretical Framework
+- Problem Statement-Description of the problem
+- Historical Context/Foundational Knowledge
+
+DEFINITIONS AND KEY CONCEPTS
+----------------------------------------
+Conceptual Framework: A conceptual framework is both a process and a product through which a researcher constructs and presents the “why” of the study — that is, why the topic matters — and links that rationale to the literature, theory, methodology, and the design of the study. It serves as a mechanism for aligning and integrating the literature review, research questions, theoretical or conceptual underpinnings, methods, and analysis of the study
+
+Key Elements (based on Ravitch & Riggan, 2017)
+
+Here are the major elements or functions of a conceptual framework according to their presentation:
+-Concepts, assumptions, expectations, beliefs, and theories: The framework makes explicit the researcher’s underlying views about the phenomena under study. -Alignment and coherence: It shows how the study’s literature review, theoretical orientation, research questions, methods, data collection, and analysis are interconnected and coherent. 
+-Guide and ballast: The framework acts as both a guide (steering the research) and ballast (providing stability) in the conduct of an empirical study. 
+-Processes of development: It’s not only a document or diagram at the start, but a process of continual refinement as the study evolves. 
+-Justification of research decisions: The framework assists in justifying why particular research methods, data collection strategies, and analytic approaches were selected over others. 
+
+Literature Review: A literature review is the process and product of reviewing existing scholarship on relevant concepts, phenomena, contexts and studies related to your research topic. In their work, Ravitch & Riggan emphasize that a strong literature review:
+
+-Surveys what has already been written, identifies gaps or tensions in the body of work, and helps frame the importance of the study. 
+-Is not simply a descriptive summary but provides a critical, analytical engagement with the literature — showing how prior research shapes your topic and how your study will contribute. 
+-Serves as one of the components that feed into a conceptual framework; in particular it helps define the “topical research” component discussed below (i.e., what has been done, and what remains). 
+-Helps justify your methodological choices by showing what has worked (or not) in previous work and by situating your research in that scholarly conversation. 
+
+In summary, a literature review is the foundation that situates your study in the existing body of knowledge and creates a rationale for your work.
+
+Topical Research: Within the framework of Ravitch & Riggan, “topical research” refers to the body of work and empirical studies directly relevant to the topic you are studying — essentially the “what” of the study, as opposed to the “why” or “how.” They list “topical research” as one of the three primary elements of a conceptual framework (alongside personal interests and theoretical frameworks). 
+
+Key points about topical research:
+-It embodies the empirical investigations, studies, and discussions already conducted in your substantive area (“what others have done”). 
+-It helps you identify the constructs, variables, phenomena, or contexts that must be explored or challenged in your research.
+-The topical research component supports the argument for the study’s significance: by showing where prior work has focused, where gaps remain, and how your study fits in.
+-In their phrasing, Ravitch & Riggan distinguish that topical research “describes the what of the study” while theoretical frameworks clarify the why and how. 
+
+In short: Topical research is the domain of prior empirical or topic‑specific literature that grounds the study’s focus and helps define what is being studied.
+
+
+Theoretical Frameworks: According to Ravitch & Riggan, the theoretical framework is a subset of the conceptual framework (but a critical one) that brings in formal theories, constructs, assumptions, and models to explain and interpret phenomena. It helps articulate the underpinning reasons and mechanisms — the “why” and “how” of the research. 
+
+Key features of the theoretical framework:
+-It comprises linked concepts, assumptions, expectations, beliefs, and existing theories that the researcher uses to frame their study. 
+-It guides the research design, informing what you will measure/observe, how you will interpret those observations, and how you will relate them back to theory. 
+-It provides the lens through which you view your topic, and thus helps to locate your study within broader theoretical conversations.
+-While many authors treat theoretical and conceptual frameworks as interchangeable, Ravitch & Riggan argue that the theoretical framework is embedded within the broader conceptual framework (which also includes personal interests and topical research). 
+
+In short: The theoretical framework is the structured set of theories and constructs that explains how and why the research topic is being approached in a particular way.
+
+INTERNAL HOPSCOTCH RESOURCES
+----------------------------------------
+Hopscotch 4-AP Research video Step 3: https://share.synthesia.io/a451443c-e24e-466f-8fea-7c084b0afddf
+
+Hopscotch 4-AP Research interactive resource Step 3: https://view.genially.com/6626b64db31fe8001432844c
+
+AP Research Library Step 3: https://libguides.kennesaw.edu/c.php?g=1461811&p=10871654
+
+EXTERNAL LEARNING RESOURCES
+----------------------------------------
+Hopscotch 4-AP Research Design Assistant: https://tinyurl.com/Hopscotch4AP-ResearchAssistant
+
+Emory AP Research Guide: https://guides.libraries.emory.edu/c.php?g=1417487&p=10505868
+
+University of Georgia AP Seminar Guide: https://guides.libs.uga.edu/c.php?g=978
+
+Writing the Literature Review: Research Practices in Instructional Design & Technology: https://oercommons.org/courseware/lesson/108560/overview
+
+The Claremont Colleges Library - Conducting a Literature Review: https://libguides.libraries.claremont.edu/c.php?g=317242&p=7605522
+
+AP Research: Online Resources Recommended by AP Teachers: https://apcentral.collegeboard.org/courses/ap-research/classroom-resources/teacher-recommended-resources
+
+RECOMMENDED AI TOOLS AND APIs
+----------------------------------------
+Research Rabbit is a citation-based mapping tool that focuses on the relationships between research works. It uses visualizations to help researchers find similar papers and other researchers in their field: https://app.researchrabbit.ai
+
+Connected papers focuses on the relationships between research papers to find similar research. You can also use Connected Papers to get a visual overview of an academic field.: https://www.connectedpapers.com/
+
+Elicit uses LLMs to find papers relevant to your topic by searching through papers and citations and extracting and synthesizing key information: https://elicit.com/
+
+Keenious is a recommendation tool for academic articles and topics based on papers you upload: https://keenious.com/
+
+Scite has a suite of products that help researchers develop their topics, find papers, and search citations in context (describing whether the article provides supporting or contrasting evidence): https://scite.ai/home
+
+
+Scholarcy summarizes key points and claims of articles into 'summary cards' that researchers can read, share, and annotate when compiling research on a given topic: https://www.scholarcy.com/
+
+Semantic Scholar (which supplies underlying data for many of the other tools on this list) provides brief summaries ('TLDR's) of the main objectives and results of papers: https://www.semanticscholar.org/
+
+Undermind is an AI research assistant that works with you to refine your research question and find relevant papers: https://www.undermind.ai/home/
+
+Semantic Scholar API: https://www.semanticscholar.org/product/api
+
+Asta API , agentic ecosystem that advances scientific discovery: https://allenai.org/asta
+
+Open Alex (API): https://docs.openalex.org/how-to-use-the-api/api-overview
+
+SCITE AI (API): https://docs.openalex.org/how-to-use-the-api/api-overview
+
+
+================================================================================
+ADDITIONAL CONTENT FROM EDUCATIONAL SOURCES
+================================================================================
+SCRAPED WEB CONTENT: Literature Review and Conceptual Framework
+
+From Claremont Colleges Library Guide:
+A literature review is a systematic and comprehensive analysis of books, scholarly articles and other sources relevant to a specific topic. Its core purposes are identifying and critiquing existing literature while exposing research gaps.
+
+Six Review Approaches:
+- Argumentative: Selectively examines literature to support or refute established arguments
+- Integrative: Reviews, critiques, and synthesizes representative literature generating new frameworks
+- Historical: Traces issue evolution across time periods
+- Methodological: Focuses on how research was conducted, examining analysis frameworks
+- Systematic: Uses pre-specified and standardized methods to identify and critically appraise relevant research
+- Theoretical: Examines accumulated theory regarding concepts or phenomena
+
+From AP Research Step 3 (Kennesaw State):
+Step 3 focuses on reviewing existing knowledge before designing your research study. A literature review serves three critical functions: identifying small gaps in existing knowledge, confirming the viability of a research question, and demonstrating the added value of your work.
+
+Three Strategic Components:
+- Position: Selecting a narrow topic and answerable research question
+- Justify: Confirming research viability and identifying knowledge gaps
+- Frame: Creating a coherent conceptual or theoretical framework

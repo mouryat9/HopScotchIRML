@@ -64,4 +64,13 @@ def get_current_user(credentials: Optional[HTTPAuthorizationCredentials] = Depen
         user = find_user_by_email(sub)
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
+    if not user.get("is_active", True):
+        raise HTTPException(status_code=403, detail="Account deactivated. Contact your administrator.")
+    return user
+
+
+def require_admin(user: dict = Depends(get_current_user)):
+    """FastAPI dependency — ensures the caller is an admin."""
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
     return user
