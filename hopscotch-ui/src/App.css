@@ -1906,6 +1906,24 @@ select.input:focus {
   margin-bottom: 4px;
 }
 
+.methodology-col--recommended {
+  border-color: var(--hop-blue);
+  box-shadow: 0 0 0 1px var(--hop-blue);
+}
+
+.methodology-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #fff;
+  background: var(--hop-blue);
+  border-radius: 10px;
+  vertical-align: middle;
+  letter-spacing: 0.02em;
+}
+
 .methodology-confirmed {
   display: flex;
   align-items: center;
@@ -3630,6 +3648,220 @@ select.input:focus {
 
 :root[data-theme="dark"] .theme-toggle:hover {
   background: rgba(255, 255, 255, 0.06);
+}
+
+/* ---------- Guided Tour Button ---------- */
+.hop-tour-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1.5px solid var(--hop-border);
+  background: transparent;
+  color: var(--hop-ink-secondary);
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 700;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+  padding: 0;
+  line-height: 1;
+}
+.hop-tour-btn:hover {
+  border-color: #6AA84F;
+  color: #6AA84F;
+  background: rgba(106, 168, 79, 0.08);
+}
+:root[data-theme="dark"] .hop-tour-btn:hover {
+  background: rgba(106, 168, 79, 0.15);
+}
+
+/* While tour is active, lower sticky header z-index so spotlight renders above it */
+.hop-wrap--touring .hop-header {
+  z-index: 1;
+}
+
+/* ---------- Joyride / Custom Tour Tooltip ---------- */
+.__floater.__floater__open {
+  z-index: 10001 !important;
+}
+
+.tour-tooltip {
+  background: var(--hop-surface);
+  border-radius: 16px;
+  width: 380px;
+  max-width: 92vw;
+  overflow: hidden;
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.15), 0 2px 8px rgba(0, 0, 0, 0.08);
+  border: 1px solid var(--hop-border);
+  animation: tourFadeIn 0.25s ease-out;
+}
+@keyframes tourFadeIn {
+  from { opacity: 0; transform: translateY(6px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)  scale(1); }
+}
+
+/* Progress bar */
+.tour-tooltip__progress-track {
+  height: 4px;
+  background: var(--hop-border);
+}
+.tour-tooltip__progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #2B4C7E, #6AA84F);
+  border-radius: 0 4px 4px 0;
+  transition: width 0.4s ease;
+}
+
+/* Body */
+.tour-tooltip__body {
+  padding: 20px 24px 18px;
+}
+
+/* Top row: icon + counter */
+.tour-tooltip__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.tour-tooltip__icon {
+  font-size: 28px;
+  line-height: 1;
+}
+.tour-tooltip__counter {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--hop-muted);
+  background: var(--hop-bg);
+  padding: 3px 10px;
+  border-radius: 20px;
+  letter-spacing: 0.3px;
+}
+
+/* Title */
+.tour-tooltip__title {
+  margin: 0 0 6px;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--hop-ink);
+  letter-spacing: -0.2px;
+}
+
+/* Content */
+.tour-tooltip__content {
+  margin: 0 0 18px;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--hop-ink-secondary);
+}
+
+/* Footer: skip left, nav right */
+.tour-tooltip__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.tour-tooltip__skip {
+  background: none;
+  border: none;
+  color: var(--hop-muted);
+  font-size: 13px;
+  cursor: pointer;
+  padding: 6px 2px;
+  opacity: 0.7;
+  transition: opacity 0.15s;
+}
+.tour-tooltip__skip:hover {
+  opacity: 1;
+  text-decoration: underline;
+}
+
+.tour-tooltip__nav {
+  display: flex;
+  gap: 8px;
+}
+
+.tour-tooltip__back {
+  background: var(--hop-bg);
+  border: 1px solid var(--hop-border);
+  color: var(--hop-ink-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 7px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.tour-tooltip__back:hover {
+  border-color: var(--hop-navy);
+  background: var(--hop-surface);
+}
+
+.tour-tooltip__next {
+  background: linear-gradient(135deg, #2B4C7E, #3D6098);
+  border: none;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 7px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: filter 0.15s, transform 0.1s;
+}
+.tour-tooltip__next:hover {
+  filter: brightness(1.12);
+  transform: translateY(-1px);
+}
+.tour-tooltip__next:active {
+  transform: translateY(0);
+}
+.tour-tooltip__arrow {
+  font-size: 15px;
+  transition: transform 0.2s;
+}
+.tour-tooltip__next:hover .tour-tooltip__arrow {
+  transform: translateX(2px);
+}
+
+/* ----- Dark mode tour tooltip ----- */
+:root[data-theme="dark"] .tour-tooltip {
+  background: #1E2128;
+  border-color: #2D3340;
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.45), 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+:root[data-theme="dark"] .tour-tooltip__progress-track {
+  background: #2D3340;
+}
+:root[data-theme="dark"] .tour-tooltip__counter {
+  background: #252A34;
+  color: #8896A6;
+}
+:root[data-theme="dark"] .tour-tooltip__back {
+  background: #252A34;
+  border-color: #2D3340;
+  color: #B0BAC5;
+}
+:root[data-theme="dark"] .tour-tooltip__back:hover {
+  border-color: #4A6FA5;
+  background: #2D3340;
+}
+:root[data-theme="dark"] .tour-tooltip__next {
+  background: linear-gradient(135deg, #3D6098, #4A7AB8);
+}
+:root[data-theme="dark"] .tour-tooltip__skip {
+  color: #6B7A8A;
+}
+
+/* Joyride arrow in dark mode */
+[data-theme="dark"] .__floater__arrow polygon {
+  fill: #1E2128 !important;
 }
 
 /* ========================================================

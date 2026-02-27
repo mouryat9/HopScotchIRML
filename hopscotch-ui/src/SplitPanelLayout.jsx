@@ -16,6 +16,7 @@ export default function SplitPanelLayout({
   loading,
   status,
   educationLevel = "high_school",
+  tourActive = false,
 }) {
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true);
@@ -24,6 +25,14 @@ export default function SplitPanelLayout({
   useEffect(() => {
     if (autoMessage) setRightOpen(true);
   }, [autoMessage]);
+
+  // Force both panels open during guided tour
+  useEffect(() => {
+    if (tourActive) {
+      setLeftOpen(true);
+      setRightOpen(true);
+    }
+  }, [tourActive]);
 
   return (
     <div className="pin-layout">

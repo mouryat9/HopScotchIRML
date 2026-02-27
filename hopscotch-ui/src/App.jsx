@@ -11,6 +11,135 @@ import SessionHistoryPanel from "./SessionHistoryPanel";
 import ConceptualFrameworkEditor from "./ConceptualFrameworkEditor";
 import FeedbackPanel from "./FeedbackPanel";
 import AdminDashboard from "./AdminDashboard";
+import { Joyride, STATUS } from "react-joyride";
+
+/* ----- Guided tour steps ----- */
+const TOUR_STEPS = [
+  {
+    target: ".hop-header",
+    title: "Welcome to Hopscotch!",
+    content: "This is your research design workspace. Let\u2019s take a quick tour of the key areas so you feel right at home.",
+    disableBeacon: true,
+    icon: "👋",
+  },
+  {
+    target: ".step-progress",
+    title: "Step Progress",
+    content: "Your 9-step research journey at a glance. Each dot lights up as you complete a step \u2014 click any to jump back.",
+    icon: "🎯",
+  },
+  {
+    target: ".hop-diagram",
+    title: "Research Diagram",
+    content: "A visual map showing how every step connects to the bigger picture of your research design.",
+    icon: "🗺️",
+  },
+  {
+    target: ".pin-panel--left",
+    title: "Resources Panel",
+    content: "Curated videos, articles, and interactive tools tailored to whichever step you\u2019re working on.",
+    icon: "📚",
+  },
+  {
+    target: ".pin-layout__main",
+    title: "Your Workspace",
+    content: "The heart of it all \u2014 fill in your research design fields here and the AI will guide you along the way.",
+    icon: "✏️",
+  },
+  {
+    target: ".pin-panel--right",
+    title: "AI Research Assistant",
+    content: "Your personal research mentor. Ask questions, get feedback, and receive step-by-step guidance anytime.",
+    icon: "🤖",
+  },
+  {
+    target: ".cmd-bar",
+    title: "Layout Controls",
+    content: "Toggle the Resources and Assistant panels on or off to create the workspace that suits you best.",
+    icon: "🎛️",
+  },
+  {
+    target: ".hop-download",
+    title: "Download Your Work",
+    content: "When you\u2019re ready, export your completed design as a PDF or generate a Conceptual Framework diagram.",
+    icon: "📥",
+  },
+];
+
+/* ----- Custom tour tooltip component ----- */
+function TourTooltip({
+  continuous,
+  index,
+  step,
+  backProps,
+  closeProps,
+  primaryProps,
+  skipProps,
+  tooltipProps,
+  size,
+}) {
+  const progress = ((index + 1) / size) * 100;
+  return (
+    <div {...tooltipProps} className="tour-tooltip">
+      {/* Progress bar across top */}
+      <div className="tour-tooltip__progress-track">
+        <div className="tour-tooltip__progress-fill" style={{ width: `${progress}%` }} />
+      </div>
+
+      <div className="tour-tooltip__body">
+        {/* Icon + step counter */}
+        <div className="tour-tooltip__top">
+          {step.icon && <span className="tour-tooltip__icon">{step.icon}</span>}
+          <span className="tour-tooltip__counter">
+            {index + 1} of {size}
+          </span>
+        </div>
+
+        {/* Title */}
+        {step.title && <h3 className="tour-tooltip__title">{step.title}</h3>}
+
+        {/* Content */}
+        <p className="tour-tooltip__content">{step.content}</p>
+
+        {/* Buttons */}
+        <div className="tour-tooltip__footer">
+          <button
+            aria-label={skipProps["aria-label"]}
+            data-action={skipProps["data-action"]}
+            onClick={skipProps.onClick}
+            role={skipProps.role}
+            className="tour-tooltip__skip"
+          >
+            Skip Tour
+          </button>
+          <div className="tour-tooltip__nav">
+            {index > 0 && (
+              <button
+                aria-label={backProps["aria-label"]}
+                data-action={backProps["data-action"]}
+                onClick={backProps.onClick}
+                role={backProps.role}
+                className="tour-tooltip__back"
+              >
+                Back
+              </button>
+            )}
+            <button
+              aria-label={primaryProps["aria-label"]}
+              data-action={primaryProps["data-action"]}
+              onClick={primaryProps.onClick}
+              role={primaryProps.role}
+              className="tour-tooltip__next"
+            >
+              {index === size - 1 ? "Let\u2019s Go!" : "Next"}
+              {index < size - 1 && <span className="tour-tooltip__arrow">{"\u2192"}</span>}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 /* Small local UI helpers */
 const Btn = ({ className = "", ...p }) => (
@@ -121,6 +250,10 @@ function StudentApp({ onBackToDashboard }) {
   const [autoMessage, setAutoMessage] = useState(null);
   const [historyOpen, setHistoryOpen] = useState(false);
 
+  // Guided tour state
+  const [runTour, setRunTour] = useState(false);
+  const [tourActive, setTourActive] = useState(false);
+
   // Persist session ID to localStorage so refresh stays on the same session
   useEffect(() => {
     if (sessionId) localStorage.setItem("hop_session_id", sessionId);
@@ -173,6 +306,31 @@ function StudentApp({ onBackToDashboard }) {
     })();
     return () => { cancelled = true; };
   }, []);
+
+  // Auto-start guided tour for first-time users
+  useEffect(() => {
+    if (!loading && sessionId && localStorage.getItem("hop_tour_done") !== "1") {
+      const timer = setTimeout(() => {
+        setTourActive(true);
+        setRunTour(true);
+      }, 600);
+      return () => clearTimeout(timer);
+    }
+  }, [loading, sessionId]);
+
+  function handleTourCallback(data) {
+    const { status } = data;
+    if (status === STATUS.FINISHED || status === STATUS.SKIPPED) {
+      setRunTour(false);
+      setTourActive(false);
+      localStorage.setItem("hop_tour_done", "1");
+    }
+  }
+
+  function startTour() {
+    setTourActive(true);
+    setRunTour(true);
+  }
 
   function handleStepChange(step) {
     setActiveStep(step);
@@ -277,7 +435,7 @@ function StudentApp({ onBackToDashboard }) {
   }
 
   return (
-    <div className="hop-wrap">
+    <div className={`hop-wrap${tourActive ? " hop-wrap--touring" : ""}`}>
       {/* Header — edge-to-edge, matching login page style */}
       <header className="hop-header">
         <div className="hop-header__left">
@@ -316,6 +474,9 @@ function StudentApp({ onBackToDashboard }) {
           <FeedbackPanel />
           <button className="theme-toggle" onClick={toggleTheme} aria-label="Toggle dark mode" title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}>
             {theme === "dark" ? "\u2600" : "\u263E"}
+          </button>
+          <button className="hop-tour-btn" onClick={startTour} title="Take a guided tour">
+            ?
           </button>
           <span className="hop-header__divider" />
           <div className="hop-download" ref={downloadRef}>
@@ -372,8 +533,35 @@ function StudentApp({ onBackToDashboard }) {
           loading={loading}
           status={status}
           educationLevel={user?.education_level || "high_school"}
+          tourActive={tourActive}
         />
       </div>
+
+      <Joyride
+        steps={TOUR_STEPS}
+        run={runTour}
+        continuous
+        showSkipButton
+        disableScrolling
+        disableOverlayClose
+        spotlightPadding={12}
+        callback={handleTourCallback}
+        tooltipComponent={TourTooltip}
+        styles={{
+          options: {
+            zIndex: 10000,
+            overlayColor: "rgba(18, 21, 26, 0.25)",
+          },
+          spotlight: {
+            borderRadius: 12,
+          },
+        }}
+        floaterProps={{
+          styles: {
+            floater: { filter: "drop-shadow(0 8px 32px rgba(0,0,0,0.18))" },
+          },
+        }}
+      />
 
       <SessionHistoryPanel
         isOpen={historyOpen}

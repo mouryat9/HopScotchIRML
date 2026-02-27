@@ -598,6 +598,12 @@ def _get_step_llm_guidance(sess: SessionData, active_step: Optional[int]) -> Opt
             guidance = f"{guidance}\n{addendum}" if guidance else addendum
         return guidance or None
 
+    # Non-mixed path but student overrode methodology at Step 4
+    if resolved != "mixed" and sess.chosen_methodology and sess.chosen_methodology != resolved:
+        override_cfg = all_paths.get(sess.chosen_methodology, {}).get("steps", {}).get(str(active_step), {})
+        if override_cfg:
+            return override_cfg.get("llm_guidance")
+
     return step_cfg.get("llm_guidance")
 
 
@@ -686,10 +692,8 @@ def build_ollama_payload(worldview_profile, step_context, user_msg, passages,
         "(only in response to what the student has already written, not as suggestions).\n"
         "- Use a warm, encouraging tone — the student may be new to research.\n"
         "- Keep responses focused but thorough (2-4 paragraphs typically).\n"
-        "- For Steps 4-9 ONLY: at the end, append '**Quick references from our notes:**' "
-        "with 2-5 bullets sourced from the IRML resource snippets provided.\n"
-        "- For Steps 1, 2, and 3: do NOT include '**Quick references from our notes:**' "
-        "or any article/source recommendations. The student must find their own sources.\n"
+        "- Do NOT include article citations, source lists, or reference sections in your responses.\n"
+        "- For Steps 1, 2, and 3: the student must find their own sources — do not suggest any.\n"
     )
 
     # Inject step-specific guidance
@@ -718,9 +722,6 @@ def build_ollama_payload(worldview_profile, step_context, user_msg, passages,
     ]
 
     # Include recent conversation history (last 20 turns to stay within context)
-    # For Steps 1-3: strip "Quick references" sections from prior assistant messages
-    # so the LLM doesn't mimic that pattern
-    strip_refs = active_step and active_step <= 3
     if chat_history:
         recent = chat_history[-20:]
         for turn in recent:
@@ -728,7 +729,8 @@ def build_ollama_payload(worldview_profile, step_context, user_msg, passages,
             if turn is recent[-1] and turn.role == "user" and turn.content == user_msg:
                 continue
             content = turn.content
-            if strip_refs and turn.role == "assistant" and content:
+            # Strip any legacy "Quick references" sections from older assistant messages
+            if turn.role == "assistant" and content:
                 marker = "**Quick references from our notes:**"
                 ix = content.find(marker)
                 if ix != -1:
@@ -1511,6 +1513,7 @@ class StepConfigResp(BaseModel):
     llm_guidance: Optional[str] = None
     quantitative_options: Optional[List[Dict[str, Any]]] = None
     qualitative_options: Optional[List[Dict[str, Any]]] = None
+    recommended_methodology: Optional[str] = None  # "quantitative" or "qualitative"
 
 
 @app.get("/step/config", response_model=StepConfigResp)
@@ -1540,39 +1543,54 @@ def get_step_config(
     step_key = str(step)
     step_cfg = path_data.get("steps", {}).get(step_key, {})
 
-    # Handle mixed-methods inheritance for Steps 5-9
-    if resolved == "mixed" and step >= 5 and step_cfg.get("inherits_from_chosen_methodology"):
-        chosen = sess.chosen_methodology
-        if not chosen:
+    # --- Steps 5-9: resolve from chosen_methodology if student overrode ---
+    # Works for mixed (inherits_from_chosen_methodology) AND for non-mixed overrides
+    effective_path = sess.chosen_methodology or resolved
+    if step >= 5:
+        # Mixed paths with explicit inheritance flag
+        if resolved == "mixed" and step_cfg.get("inherits_from_chosen_methodology"):
+            chosen = sess.chosen_methodology
+            if not chosen:
+                return StepConfigResp(
+                    step=step,
+                    path="mixed",
+                    title=f"Step {step}",
+                    directions="Please complete Step 4 first and choose your primary methodology.",
+                )
+            inherited_cfg = all_paths.get(chosen, {}).get("steps", {}).get(step_key, {})
+            guidance = inherited_cfg.get("llm_guidance", "")
+            addendum = step_cfg.get("llm_guidance_addendum", "")
+            if addendum:
+                guidance = f"{guidance}\n{addendum}" if guidance else addendum
             return StepConfigResp(
                 step=step,
-                path="mixed",
-                title=f"Step {step}",
-                directions="Please complete Step 4 first and choose your primary methodology.",
+                path=resolved,
+                title=inherited_cfg.get("title", f"Step {step}"),
+                directions=inherited_cfg.get("directions", ""),
+                field_type=inherited_cfg.get("field_type"),
+                field_key=inherited_cfg.get("field_key"),
+                options=inherited_cfg.get("options"),
+                fields=inherited_cfg.get("fields"),
+                llm_guidance=guidance or None,
             )
-        # Resolve from the chosen methodology's path
-        inherited_cfg = all_paths.get(chosen, {}).get("steps", {}).get(step_key, {})
-        # Merge the llm_guidance_addendum from the mixed step config
-        guidance = inherited_cfg.get("llm_guidance", "")
-        addendum = step_cfg.get("llm_guidance_addendum", "")
-        if addendum:
-            guidance = f"{guidance}\n{addendum}" if guidance else addendum
-        return StepConfigResp(
-            step=step,
-            path="mixed",
-            title=inherited_cfg.get("title", f"Step {step}"),
-            directions=inherited_cfg.get("directions", ""),
-            field_type=inherited_cfg.get("field_type"),
-            field_key=inherited_cfg.get("field_key"),
-            options=inherited_cfg.get("options"),
-            fields=inherited_cfg.get("fields"),
-            llm_guidance=guidance or None,
-        )
+        # Non-mixed path but student overrode methodology at Step 4
+        if resolved != "mixed" and sess.chosen_methodology and sess.chosen_methodology != resolved:
+            override_cfg = all_paths.get(sess.chosen_methodology, {}).get("steps", {}).get(step_key, {})
+            if override_cfg:
+                return StepConfigResp(
+                    step=step,
+                    path=resolved,
+                    title=override_cfg.get("title", f"Step {step}"),
+                    directions=override_cfg.get("directions", ""),
+                    field_type=override_cfg.get("field_type"),
+                    field_key=override_cfg.get("field_key"),
+                    options=override_cfg.get("options"),
+                    fields=override_cfg.get("fields"),
+                    llm_guidance=override_cfg.get("llm_guidance"),
+                )
 
-    # For mixed Step 4: include both option sets
-    quant_opts = None
-    qual_opts = None
-    if resolved == "mixed" and step == 4:
+    # --- Step 4: methodology decision for ALL paths ---
+    if step == 4:
         quant_opts = (
             all_paths.get("quantitative", {})
             .get("steps", {}).get("4", {}).get("options")
@@ -1580,6 +1598,28 @@ def get_step_config(
         qual_opts = (
             all_paths.get("qualitative", {})
             .get("steps", {}).get("4", {}).get("options")
+        )
+        # Determine recommendation based on worldview path
+        recommended = None
+        if resolved == "quantitative":
+            recommended = "quantitative"
+        elif resolved == "qualitative":
+            recommended = "qualitative"
+        # For mixed (pragmatist): no recommendation — both are equally valid
+
+        return StepConfigResp(
+            step=step,
+            path=resolved,
+            title=step_cfg.get("title", f"Step 4: How will I study it?"),
+            directions=step_cfg.get("directions", ""),
+            field_type="methodology_decision",
+            field_key=step_cfg.get("field_key", "design"),
+            options=step_cfg.get("options"),
+            fields=step_cfg.get("fields"),
+            llm_guidance=step_cfg.get("llm_guidance"),
+            quantitative_options=quant_opts,
+            qualitative_options=qual_opts,
+            recommended_methodology=recommended,
         )
 
     return StepConfigResp(
@@ -1592,8 +1632,6 @@ def get_step_config(
         options=step_cfg.get("options"),
         fields=step_cfg.get("fields"),
         llm_guidance=step_cfg.get("llm_guidance"),
-        quantitative_options=quant_opts,
-        qualitative_options=qual_opts,
     )
 
 
@@ -1609,13 +1647,8 @@ class SetMethodologyResp(BaseModel):
 
 @app.post("/step/set_methodology", response_model=SetMethodologyResp)
 def set_methodology(req: SetMethodologyReq, user: dict = Depends(get_current_user)):
-    """For mixed-methods students: set the primary methodology chosen at Step 4."""
+    """Set the primary methodology chosen at Step 4 (all paths, not just mixed)."""
     sess = _require_session(req.session_id)
-    if sess.resolved_path != "mixed":
-        raise HTTPException(
-            status_code=400,
-            detail="Only mixed-methods (pragmatist) students use this endpoint.",
-        )
     meth = (req.methodology or "").strip().lower()
     if meth not in ("quantitative", "qualitative"):
         raise HTTPException(

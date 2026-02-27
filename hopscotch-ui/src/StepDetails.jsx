@@ -823,17 +823,24 @@ function MethodologyDecision({ config, data, updateField, sessionId, disabled })
   }
 
   // Before confirmation: show both sets of options side by side
+  const recommended = config.recommended_methodology; // "quantitative", "qualitative", or null
+
+  const introText = recommended
+    ? `Based on your worldview, we recommend a ${recommended} approach — but you're free to choose either. Explore the options below and chat with the AI assistant to help decide which fits your study.`
+    : "As a pragmatist, you can draw from both quantitative and qualitative approaches. Explore the options below and chat with the AI assistant to help decide which fits your study. Then confirm your choice.";
+
   return (
     <div>
-      <p className="hop-desc">
-        As a pragmatist, you can draw from both quantitative and qualitative
-        approaches. Explore the options below and chat with the AI assistant to
-        help decide which fits your study. Then confirm your choice.
-      </p>
+      <p className="hop-desc">{introText}</p>
 
       <div className="methodology-grid">
-        <div className="methodology-col">
-          <h4 className="methodology-heading">Quantitative Designs</h4>
+        <div className={`methodology-col${recommended === "quantitative" ? " methodology-col--recommended" : ""}`}>
+          <h4 className="methodology-heading">
+            Quantitative Designs
+            {recommended === "quantitative" && (
+              <span className="methodology-badge">Recommended</span>
+            )}
+          </h4>
           <ul className="methodology-list">
             {(config.quantitative_options || []).map((o) => (
               <li key={o.id}>
@@ -851,8 +858,13 @@ function MethodologyDecision({ config, data, updateField, sessionId, disabled })
           </button>
         </div>
 
-        <div className="methodology-col">
-          <h4 className="methodology-heading">Qualitative Designs</h4>
+        <div className={`methodology-col${recommended === "qualitative" ? " methodology-col--recommended" : ""}`}>
+          <h4 className="methodology-heading">
+            Qualitative Designs
+            {recommended === "qualitative" && (
+              <span className="methodology-badge">Recommended</span>
+            )}
+          </h4>
           <ul className="methodology-list">
             {(config.qualitative_options || []).map((o) => (
               <li key={o.id}>
