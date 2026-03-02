@@ -2,8 +2,11 @@
 // For local development:
 // const API_BASE = "http://127.0.0.1:8000";
 
-// For production (permanent Cloudflare tunnel):
-const API_BASE = "https://api.hopscotchai.us";
+// For production — auto-detect domain so both hopscotchai.us and hopscotch4-all.com work:
+const API_BASE =
+  typeof window !== "undefined" && window.location.hostname === "hopscotch4all.com"
+    ? "https://api.hopscotch4all.com"
+    : "https://api.hopscotchai.us";
 
 function authHeaders() {
   const stored = localStorage.getItem("hopscotch_user");

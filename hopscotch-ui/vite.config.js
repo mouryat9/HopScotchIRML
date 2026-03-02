@@ -5,7 +5,7 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   server: {
-    allowedHosts: [".trycloudflare.com", "hopscotchai.us"],
+    allowedHosts: [".trycloudflare.com", "hopscotchai.us", "hopscotch4all.com", "www.hopscotch4all.com"],
     hmr: {
       overlay: false,
     },
