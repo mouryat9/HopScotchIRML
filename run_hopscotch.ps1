@@ -48,7 +48,7 @@ Start-Process powershell -ArgumentList "-NoExit", "-Command", "ollama run llama3
 Write-Host "Starting backend (Uvicorn -> app_chat:app)..." -ForegroundColor Cyan
 
 # NOTE: venv is in the parent folder as ..\.venv, same as your old script
-$backendCmd = "cd `"$RootPath`"; ..\.venv\Scripts\activate; uvicorn app_chat:app --reload --host 0.0.0.0 --port 8000"
+$backendCmd = "cd `"$RootPath`"; ..\.venv\Scripts\activate; uvicorn app_chat:app --reload --host 0.0.0.0 --port 9580"
 Start-Process powershell -ArgumentList "-NoExit", "-Command", $backendCmd
 
 # === Step 4: Start frontend (Vite React app) ===
@@ -57,5 +57,5 @@ $frontendCmd = "cd `"$RootPath\hopscotch-ui`"; npm run dev -- --host"
 Start-Process powershell -ArgumentList "-NoExit", "-Command", $frontendCmd
 
 Write-Host "HopScotchIRML launched."
-Write-Host "Backend:  http://localhost:8000"
-Write-Host "Frontend: http://localhost:5173"
+Write-Host "Backend:  http://localhost:9580"
+Write-Host "Frontend: http://localhost:9581"

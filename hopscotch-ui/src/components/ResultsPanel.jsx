@@ -7,7 +7,7 @@ export default function ResultsPanel({ sessionId }) {
   const [results, setResults] = useState(null);
 
   useEffect(() => {
-    fetch(`http://localhost:5173/step1/score?session_id=${sessionId}`)
+    fetch(`http://localhost:9580/step1/score?session_id=${sessionId}`)
       .then(res => res.json())
       .then(data => setResults(data))
       .catch(err => console.error("Error loading results:", err));

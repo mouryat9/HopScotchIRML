@@ -1,6 +1,6 @@
 // src/api.js
 // For local development:
-// const API_BASE = "http://127.0.0.1:8000";
+// const API_BASE = "http://127.0.0.1:9580";
 
 // For production — auto-detect domain so both hopscotchai.us and hopscotch4-all.com work:
 const API_BASE =

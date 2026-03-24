@@ -13,10 +13,10 @@ ROOT="$HOME/hopscotch"
 VENV="$ROOT/hopscotchenv"
 
 BACKEND_HOST="0.0.0.0"
-BACKEND_PORT="8000"
+BACKEND_PORT="9580"
 
 FRONTEND_HOST="0.0.0.0"
-FRONTEND_PORT="5173"
+FRONTEND_PORT="9581"
 
 # Cloudflare tunnel log
 CF_LOG="$ROOT/cloudflared_tunnel.log"

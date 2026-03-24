@@ -12,7 +12,7 @@ module.exports = {
       cwd: ROOT,
       interpreter: 'none',
       script: path.join(ROOT, 'hopscotchenv', 'bin', 'uvicorn'),
-      args: 'app_chat:app --host 0.0.0.0 --port 8000',
+      args: 'app_chat:app --host 0.0.0.0 --port 9580',
       autorestart: true,
       restart_delay: 3000,       // wait 3s before restarting
       max_restarts: 50,          // max restarts within exp_backoff window
@@ -27,7 +27,7 @@ module.exports = {
       name: 'hopscotch-frontend',
       cwd: path.join(ROOT, 'hopscotch-ui'),
       script: 'node_modules/.bin/vite',
-      args: '--host 0.0.0.0 --port 5173',
+      args: '--host 0.0.0.0 --port 9581',
       autorestart: true,
       restart_delay: 3000,
       max_restarts: 50,
