@@ -14,15 +14,9 @@ const STEP_TITLES = {
  * Direction paragraphs (top card) for steps 1–3
  */
 const STEP_DIRECTIONS = {
-  1: `This step will help you reflect on your paradigmatic positioning as a researcher (worldview).
-The interactive resource on the left side panel will help you learn about the different worldviews you can bring
-as a researcher to your studies.`,
-  2: `In this second step, you will define and narrow down your research topic and goals (personal, practical, and intellectual)
-that will be driving the study you are proposing. The interactive resource on the left will help you refine your topic
-as well as the goals of your proposed study.`,
-  3: `The third step focuses on your literature review. You will identify topical research — previous studies in your field that
-help justify the relevance of your research topic — and define the theoretical frameworks that support your proposed research.
-To guide you through this process, please explore the interactive resource on the left pane.`,
+  1: `Step One will help you reflect on your worldview (paradigmatic positioning) as a researcher. The video and interactive resources on the left will help you learn about the different worldviews you can bring as a researcher to your studies.`,
+  2: `In Step Two, you will define and narrow your research topic and goals (personal, practical, and intellectual) that will guide your proposed study. The interactive resources on the left will help you refine your topic and the goals of your study.`,
+  3: `Step Three focuses primarily on your literature review within a conceptual framework that establishes the significance of your topic and clearly justifies the need for the study you are proposing. You will identify topical research \u2014 previous studies in your field that help justify the relevance of your research topic \u2014 and define the theoretical frameworks (if you choose) that support your proposed research. The interactive resources on the left will guide you through this process.`,
 };
 
 /**
@@ -199,8 +193,11 @@ export default function StepDetails({ step, sessionId, onChatRefresh, onAutoSend
         <section className="hop-card">
           <p className="hop-desc">
             After checking the interactive resources on the left side, please
-            select the worldview that best represents who you are as a
-            researcher:
+            select the worldview that best represents who you are a researcher.
+            Explain your selection based on how you understand the nature of
+            reality (ontology) and how you believe knowledge is generated,
+            discovered, or constructed (epistemology). Then use the AI Assistant
+            to clarify your worldview.
           </p>
 
           <select
@@ -258,8 +255,9 @@ export default function StepDetails({ step, sessionId, onChatRefresh, onAutoSend
         {/* Inputs card */}
         <section className="hop-card">
           <p className="hop-desc">
-            After checking the interactive resources on the left side, please
-            define your topic and research goals:
+            After reviewing the interactive resources on the left side, please
+            clearly define your topic and research goal. Then use the AI
+            Assistant to help you refine or further narrow your topic.
           </p>
 
           <label className="hop-desc" style={{ display: "block", marginTop: 4 }}>
@@ -351,8 +349,12 @@ export default function StepDetails({ step, sessionId, onChatRefresh, onAutoSend
         {/* Inputs card */}
         <section className="hop-card">
           <p className="hop-desc">
-            After checking the interactive resources on the left side, please
-            define your topical research and theoretical frameworks:
+            After reviewing the interactive resources on the left side, please
+            describe your initial topical research in terms of the field's broad
+            context, identify and define relevant key concepts or theories, and
+            include citations from relevant articles from your initial literature
+            search. Then use the AI Assistant to help you refine and develop
+            strategies for your literature search.
           </p>
 
           <label className="hop-desc" style={{ display: "block", marginTop: 4 }}>
@@ -440,6 +442,11 @@ export default function StepDetails({ step, sessionId, onChatRefresh, onAutoSend
         </section>
 
         <section className="hop-card">
+          {stepConfig.input_prompt && (
+            <p className="hop-desc" style={{ marginBottom: 12 }}>
+              {stepConfig.input_prompt}
+            </p>
+          )}
           <StepFieldRenderer
             config={stepConfig}
             data={data}

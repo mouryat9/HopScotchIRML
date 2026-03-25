@@ -17,8 +17,8 @@ import { Joyride, STATUS } from "react-joyride";
 const TOUR_STEPS = [
   {
     target: ".hop-header",
-    title: "Welcome to Hopscotch!",
-    content: "This is your research design workspace. Let\u2019s take a quick tour of the key areas so you feel right at home.",
+    title: "Welcome to Hopscotch 4-All!",
+    content: "You\u2019re stepping into an engaging and accessible research design workspace built just for you. Let\u2019s take a quick tour of the key features so you feel right at home.",
     disableBeacon: true,
     icon: "👋",
   },
@@ -30,26 +30,26 @@ const TOUR_STEPS = [
   },
   {
     target: ".hop-diagram",
-    title: "Research Diagram",
-    content: "A visual map showing how every step connects to the bigger picture of your research design.",
+    title: "Hopscotch Visual",
+    content: "Hopscotch helps you break down the complexity of research design into nine clear, manageable, and recursive steps that guide you through your entire research journey.\nEach step is interactive and clickable, allowing you to easily \u201Chop\u201D between components of your research design as you develop, revise, and refine your ideas.",
     icon: "🗺️",
   },
   {
     target: ".pin-panel--left",
     title: "Resources Panel",
-    content: "Curated videos, articles, and interactive tools tailored to whichever step you\u2019re working on.",
+    content: "Access curated videos, links to academic articles, examples, and interactive tools carefully selected to support the specific step you\u2019re working on.\nAs you move through your research design, the Resources Panel adapts to provide targeted guidance, helpful explanations, and skill-building materials providing you with the right support at the right time.",
     icon: "📚",
   },
   {
     target: ".pin-layout__main",
     title: "Your Workspace",
-    content: "The heart of it all \u2014 fill in your research design fields here and the AI will guide you along the way.",
+    content: "The heart of it all! Build your research design by filling out the provided fields for each step with support from the AI Assistant.",
     icon: "✏️",
   },
   {
     target: ".pin-panel--right",
     title: "AI Research Assistant",
-    content: "Your personal research mentor. Ask questions, get feedback, and receive step-by-step guidance anytime.",
+    content: "Your personal research mentor\u2014ask questions, receive expert feedback, and get clear, step-by-step guidance whenever you need it.",
     icon: "🤖",
   },
   {
@@ -61,7 +61,7 @@ const TOUR_STEPS = [
   {
     target: ".hop-download",
     title: "Download Your Work",
-    content: "When you\u2019re ready, export your completed design as a PDF or generate a Conceptual Framework diagram.",
+    content: "When you\u2019re ready, export your completed design as a PDF, or generate a visual representation of the Conceptual Framework emerging out of your research design.",
     icon: "📥",
   },
 ];

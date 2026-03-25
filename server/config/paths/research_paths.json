@@ -19,7 +19,8 @@
       "steps": {
         "4": {
           "title": "Step 4: How will I study it? (Quantitative Design)",
-          "directions": "Based on your positivist/post-positivist worldview, your methodology aligns with quantitative approaches. Select the research design that best fits your study.",
+          "directions": "Step Four involves choosing a research approach (qualitative, quantitative, or mixed) that aligns with your worldview and research goals, and selecting an appropriate research design based on your skills and constraints, such as time or resources. The interactive resources on the left will guide you through this process.",
+          "input_prompt": "After reviewing the interactive resources on the left side, explore the options below and chat with the AI assistant to help determine which approach and design best suit your study. Once you make your decision, select your research approach and design, then justify your choice based on your worldview and topic. Then use the AI Assistant to clarify questions about your research approach or design.",
           "field_type": "single_select",
           "field_key": "design",
           "options": [
@@ -34,7 +35,8 @@
         },
         "5": {
           "title": "Step 5: What is my research question? (Hypothesis)",
-          "directions": "Formulate your research question and hypothesis. Quantitative studies typically have a clear aim and a testable hypothesis.",
+          "directions": "Step Five involves generating a research question that aligns with your research approach. The interactive resources on the left will guide you through this process.",
+          "input_prompt": "After reviewing the interactive resources on the left side, input your research question and use the AI Assistant to refine the question.",
           "field_type": "fields",
           "fields": [
             {"field_key": "research_aim", "label": "Research Aim", "type": "textarea", "placeholder": "State the aim of your study..."},
@@ -44,7 +46,8 @@
         },
         "6": {
           "title": "Step 6: What data will I collect? (Quantitative Collection)",
-          "directions": "Describe your data collection plan including your method, participants, and sampling strategy.",
+          "directions": "Step Six involves creating a data collection plan and choosing data-gathering methods that align with your research approach and help you answer your research question. The interactive resources on the left will guide you through this process.",
+          "input_prompt": "After reviewing the interactive resources on the left side, describe your data collection plan, including your method, participants, and sampling strategy. Explain your rationale for selecting each. Then use the AI Assistant to help you refine your plan.",
           "field_type": "fields",
           "fields": [
             {"field_key": "collection_method", "label": "Collection Method", "type": "multi_select", "placeholder": "Select all that apply…", "options": [
@@ -62,7 +65,8 @@
         },
         "7": {
           "title": "Step 7: How will I analyze the data? (Quantitative Analysis)",
-          "directions": "Select the analysis approach you plan to use for your quantitative data.",
+          "directions": "Step Seven involves developing a data analysis plan and selecting data analysis methods aligned with your research approach to help you answer your research question. The interactive resources on the left will guide you through this process.",
+          "input_prompt": "After reviewing the interactive resources on the left side, describe your data-analysis method and plan, and explain your rationale. Then use the AI Assistant to help you refine your plan.",
           "field_type": "fields",
           "fields": [
             {"field_key": "analysis_method", "label": "Analysis Method", "type": "select", "placeholder": "Select an analysis method…", "options": [
@@ -77,7 +81,8 @@
         },
         "8": {
           "title": "Step 8: How will I ensure trustworthiness? (Validity & Reliability)",
-          "directions": "Consider how you will ensure your study produces valid and reliable evidence.",
+          "directions": "Step Eight focuses on the strategies you can use to ensure that your study is trustworthy. The interactive resources on the left will guide you through this process.",
+          "input_prompt": "After reviewing the interactive resources on the left side, describe the steps you will take to ensure that your study is trustworthy. Then use the AI Assistant to help you refine your plan and explore the strategies you can use based on your research design, data collection, and analysis.",
           "field_type": "multi_select",
           "field_key": "trustworthiness_methods",
           "options": [
@@ -91,7 +96,8 @@
         },
         "9": {
           "title": "Step 9: How will I be ethical? (Integrity & Ethics)",
-          "directions": "Consider the ethical dimensions of your proposed research.",
+          "directions": "Step Nine focuses on strategies you can use to ensure you remain safe and ethical as a researcher. The interactive resources on the left will guide you through this process.",
+          "input_prompt": "After reviewing the interactive resources on the left side, describe the specific steps you will take to ensure that you have made the necessary ethical considerations regarding aspects of your research design such as sampling, and data collection and analysis. Then use the AI Assistant to help you refine your plan and explore additional strategies.",
           "field_type": "fields",
           "fields": [
             {"field_key": "involves_humans", "label": "Does your study involve human participants?", "type": "select", "placeholder": "Select…", "options": [
@@ -121,7 +127,8 @@
       "steps": {
         "4": {
           "title": "Step 4: How will I study it? (Qualitative Design)",
-          "directions": "Based on your constructivist/transformative worldview, your methodology aligns with qualitative approaches. Select the research design that best fits your study.",
+          "directions": "Step Four involves choosing a research approach (qualitative, quantitative, or mixed) that aligns with your worldview and research goals, and selecting an appropriate research design based on your skills and constraints, such as time or resources. The interactive resources on the left will guide you through this process.",
+          "input_prompt": "After reviewing the interactive resources on the left side, explore the options below and chat with the AI assistant to help determine which approach and design best suit your study. Once you make your decision, select your research approach and design, then justify your choice based on your worldview and topic. Then use the AI Assistant to clarify questions about your research approach or design.",
           "field_type": "single_select",
           "field_key": "design",
           "options": [
@@ -139,7 +146,8 @@
         },
         "5": {
           "title": "Step 5: What is my research question? (Qualitative Issue)",
-          "directions": "Formulate your qualitative research question or central issue. Qualitative questions are typically open-ended and exploratory.",
+          "directions": "Step Five involves generating a research question that aligns with your research approach. The interactive resources on the left will guide you through this process.",
+          "input_prompt": "After reviewing the interactive resources on the left side, input your research question and use the AI Assistant to refine the question.",
           "field_type": "fields",
           "fields": [
             {"field_key": "research_question", "label": "Research Question / Central Issue", "type": "textarea", "placeholder": "State your qualitative research question or central issue..."}
@@ -148,7 +156,8 @@
         },
         "6": {
           "title": "Step 6: What data will I collect? (Qualitative Collection)",
-          "directions": "Describe your data collection plan including your method, participants, and sampling strategy.",
+          "directions": "Step Six involves creating a data collection plan and choosing data-gathering methods that align with your research approach and help you answer your research question. The interactive resources on the left will guide you through this process.",
+          "input_prompt": "After reviewing the interactive resources on the left side, describe your data collection plan, including your method, participants, and sampling strategy. Explain your rationale for selecting each. Then use the AI Assistant to help you refine your plan.",
           "field_type": "fields",
           "fields": [
             {"field_key": "collection_method", "label": "Collection Method", "type": "multi_select", "placeholder": "Select all that apply…", "options": [
@@ -171,7 +180,8 @@
         },
         "7": {
           "title": "Step 7: How will I analyze the data? (Qualitative Analysis)",
-          "directions": "Select the analysis approach you plan to use for your qualitative data.",
+          "directions": "Step Seven involves developing a data analysis plan and selecting data analysis methods aligned with your research approach to help you answer your research question. The interactive resources on the left will guide you through this process.",
+          "input_prompt": "After reviewing the interactive resources on the left side, describe your data-analysis method and plan, and explain your rationale. Then use the AI Assistant to help you refine your plan.",
           "field_type": "fields",
           "fields": [
             {"field_key": "analysis_method", "label": "Analysis Method", "type": "select", "placeholder": "Select an analysis method…", "options": [
@@ -191,7 +201,8 @@
         },
         "8": {
           "title": "Step 8: How will I ensure trustworthiness? (Qualitative Criteria)",
-          "directions": "Consider how you will ensure the trustworthiness of your qualitative study using Lincoln and Guba's criteria.",
+          "directions": "Step Eight focuses on the strategies you can use to ensure that your study is trustworthy. The interactive resources on the left will guide you through this process.",
+          "input_prompt": "After reviewing the interactive resources on the left side, describe the steps you will take to ensure that your study is trustworthy. Then use the AI Assistant to help you refine your plan and explore the strategies you can use based on your research design, data collection, and analysis.",
           "field_type": "multi_select",
           "field_key": "trustworthiness_methods",
           "options": [
@@ -204,7 +215,8 @@
         },
         "9": {
           "title": "Step 9: How will I be ethical? (Integrity & Ethics)",
-          "directions": "Consider the ethical dimensions of your proposed research.",
+          "directions": "Step Nine focuses on strategies you can use to ensure you remain safe and ethical as a researcher. The interactive resources on the left will guide you through this process.",
+          "input_prompt": "After reviewing the interactive resources on the left side, describe the specific steps you will take to ensure that you have made the necessary ethical considerations regarding aspects of your research design such as sampling, and data collection and analysis. Then use the AI Assistant to help you refine your plan and explore additional strategies.",
           "field_type": "fields",
           "fields": [
             {"field_key": "involves_humans", "label": "Does your study involve human participants?", "type": "select", "placeholder": "Select…", "options": [
@@ -235,7 +247,8 @@
       "steps": {
         "4": {
           "title": "Step 4: How will I study it? (Mixed Methods)",
-          "directions": "As a pragmatist, you can draw from both quantitative and qualitative approaches. Review both sets of designs below. The AI assistant will help you decide which approach best fits your study. You must select a primary methodology to proceed.",
+          "directions": "Step Four involves choosing a research approach (qualitative, quantitative, or mixed) that aligns with your worldview and research goals, and selecting an appropriate research design based on your skills and constraints, such as time or resources. The interactive resources on the left will guide you through this process.",
+          "input_prompt": "After reviewing the interactive resources on the left side, explore the options below and chat with the AI assistant to help determine which approach and design best suit your study. Once you make your decision, select your research approach and design, then justify your choice based on your worldview and topic. Then use the AI Assistant to clarify questions about your research approach or design.",
           "field_type": "methodology_decision",
           "field_key": "design",
           "methodology_choice_key": "chosen_methodology",

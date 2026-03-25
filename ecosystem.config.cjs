@@ -17,6 +17,7 @@ module.exports = {
       restart_delay: 3000,       // wait 3s before restarting
       max_restarts: 50,          // max restarts within exp_backoff window
       min_uptime: 10000,         // consider started after 10s
+      max_memory_restart: '2G', // auto-restart if memory exceeds 2GB
       watch: false,
       env: {
         PATH: `${path.join(ROOT, 'hopscotchenv', 'bin')}:${process.env.PATH}`,
@@ -26,8 +27,8 @@ module.exports = {
     {
       name: 'hopscotch-frontend',
       cwd: path.join(ROOT, 'hopscotch-ui'),
-      script: 'node_modules/.bin/vite',
-      args: '--host 0.0.0.0 --port 9581',
+      script: path.join(HOME, '.npm-global', 'bin', 'serve'),
+      args: 'dist -s -l 9581',    // -s: SPA fallback, -l: listen port
       autorestart: true,
       restart_delay: 3000,
       max_restarts: 50,
