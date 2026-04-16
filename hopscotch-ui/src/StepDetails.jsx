@@ -23,7 +23,7 @@ const STEP_DIRECTIONS = {
  * Default empty shapes for each step's data
  */
 const EMPTY_STEP_DATA = {
-  1: { worldview: "" },
+  1: { worldview: "", worldview_justification: "" },
   2: { topic: "", personalGoals: "", practicalGoals: "", intellectualGoals: "" },
   3: { topicalResearch: "", theoreticalFrameworks: "" },
 };
@@ -161,16 +161,25 @@ export default function StepDetails({ step, sessionId, onChatRefresh, onAutoSend
       if (wvRes.completed_steps && onCompletedStepsChange) {
         onCompletedStepsChange(wvRes.completed_steps);
       }
-      // Trigger a streaming welcome message in the chat
-      const label = newValue.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
-      if (onAutoSend) onAutoSend({
-        text: `I just selected ${label} as my worldview. Can you give me a personalised welcome explaining what this means for my research approach and methodology pathway?`,
-        event: `Worldview selected: ${label}`,
-      });
     } catch (e) {
       console.error("Failed to set worldview on backend", e);
       setSaveError("Worldview save failed. Check backend logs.");
     }
+  };
+
+  // Step 1: "Ask AI to Clarify" button — sends worldview (+ optional justification) to AI
+  const onAskAIClarify = () => {
+    const wv = data.worldview || "";
+    const justification = (data.worldview_justification || "").trim();
+    if (!WORLDVIEW_IDS.has(wv)) return;
+    const label = wv.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+    const text = justification
+      ? `I just selected ${label} as my worldview. Here is my explanation based on my understanding of ontology and epistemology: "${justification}". Can you give me a personalised welcome, help me clarify my worldview based on my reasoning, and explain what this means for my research approach and methodology pathway?`
+      : `I just selected ${label} as my worldview. Can you give me a personalised welcome explaining what this means for my research approach and methodology pathway?`;
+    if (onAutoSend) onAutoSend({
+      text,
+      event: `Worldview selected: ${label}`,
+    });
   };
 
   const title = STEP_TITLES[step] || `Step ${step}`;
@@ -194,10 +203,6 @@ export default function StepDetails({ step, sessionId, onChatRefresh, onAutoSend
           <p className="hop-desc">
             After checking the interactive resources on the left side, please
             select the worldview that best represents who you are a researcher.
-            Explain your selection based on how you understand the nature of
-            reality (ontology) and how you believe knowledge is generated,
-            discovered, or constructed (epistemology). Then use the AI Assistant
-            to clarify your worldview.
           </p>
 
           <select
@@ -216,6 +221,32 @@ export default function StepDetails({ step, sessionId, onChatRefresh, onAutoSend
             <option value="pragmatist">Pragmatist</option>
             <option value="unsure">I’m not sure yet</option>
           </select>
+
+          <p className="hop-desc" style={{ marginTop: 16 }}>
+            Explain your selection based on how you understand the nature of
+            reality (ontology) and how you believe knowledge is generated,
+            discovered, or constructed (epistemology). Then use the AI Assistant
+            to clarify your worldview.
+          </p>
+
+          <textarea
+            className="textarea"
+            rows={5}
+            placeholder="Explain your selection..."
+            value={data.worldview_justification || ""}
+            onChange={(e) => updateField("worldview_justification", e.target.value)}
+            disabled={!sessionId}
+          />
+
+          <div style={{ marginTop: 12 }}>
+            <button
+              className="td-btn td-btn--primary td-btn--sm"
+              onClick={onAskAIClarify}
+              disabled={!sessionId || !WORLDVIEW_IDS.has(data.worldview || "")}
+            >
+              Ask AI to Clarify My Worldview
+            </button>
+          </div>
 
           {worldviewStatus && (
             <div className="badge">

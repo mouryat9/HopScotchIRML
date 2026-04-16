@@ -106,6 +106,15 @@ export default function StudentDesignView({ sessionId, studentName, className: c
     }
   }
 
+  async function handleDownloadCF() {
+    if (!sessionId) return;
+    try {
+      await API.downloadConceptualFramework(sessionId);
+    } catch (e) {
+      console.error("Conceptual framework download failed:", e);
+    }
+  }
+
   const completed = sessionData?.completed_steps || [];
   const stepNotes = sessionData?.step_notes || {};
 
@@ -125,6 +134,9 @@ export default function StudentDesignView({ sessionId, studentName, className: c
           )}
         </div>
         <div className="sdv-header__right">
+          <button className="td-btn td-btn--outline td-btn--sm" onClick={handleDownloadCF}>
+            Download Conceptual Framework
+          </button>
           <button className="td-btn td-btn--outline td-btn--sm" onClick={handleDownloadPDF}>
             Download PDF
           </button>
@@ -239,6 +251,7 @@ function ReadOnlyStepContent({ step, data, stepConfig, configLoading, sessionDat
     return (
       <div className="sdv-fields">
         <ReadOnlyField label="Worldview" value={label} />
+        <ReadOnlyField label="Justification (Ontology & Epistemology)" value={data.worldview_justification} />
       </div>
     );
   }
