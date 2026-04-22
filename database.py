@@ -1,12 +1,13 @@
 # database.py — MongoDB connection and session/user/class CRUD for Hopscotch
 
+import os
 from pymongo import MongoClient
 from pymongo.errors import OperationFailure
 from typing import Optional, Dict, Any, List
 from datetime import datetime
 
-MONGO_URI = "mongodb://127.0.0.1:27017"
-DB_NAME = "hopscotch"
+MONGO_URI = os.environ.get("MONGO_URI", "mongodb://127.0.0.1:27017")
+DB_NAME = os.environ.get("MONGO_DB_NAME", "hopscotch")
 
 client = MongoClient(MONGO_URI)
 db = client[DB_NAME]

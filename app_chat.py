@@ -35,9 +35,7 @@ from jinja2 import Template
 from weasyprint import HTML
 
 import os
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
+import resend
 
 from auth import (
     hash_password, verify_password, create_access_token, get_current_user,
@@ -75,13 +73,10 @@ PATHS_PATH = ROOT / "server" / "config" / "paths" / "research_paths.json"
 TEMPLATE_DIR = ROOT / "server" / "templates"
 
 # -------------------------------------------------
-# Email / SMTP configuration (password reset)
+# Email / Resend configuration (password reset)
 # -------------------------------------------------
-SMTP_HOST = os.environ.get("HOPSCOTCH_SMTP_HOST", "smtp.gmail.com")
-SMTP_PORT = int(os.environ.get("HOPSCOTCH_SMTP_PORT", "587"))
-SMTP_USER = os.environ.get("HOPSCOTCH_SMTP_USER", "")
-SMTP_PASS = os.environ.get("HOPSCOTCH_SMTP_PASS", "")
-SMTP_FROM = os.environ.get("HOPSCOTCH_SMTP_FROM", "") or SMTP_USER
+RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
+EMAIL_FROM = "noreply@hopscotch4all.com"
 FRONTEND_URL = os.environ.get("HOPSCOTCH_FRONTEND_URL", "https://hopscotchai.us")
 
 DOCS_DIR = ROOT / "server" / "resources"
@@ -121,10 +116,15 @@ logger = logging.getLogger("uvicorn.error")
 # -------------------------------------------------
 # Ollama / LLM config
 # -------------------------------------------------
-OLLAMA_URL = "http://127.0.0.1:11434/api/chat"
-OLLAMA_BASE = "http://127.0.0.1:11434"
-LLM_MODEL = "qwen2.5:14b"
-LLM_TEMP = 0.4
+# LLM backend — supports vLLM (primary) with Ollama fallback
+LLM_BACKEND = os.environ.get("LLM_BACKEND", "ollama")  # "vllm" or "ollama"
+VLLM_URL = os.environ.get("VLLM_URL", "http://127.0.0.1:8000/v1/chat/completions")
+VLLM_API_KEY = os.environ.get("VLLM_API_KEY", "")
+OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://127.0.0.1:11434/api/chat")
+OLLAMA_BASE = os.environ.get("OLLAMA_BASE", "http://127.0.0.1:11434")
+LLM_MODEL = os.environ.get("LLM_MODEL", "qwen2.5:14b")
+VLLM_MODEL = os.environ.get("VLLM_MODEL", "Qwen/Qwen2.5-14B-Instruct")
+LLM_TEMP = float(os.environ.get("LLM_TEMP", "0.4"))
 
 import time as _time_mod
 _SERVER_START_TIME = _time_mod.time()
@@ -550,23 +550,39 @@ def _startup():
     load_paths_config()
     _seed_admin()
     # Pre-warm the LLM so the first chat request doesn't cold-start
-    _warm_ollama_model()
+    _warm_llm()
 
 
-def _warm_ollama_model():
-    """Send a tiny request to Ollama to pre-load the model into memory."""
-    try:
-        logger.info("Pre-warming Ollama model %s ...", LLM_MODEL)
-        resp = requests.post(OLLAMA_URL, json={
-            "model": LLM_MODEL,
-            "messages": [{"role": "user", "content": "hi"}],
-            "stream": False,
-            "options": {"num_predict": 1},
-        }, timeout=300)
-        resp.raise_for_status()
-        logger.info("Ollama model %s is warm and ready.", LLM_MODEL)
-    except Exception as e:
-        logger.warning("Failed to pre-warm Ollama model: %s", e)
+def _warm_llm():
+    """Pre-warm the LLM — works with both vLLM and Ollama backends."""
+    if LLM_BACKEND == "vllm":
+        try:
+            logger.info("Pre-warming vLLM model %s ...", VLLM_MODEL)
+            headers = {"Content-Type": "application/json"}
+            if VLLM_API_KEY:
+                headers["Authorization"] = f"Bearer {VLLM_API_KEY}"
+            resp = requests.post(VLLM_URL, json={
+                "model": VLLM_MODEL,
+                "messages": [{"role": "user", "content": "hi"}],
+                "max_tokens": 1,
+            }, headers=headers, timeout=300)
+            resp.raise_for_status()
+            logger.info("vLLM model %s is warm and ready.", VLLM_MODEL)
+        except Exception as e:
+            logger.warning("Failed to pre-warm vLLM model: %s — will try Ollama fallback", e)
+    else:
+        try:
+            logger.info("Pre-warming Ollama model %s ...", LLM_MODEL)
+            resp = requests.post(OLLAMA_URL, json={
+                "model": LLM_MODEL,
+                "messages": [{"role": "user", "content": "hi"}],
+                "stream": False,
+                "options": {"num_predict": 1},
+            }, timeout=300)
+            resp.raise_for_status()
+            logger.info("Ollama model %s is warm and ready.", LLM_MODEL)
+        except Exception as e:
+            logger.warning("Failed to pre-warm Ollama model: %s", e)
 
 
 # ============================================================
@@ -747,6 +763,40 @@ def build_ollama_payload(worldview_profile, step_context, user_msg, passages,
     }
 
 
+def _call_vllm(messages: list, temperature: float = LLM_TEMP,
+               max_tokens: int = 2048, timeout: int = 120) -> Optional[str]:
+    """Call vLLM (OpenAI-compatible API). Returns content string or None on failure."""
+    headers = {"Content-Type": "application/json"}
+    if VLLM_API_KEY:
+        headers["Authorization"] = f"Bearer {VLLM_API_KEY}"
+    try:
+        resp = requests.post(VLLM_URL, json={
+            "model": VLLM_MODEL,
+            "messages": messages,
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+            "stream": False,
+        }, headers=headers, timeout=timeout)
+        resp.raise_for_status()
+        data = resp.json()
+        return data["choices"][0]["message"]["content"].strip()
+    except Exception as e:
+        logger.warning("vLLM call failed: %s", e)
+        return None
+
+
+def _call_ollama(payload: dict, timeout: int = 120) -> Optional[str]:
+    """Call Ollama. Returns content string or None on failure."""
+    try:
+        resp = requests.post(OLLAMA_URL, json=payload, timeout=timeout)
+        resp.raise_for_status()
+        data = resp.json()
+        return data.get("message", {}).get("content", "").strip()
+    except Exception as e:
+        logger.warning("Ollama call failed: %s", e)
+        return None
+
+
 def call_llm(worldview_profile: str, step_context: str, user_msg: str,
              passages: List[Dict[str, Any]],
              active_step: Optional[int] = None,
@@ -758,23 +808,24 @@ def call_llm(worldview_profile: str, step_context: str, user_msg: str,
         stream=False, active_step=active_step, step_llm_guidance=step_llm_guidance,
         chat_history=chat_history,
     )
-    
 
-    try:
-        resp = requests.post(OLLAMA_URL, json=payload, timeout=120)
-        resp.raise_for_status()
-        data = resp.json()
-        # Ollama /api/chat returns {"message": {"role":"assistant","content":"..."}}
-        return (
-            data.get("message", {}).get("content", "").strip()
-            or "I couldn't generate a response."
-        )
-    except Exception as e:
-        logger.exception("LLM call failed: %s", e)
-        return (
-            "I ran into an issue calling the language model. "
-            "Please try again or check the backend logs."
-        )
+    result = None
+    # Try vLLM first if configured
+    if LLM_BACKEND == "vllm":
+        result = _call_vllm(payload["messages"], temperature=LLM_TEMP)
+        if result is None:
+            logger.info("vLLM failed, falling back to Ollama...")
+            result = _call_ollama(payload)
+    else:
+        result = _call_ollama(payload)
+        if result is None and LLM_BACKEND != "vllm":
+            logger.info("Ollama failed, trying vLLM fallback...")
+            result = _call_vllm(payload["messages"], temperature=LLM_TEMP)
+
+    return result or (
+        "I ran into an issue calling the language model. "
+        "Please try again or check the backend logs."
+    )
 
 
 # ============================================================
@@ -863,24 +914,13 @@ class ResetPasswordReq(BaseModel):
 
 
 def _send_reset_email(to_email: str, reset_token: str):
-    """Send a password-reset link via SMTP. Fails silently to avoid leaking user existence."""
-    if not SMTP_USER or not SMTP_PASS:
-        logger.warning("SMTP not configured — cannot send reset email")
+    """Send a password-reset link via Resend. Fails silently to avoid leaking user existence."""
+    if not RESEND_API_KEY:
+        logger.warning("RESEND_API_KEY not configured — cannot send reset email")
         return
 
+    resend.api_key = RESEND_API_KEY
     reset_link = f"{FRONTEND_URL}?reset_token={reset_token}"
-
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = "Hopscotch - Reset Your Password"
-    msg["From"] = SMTP_FROM
-    msg["To"] = to_email
-
-    text_body = (
-        f"You requested a password reset for your Hopscotch account.\n\n"
-        f"Click this link to set a new password (valid for 30 minutes):\n"
-        f"{reset_link}\n\n"
-        f"If you did not request this, you can safely ignore this email."
-    )
 
     html_body = f"""\
 <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
@@ -898,14 +938,13 @@ def _send_reset_email(to_email: str, reset_token: str):
     </p>
 </div>"""
 
-    msg.attach(MIMEText(text_body, "plain"))
-    msg.attach(MIMEText(html_body, "html"))
-
     try:
-        with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
-            server.starttls()
-            server.login(SMTP_USER, SMTP_PASS)
-            server.sendmail(SMTP_FROM, to_email, msg.as_string())
+        resend.Emails.send({
+            "from": f"Hopscotch <{EMAIL_FROM}>",
+            "to": [to_email],
+            "subject": "Hopscotch - Reset Your Password",
+            "html": html_body,
+        })
         logger.info(f"Reset email sent to {to_email}")
     except Exception as e:
         logger.error(f"Failed to send reset email: {e}")
@@ -1788,31 +1827,72 @@ def chat_send_stream(req: ChatSendReq = Body(...), user: dict = Depends(get_curr
     # Capture session_id for persistence inside the generator
     session_id = sess.id
 
+    def _stream_vllm():
+        """Stream from vLLM (OpenAI SSE format)."""
+        headers = {"Content-Type": "application/json"}
+        if VLLM_API_KEY:
+            headers["Authorization"] = f"Bearer {VLLM_API_KEY}"
+        vllm_payload = {
+            "model": VLLM_MODEL,
+            "messages": payload["messages"],
+            "temperature": LLM_TEMP,
+            "max_tokens": 2048,
+            "stream": True,
+        }
+        with requests.post(VLLM_URL, json=vllm_payload, headers=headers,
+                           stream=True, timeout=300) as resp:
+            resp.raise_for_status()
+            for line in resp.iter_lines(decode_unicode=True):
+                if not line:
+                    continue
+                if line.startswith("data: "):
+                    line = line[6:]
+                if line.strip() == "[DONE]":
+                    break
+                try:
+                    data = json.loads(line)
+                except Exception:
+                    continue
+                delta = data.get("choices", [{}])[0].get("delta", {}).get("content", "")
+                if delta:
+                    yield delta
+
+    def _stream_ollama():
+        """Stream from Ollama (native format)."""
+        with requests.post(OLLAMA_URL, json=payload, stream=True, timeout=300) as resp:
+            resp.raise_for_status()
+            for line in resp.iter_lines(decode_unicode=True):
+                if not line:
+                    continue
+                try:
+                    data = json.loads(line)
+                except Exception:
+                    continue
+                delta = data.get("message", {}).get("content", "")
+                if delta:
+                    yield delta
+
     def event_stream():
         assistant_text_parts: List[str] = []
         try:
             try:
-                with requests.post(OLLAMA_URL, json=payload, stream=True, timeout=300) as resp:
-                    resp.raise_for_status()
-                    for line in resp.iter_lines(decode_unicode=True):
-                        if not line:
-                            continue
-                        try:
-                            data = json.loads(line)
-                        except Exception:
-                            continue
-
-                        delta = data.get("message", {}).get("content", "")
-                        if not delta:
-                            continue
-
+                # Try vLLM first if configured, fall back to Ollama
+                stream_fn = _stream_vllm if LLM_BACKEND == "vllm" else _stream_ollama
+                try:
+                    for delta in stream_fn():
+                        assistant_text_parts.append(delta)
+                        yield delta
+                except Exception as primary_err:
+                    logger.warning("Primary stream (%s) failed: %s — trying fallback", LLM_BACKEND, primary_err)
+                    fallback_fn = _stream_ollama if LLM_BACKEND == "vllm" else _stream_vllm
+                    for delta in fallback_fn():
                         assistant_text_parts.append(delta)
                         yield delta
             except GeneratorExit:
                 logger.info("Client disconnected during stream for session %s", session_id)
                 return  # finally block still runs
             except Exception as e:
-                logger.exception("LLM stream failed: %s", e)
+                logger.exception("LLM stream failed (both backends): %s", e)
                 yield "\n[Error streaming from model]\n"
         finally:
             # Always persist, even if client disconnected mid-stream
@@ -2060,16 +2140,27 @@ def _structure_cf_via_llm(sess: SessionData, raw_fields: dict) -> dict:
         "}\n"
     )
 
-    try:
-        resp = requests.post(OLLAMA_URL, json={
+    cf_messages = [{"role": "user", "content": prompt}]
+    raw = None
+
+    # Try vLLM first if configured
+    if LLM_BACKEND == "vllm":
+        raw = _call_vllm(cf_messages, temperature=0.3, max_tokens=2000, timeout=90)
+    if raw is None:
+        # Fallback to Ollama
+        ollama_result = _call_ollama({
             "model": LLM_MODEL,
-            "messages": [{"role": "user", "content": prompt}],
+            "messages": cf_messages,
             "stream": False,
             "options": {"temperature": 0.3, "num_predict": 2000},
         }, timeout=90)
-        resp.raise_for_status()
-        raw = resp.json().get("message", {}).get("content", "")
+        raw = ollama_result
 
+    if not raw:
+        logger.warning("Both LLM backends failed for CF structuring")
+        return raw_fields
+
+    try:
         # Extract JSON from response (handle markdown code blocks)
         json_match = re.search(r'\{[\s\S]*\}', raw)
         if json_match:
@@ -2535,7 +2626,18 @@ def admin_system_health(admin: dict = Depends(require_admin)):
     except Exception as e:
         health["mongodb"] = f"error: {e}"
 
-    # Ollama / LLM
+    # LLM backends
+    health["llm_backend"] = LLM_BACKEND
+
+    # vLLM health
+    try:
+        vllm_health_url = VLLM_URL.replace("/v1/chat/completions", "/health")
+        r = requests.get(vllm_health_url, timeout=3)
+        health["vllm"] = "ok" if r.status_code == 200 else f"status {r.status_code}"
+    except Exception as e:
+        health["vllm"] = f"error: {e}"
+
+    # Ollama health
     try:
         r = requests.get(f"{OLLAMA_BASE}/api/tags", timeout=3)
         models = [m.get("name", "") for m in r.json().get("models", [])]

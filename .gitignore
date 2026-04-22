@@ -28,3 +28,4 @@ server/index/
 
 # Temporary / runtime files
 nohup.out
+.env

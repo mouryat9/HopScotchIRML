@@ -22,6 +22,16 @@ module.exports = {
       env: {
         PATH: `${path.join(ROOT, 'hopscotchenv', 'bin')}:${process.env.PATH}`,
         VIRTUAL_ENV: path.join(ROOT, 'hopscotchenv'),
+        RESEND_API_KEY: 're_MTF9paKE_2fgoJmnaSG4Qe9M5iR8JVUd8',
+        // MongoDB Atlas — shared between Lambda and GPU cluster
+        // Set the real URI via shell env (do not commit the password)
+        MONGO_URI: process.env.MONGO_URI || 'mongodb://127.0.0.1:27017',
+        MONGO_DB_NAME: process.env.MONGO_DB_NAME || 'hopscotch',
+        // LLM backend config — switch to "vllm" when GPU cluster is ready
+        LLM_BACKEND: 'ollama',                           // "vllm" or "ollama"
+        VLLM_URL: 'http://127.0.0.1:8000/v1/chat/completions',  // update to cluster IP
+        VLLM_MODEL: 'Qwen/Qwen2.5-14B-Instruct',
+        LLM_MODEL: 'qwen2.5:14b',
       },
     },
     {
