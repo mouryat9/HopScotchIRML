@@ -1,0 +1,590 @@
+[
+  {
+    "backend": "vllm",
+    "num_users": 1,
+    "summary": {
+      "backend": "vllm",
+      "users": 1,
+      "success_rate": "1/1 (100%)",
+      "avg_latency": "3.3s",
+      "median_latency": "3.3s",
+      "p95_latency": "3.3s",
+      "min_latency": "3.3s",
+      "max_latency": "3.3s",
+      "total_time": "3.3s",
+      "failures": 0
+    },
+    "requests": [
+      {
+        "success": true,
+        "latency": 3.31,
+        "tokens": 125,
+        "error": ""
+      }
+    ]
+  },
+  {
+    "backend": "vllm",
+    "num_users": 10,
+    "summary": {
+      "backend": "vllm",
+      "users": 10,
+      "success_rate": "10/10 (100%)",
+      "avg_latency": "4.9s",
+      "median_latency": "5.0s",
+      "p95_latency": "6.1s",
+      "min_latency": "3.5s",
+      "max_latency": "6.1s",
+      "total_time": "6.1s",
+      "failures": 0
+    },
+    "requests": [
+      {
+        "success": true,
+        "latency": 4.76,
+        "tokens": 163,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 5.32,
+        "tokens": 159,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 5.54,
+        "tokens": 181,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 3.82,
+        "tokens": 121,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 3.46,
+        "tokens": 116,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 4.82,
+        "tokens": 163,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 6.11,
+        "tokens": 207,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 5.17,
+        "tokens": 167,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 5.69,
+        "tokens": 186,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 4.3,
+        "tokens": 137,
+        "error": ""
+      }
+    ]
+  },
+  {
+    "backend": "vllm",
+    "num_users": 25,
+    "summary": {
+      "backend": "vllm",
+      "users": 25,
+      "success_rate": "25/25 (100%)",
+      "avg_latency": "5.0s",
+      "median_latency": "4.9s",
+      "p95_latency": "6.7s",
+      "min_latency": "3.1s",
+      "max_latency": "7.0s",
+      "total_time": "7.0s",
+      "failures": 0
+    },
+    "requests": [
+      {
+        "success": true,
+        "latency": 4.63,
+        "tokens": 142,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 5.49,
+        "tokens": 170,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 6.27,
+        "tokens": 199,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 3.73,
+        "tokens": 105,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 4.43,
+        "tokens": 136,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 5.42,
+        "tokens": 173,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 5.22,
+        "tokens": 157,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 5.29,
+        "tokens": 158,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 5.79,
+        "tokens": 182,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 4.25,
+        "tokens": 131,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 5.46,
+        "tokens": 177,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 6.98,
+        "tokens": 233,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 4.36,
+        "tokens": 142,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 4.17,
+        "tokens": 124,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 4.87,
+        "tokens": 159,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 3.67,
+        "tokens": 118,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 5.03,
+        "tokens": 143,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 4.64,
+        "tokens": 149,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 6.33,
+        "tokens": 197,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 3.11,
+        "tokens": 101,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 3.89,
+        "tokens": 124,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 4.69,
+        "tokens": 140,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 6.71,
+        "tokens": 218,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 4.43,
+        "tokens": 131,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 5.83,
+        "tokens": 187,
+        "error": ""
+      }
+    ]
+  },
+  {
+    "backend": "vllm",
+    "num_users": 50,
+    "summary": {
+      "backend": "vllm",
+      "users": 50,
+      "success_rate": "50/50 (100%)",
+      "avg_latency": "8.4s",
+      "median_latency": "5.8s",
+      "p95_latency": "7.4s",
+      "min_latency": "3.7s",
+      "max_latency": "78.5s",
+      "total_time": "78.5s",
+      "failures": 0
+    },
+    "requests": [
+      {
+        "success": true,
+        "latency": 5.55,
+        "tokens": 153,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 6.72,
+        "tokens": 177,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 6.9,
+        "tokens": 198,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 4.07,
+        "tokens": 102,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 6.16,
+        "tokens": 171,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 6.83,
+        "tokens": 196,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 5.51,
+        "tokens": 149,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 6.2,
+        "tokens": 161,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 6.08,
+        "tokens": 165,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 5.82,
+        "tokens": 154,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 6.67,
+        "tokens": 190,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 7.4,
+        "tokens": 221,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 4.49,
+        "tokens": 122,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 5.74,
+        "tokens": 161,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 5.12,
+        "tokens": 148,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 4.38,
+        "tokens": 120,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 6.48,
+        "tokens": 178,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 5.54,
+        "tokens": 162,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 6.39,
+        "tokens": 167,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 4.97,
+        "tokens": 136,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 4.97,
+        "tokens": 123,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 6.96,
+        "tokens": 176,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 6.39,
+        "tokens": 176,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 4.91,
+        "tokens": 127,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 7.23,
+        "tokens": 202,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 5.84,
+        "tokens": 152,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 6.72,
+        "tokens": 185,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 78.48,
+        "tokens": 167,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 6.64,
+        "tokens": 184,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 5.07,
+        "tokens": 129,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 6.55,
+        "tokens": 182,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 7.02,
+        "tokens": 206,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 4.46,
+        "tokens": 129,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 5.71,
+        "tokens": 155,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 4.97,
+        "tokens": 142,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 3.74,
+        "tokens": 102,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 6.17,
+        "tokens": 159,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 5.58,
+        "tokens": 164,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 4.78,
+        "tokens": 135,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 3.95,
+        "tokens": 109,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 5.43,
+        "tokens": 144,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 6.83,
+        "tokens": 175,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 6.15,
+        "tokens": 168,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 4.19,
+        "tokens": 106,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 6.89,
+        "tokens": 192,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 5.83,
+        "tokens": 156,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 62.72,
+        "tokens": 166,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 5.85,
+        "tokens": 153,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 6.78,
+        "tokens": 186,
+        "error": ""
+      },
+      {
+        "success": true,
+        "latency": 4.94,
+        "tokens": 128,
+        "error": ""
+      }
+    ]
+  }
+]

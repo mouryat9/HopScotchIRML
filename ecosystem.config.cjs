@@ -27,9 +27,9 @@ module.exports = {
         // Set the real URI via shell env (do not commit the password)
         MONGO_URI: process.env.MONGO_URI || 'mongodb://127.0.0.1:27017',
         MONGO_DB_NAME: process.env.MONGO_DB_NAME || 'hopscotch',
-        // LLM backend config — switch to "vllm" when GPU cluster is ready
-        LLM_BACKEND: 'ollama',                           // "vllm" or "ollama"
-        VLLM_URL: 'http://127.0.0.1:8000/v1/chat/completions',  // update to cluster IP
+        // LLM backend — TEMPORARY: forced to ollama while cluster recovers
+        LLM_BACKEND: 'ollama',
+        VLLM_URL: 'https://vllm.hopscotchai.us/v1/chat/completions',
         VLLM_MODEL: 'Qwen/Qwen2.5-14B-Instruct',
         LLM_MODEL: 'qwen2.5:14b',
       },
