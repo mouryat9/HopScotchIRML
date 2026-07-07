@@ -95,6 +95,23 @@ def update_user_password(email: str, password_hash: str) -> bool:
 
 # --------------- Class CRUD ---------------
 
+# Teacher-controlled per-class modes. New classes default to full access + AI on.
+DEFAULT_CLASS_SETTINGS = {
+    "ai_enabled": True,        # False = AI assistant turned off for the class
+    "access_mode": "full",     # "full" | "step" | "phase"  (Phase 2)
+    "unlocked_phase": None,    # for access_mode == "phase" (Phase 2)
+}
+
+
+def get_class_settings(cls: Optional[Dict]) -> Dict:
+    """Return a class's settings merged over the defaults (back-compat for
+    classes created before the settings field existed)."""
+    merged = dict(DEFAULT_CLASS_SETTINGS)
+    if cls and isinstance(cls.get("settings"), dict):
+        merged.update(cls["settings"])
+    return merged
+
+
 def create_class_doc(teacher_id: str, class_name: str, class_code: str,
                      password_hash: str, password: str, student_count: int) -> str:
     result = classes_col.insert_one({
@@ -104,9 +121,33 @@ def create_class_doc(teacher_id: str, class_name: str, class_code: str,
         "password_hash": password_hash,
         "password": password,
         "student_count": student_count,
+        "settings": dict(DEFAULT_CLASS_SETTINGS),
         "created_at": datetime.utcnow().isoformat() + "Z",
     })
     return str(result.inserted_id)
+
+
+def find_class_by_id(class_id: str) -> Optional[Dict]:
+    from bson import ObjectId
+    try:
+        return classes_col.find_one({"_id": ObjectId(class_id)})
+    except Exception:
+        return None
+
+
+def update_class_settings(class_id: str, updates: Dict) -> Optional[Dict]:
+    """Patch a subset of a class's settings and return the merged result.
+    Only known keys are written."""
+    from bson import ObjectId
+    allowed = {k: v for k, v in updates.items() if k in DEFAULT_CLASS_SETTINGS}
+    if not allowed:
+        return None
+    set_doc = {f"settings.{k}": v for k, v in allowed.items()}
+    try:
+        classes_col.update_one({"_id": ObjectId(class_id)}, {"$set": set_doc})
+    except Exception:
+        return None
+    return get_class_settings(find_class_by_id(class_id))
 
 
 def find_class_by_code(class_code: str) -> Optional[Dict]:

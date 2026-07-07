@@ -50,6 +50,7 @@ from database import (
     get_latest_session_for_user,
     get_session_summaries_for_user,
     create_class_doc, find_class_by_code, get_classes_for_teacher,
+    find_class_by_id, update_class_settings, get_class_settings,
     get_students_in_class, get_all_student_sessions_for_teacher,
     # Admin / login tracking
     record_login, get_recent_logins, get_login_locations,
@@ -883,6 +884,66 @@ class AuthResp(BaseModel):
     name: str
     role: str
     education_level: str = "high_school"
+    ai_enabled: bool = True
+    access_mode: str = "full"
+    unlocked_phase: Optional[int] = None
+
+
+def _student_class_settings(user: dict) -> dict:
+    """Effective teacher-controlled settings for this user's class. Non-classroom
+    users (faculty, email students, teachers, admins) get the permissive defaults
+    (AI on, full access)."""
+    if not user or user.get("role") != "classroom_student":
+        return get_class_settings(None)
+    class_id = user.get("class_id")
+    if not class_id:
+        return get_class_settings(None)
+    return get_class_settings(find_class_by_id(str(class_id)))
+
+
+def _student_ai_enabled(user: dict) -> bool:
+    """Whether the AI assistant is available to this user (teacher-controlled)."""
+    return bool(_student_class_settings(user).get("ai_enabled", True))
+
+
+# Access/pacing modes (Phase 2). The 9 steps are grouped into 3 phases.
+STEP_PHASES = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
+
+
+def _phase_of_step(step: int) -> int:
+    for i, ph in enumerate(STEP_PHASES):
+        if step in ph:
+            return i + 1
+    return 1
+
+
+def _step_is_locked(step: int, settings: dict, completed_steps) -> bool:
+    """Whether a step is locked for a student, per the class access mode.
+    - full: nothing locked
+    - step: sequential — you may work on completed steps and the first incomplete
+      one, but not jump ahead
+    - phase: steps in phases beyond the teacher-unlocked phase are locked"""
+    mode = (settings or {}).get("access_mode", "full")
+    completed = set(completed_steps or [])
+    if mode == "step":
+        if step <= 1 or step in completed:
+            return False
+        first_incomplete = next((n for n in range(1, 10) if n not in completed), 10)
+        return step > first_incomplete
+    if mode == "phase":
+        unlocked = (settings or {}).get("unlocked_phase") or 1
+        return _phase_of_step(step) > unlocked
+    return False
+
+
+def _guard_step_access(user: dict, sess: "SessionData", step: int):
+    """Raise 403 if the student's class access mode locks this step."""
+    settings = _student_class_settings(user)
+    if settings.get("access_mode", "full") == "full":
+        return
+    completed = _compute_completed_steps_from_session(sess)
+    if _step_is_locked(step, settings, completed):
+        raise HTTPException(status_code=403, detail="This step is locked by your teacher.")
 
 
 @app.post("/auth/register", response_model=AuthResp)
@@ -931,6 +992,9 @@ def get_me(user: dict = Depends(get_current_user)):
         "name": user["name"],
         "role": user["role"],
         "education_level": user.get("education_level", "high_school"),
+        "ai_enabled": _student_ai_enabled(user),
+        "access_mode": _student_class_settings(user).get("access_mode", "full"),
+        "unlocked_phase": _student_class_settings(user).get("unlocked_phase"),
     }
 
 
@@ -1043,12 +1107,16 @@ def classroom_login(req: ClassroomLoginReq, request: Request):
         "last_login_ip": client_ip,
     })
     token = create_access_token({"sub": req.username, "sub_type": "username"})
+    _cs = _student_class_settings(user)
     return AuthResp(
         token=token,
         username=req.username,
         name=user["name"],
         role=user["role"],
         education_level=user.get("education_level", "high_school"),
+        ai_enabled=bool(_cs.get("ai_enabled", True)),
+        access_mode=_cs.get("access_mode", "full"),
+        unlocked_phase=_cs.get("unlocked_phase"),
     )
 
 
@@ -1121,12 +1189,43 @@ def list_teacher_classes(user: dict = Depends(get_current_user)):
             "password": cls.get("password", ""),
             "student_count": cls["student_count"],
             "created_at": cls.get("created_at", ""),
+            "settings": get_class_settings(cls),
             "students": [
                 {"username": s.get("username"), "name": s.get("name")}
                 for s in students
             ],
         })
     return {"classes": result}
+
+
+class ClassSettingsReq(BaseModel):
+    ai_enabled: Optional[bool] = None
+    access_mode: Optional[str] = None
+    unlocked_phase: Optional[int] = None
+
+
+@app.patch("/teacher/class/{class_id}/settings")
+def update_class_settings_endpoint(
+    class_id: str,
+    req: ClassSettingsReq,
+    user: dict = Depends(get_current_user),
+):
+    """Teacher-controlled class modes (e.g. turn the AI assistant on/off)."""
+    if user.get("role") != "teacher":
+        raise HTTPException(status_code=403, detail="Only teachers can change class settings")
+    cls = find_class_by_id(class_id)
+    if not cls:
+        raise HTTPException(status_code=404, detail="Class not found")
+    if str(cls.get("teacher_id")) != str(user["_id"]):
+        raise HTTPException(status_code=403, detail="You do not own this class")
+
+    updates = {k: v for k, v in req.dict().items() if v is not None}
+    if req.access_mode is not None and req.access_mode not in ("full", "step", "phase"):
+        raise HTTPException(status_code=400, detail="access_mode must be full, step, or phase")
+    settings = update_class_settings(class_id, updates)
+    if settings is None:
+        raise HTTPException(status_code=400, detail="No valid settings to update")
+    return {"class_id": class_id, "settings": settings}
 
 
 @app.get("/teacher/student-sessions")
@@ -1475,6 +1574,7 @@ class UpdateStepReq(BaseModel):
 def update_active_step(req: UpdateStepReq, user: dict = Depends(get_current_user)):
     """Save the student's current active step to the session."""
     sess = _require_session(req.session_id)
+    _guard_step_access(user, sess, req.active_step)
     sess.active_step = req.active_step
     _persist_session(sess)
     return {"ok": True}
@@ -1502,6 +1602,7 @@ class StepDataResp(BaseModel):
 @app.post("/step/save", response_model=StepDataResp)
 def save_step_data(req: StepDataReq, user: dict = Depends(get_current_user)):
     sess = _require_session(req.session_id)
+    _guard_step_access(user, sess, req.step)
     key = str(req.step)
     sess.step_notes[key] = req.data or {}
     _persist_session(sess)
@@ -1800,6 +1901,16 @@ def _render_step_context(sess: SessionData) -> str:
 
 
 # ---------------- Chat main endpoint (non-streaming) ----------------
+# ---------------- Teacher-controlled AI mode ----------------
+
+_AI_OFF_MESSAGE = (
+    "The AI assistant is currently turned off for your class. Your teacher has "
+    "chosen to have you work through your research design on your own for now. "
+    "Keep going in the 'My Research Design' panel — and check back later, as your "
+    "teacher may turn the assistant on when you're ready."
+)
+
+
 # ---------------- Harmful-content safety guardrail (Llama Guard 3) ----------------
 
 _SAFETY_REFUSAL = (
@@ -1916,6 +2027,12 @@ def chat_send(req: ChatSendReq = Body(...), user: dict = Depends(get_current_use
     # store user turn
     history.append(ChatTurn(role="user", content=user_msg, step=req.active_step))
 
+    # Teacher-controlled mode: AI assistant may be turned off for this student's class.
+    if not _student_ai_enabled(user):
+        history.append(ChatTurn(role="assistant", content=_AI_OFF_MESSAGE, step=req.active_step))
+        _persist_session(sess)
+        return ChatHistoryResp(session_id=req.session_id, history=history)
+
     # Safety gate: refuse harmful/unethical requests (Llama Guard 3, local).
     is_safe, _cats = _moderate_input(user_msg)
     if not is_safe:
@@ -1962,6 +2079,16 @@ def chat_send_stream(req: ChatSendReq = Body(...), user: dict = Depends(get_curr
 
     # store user turn
     history.append(ChatTurn(role="user", content=user_msg, step=req.active_step))
+
+    # Teacher-controlled mode: AI assistant may be turned off for this student's class.
+    if not _student_ai_enabled(user):
+        def _ai_off_stream():
+            try:
+                yield _AI_OFF_MESSAGE
+            finally:
+                history.append(ChatTurn(role="assistant", content=_AI_OFF_MESSAGE, step=req.active_step))
+                _persist_session(sess)
+        return StreamingResponse(_ai_off_stream(), media_type="text/plain")
 
     # Safety gate: refuse harmful/unethical requests (Llama Guard 3, local).
     is_safe, _cats = _moderate_input(user_msg)
