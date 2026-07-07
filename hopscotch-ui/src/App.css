@@ -487,10 +487,10 @@ h1, h2, h3, h4, h5, h6 {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 16px;
-  max-width: 1200px;
-  margin: 4px auto 16px;
-  padding: 24px 20px;
+  gap: 12px;
+  max-width: 900px;
+  margin: 2px auto 10px;
+  padding: 12px 16px;
   position: relative;
   border-radius: var(--hop-radius-xl);
   background:
@@ -507,9 +507,9 @@ h1, h2, h3, h4, h5, h6 {
 .hop-diagram__col {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 10px;
   flex: 1;
-  max-width: 168px;
+  max-width: 120px;
 }
 
 .hop-diagram__col--single {
@@ -528,8 +528,8 @@ h1, h2, h3, h4, h5, h6 {
   align-items: center;
   justify-content: center;
   text-align: center;
-  padding: 18px 14px;
-  min-height: 110px;
+  padding: 12px 10px;
+  min-height: 78px;
   border: none;
   border-radius: 22px;
   background: var(--card-color);
@@ -648,8 +648,8 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Step 9 (single, last) — slightly taller to match original layout */
 .hop-diagram__col:last-child .hop-step-card {
-  min-height: 140px;
-  border-radius: 28px;
+  min-height: 100px;
+  border-radius: 24px;
 }
 
 /* Responsive: stack to 2 rows on small screens */
