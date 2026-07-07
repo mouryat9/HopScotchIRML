@@ -126,6 +126,11 @@ LLM_MODEL = os.environ.get("LLM_MODEL", "qwen2.5:14b")
 VLLM_MODEL = os.environ.get("VLLM_MODEL", "Qwen/Qwen2.5-14B-Instruct")
 LLM_TEMP = float(os.environ.get("LLM_TEMP", "0.4"))
 
+# Harmful-content moderation (Llama Guard 3 via Ollama). Runs locally/free.
+# Set MODERATION_ENABLED=0 to disable, or point MODERATION_MODEL at another guard model.
+MODERATION_ENABLED = os.environ.get("MODERATION_ENABLED", "1") not in ("0", "false", "False", "")
+MODERATION_MODEL = os.environ.get("MODERATION_MODEL", "llama-guard3:1b")
+
 import time as _time_mod
 _SERVER_START_TIME = _time_mod.time()
 
@@ -642,6 +647,30 @@ def build_ollama_payload(worldview_profile, step_context, user_msg, passages,
         "Hopscotch IRML (Introductory Research Methods Learning) platform. You help "
         "students scaffold their research design through a 9-step process.\n\n"
 
+        "==================================================================\n"
+        "CORE RULE — YOU ARE A COACH, NOT A GHOSTWRITER (applies to ALL 9 steps)\n"
+        "==================================================================\n"
+        "Your job is to help students LEARN to design research — NOT to produce their "
+        "research design for them. This is your single most important rule, and it "
+        "overrides any request to the contrary:\n"
+        "- ALLOWED: explain concepts and terminology, illustrate an idea with a "
+        "general example, answer 'what does X mean?' questions, ask guiding questions, "
+        "and give specific feedback on content the student has ALREADY written.\n"
+        "- NOT ALLOWED: writing or generating the student's OWN design content for "
+        "them — their research topic, research question, aim, hypothesis, literature or "
+        "theoretical framework, methodology choice, data-collection plan, analysis plan, "
+        "trustworthiness plan, or ethics plan. Never hand over ready-to-paste answers, "
+        "even if the student asks directly, repeatedly, or frames it as 'just an example' "
+        "that is really their answer in disguise.\n"
+        "- WHEN ASKED TO DO THEIR WORK ('write my hypothesis', 'give me a topic', "
+        "'just do it for me', 'give me the answer'): warmly REFUSE and redirect. Say you "
+        "will guide them but they must draft it themselves, then ask 2-3 targeted guiding "
+        "questions that help THEM produce a first draft. Once they have written something, "
+        "give rich, specific feedback.\n"
+        "- A general example that teaches a concept is fine; an example that is really "
+        "the student's finished answer for their own study is NOT. When unsure, ask a "
+        "guiding question instead of giving content.\n\n"
+
         "THE 9 STEPS:\n"
         "1. Who am I as a researcher? — Identify your worldview/paradigm (positivist, "
         "post-positivist, constructivist, transformative, pragmatist). Your worldview "
@@ -702,8 +731,10 @@ def build_ollama_payload(worldview_profile, step_context, user_msg, passages,
         "epistemology, axiology, and methodology implications with concrete examples.\n"
         "- For Steps 2-4: lead with guiding questions, then give feedback ONLY after "
         "the student has written their own content in 'My Research Design'.\n"
-        "- For Steps 5-9: be substantive — explain concepts, give examples, and help "
-        "the student refine their design with specific feedback.\n"
+        "- For Steps 5-9: be substantive in EXPLAINING concepts and giving feedback on "
+        "what the student wrote — but per the CORE RULE, still never author their research "
+        "question, hypothesis, data-collection, analysis, trustworthiness, or ethics "
+        "content for them. Guide them to write it; then critique and refine it.\n"
         "- Reference specific methodologies, frameworks, and scholars when relevant "
         "(only in response to what the student has already written, not as suggestions).\n"
         "- Use a warm, encouraging tone — the student may be new to research.\n"
@@ -1769,6 +1800,110 @@ def _render_step_context(sess: SessionData) -> str:
 
 
 # ---------------- Chat main endpoint (non-streaming) ----------------
+# ---------------- Harmful-content safety guardrail (Llama Guard 3) ----------------
+
+_SAFETY_REFUSAL = (
+    "I can't help with that request. Hopscotch is a research-methods learning space, "
+    "and I'm here to support safe, ethical, and academic work. If this connects to a "
+    "genuine research interest, try reframing it around how you would study the topic "
+    "responsibly and ethically — and I'll gladly help you design that study."
+)
+
+
+def _moderate_input(user_msg: str) -> tuple:
+    """Run Llama Guard 3 locally (via Ollama) on the student's message.
+    Returns (is_safe: bool, categories: str). Fails OPEN (treated as safe) if the
+    guard model is unavailable, so moderation can never break the chat."""
+    if not MODERATION_ENABLED or not (user_msg or "").strip():
+        return True, ""
+    try:
+        r = requests.post(OLLAMA_URL, json={
+            "model": MODERATION_MODEL,
+            "messages": [{"role": "user", "content": user_msg}],
+            "stream": False,
+            "options": {"temperature": 0.0, "num_predict": 20},
+        }, timeout=20)
+        r.raise_for_status()
+        out = ((r.json().get("message", {}) or {}).get("content", "") or "").strip()
+    except Exception as e:
+        logger.warning("Moderation (Llama Guard) unavailable — allowing message: %s", e)
+        return True, ""
+    lines = [l.strip() for l in out.splitlines() if l.strip()]
+    if lines and lines[0].lower().startswith("unsafe"):
+        categories = lines[1] if len(lines) > 1 else ""
+        logger.info("Llama Guard flagged message as unsafe (%s)", categories or "unspecified")
+        return False, categories
+    return True, ""
+
+
+# ---------------- Academic-integrity guardrail (coach, don't author) ----------------
+
+# Step-specific guiding nudges used when redirecting a "do it for me" request.
+_COACH_NUDGES = {
+    1: "What draws you toward a particular worldview? Consider whether you see knowledge as objective and measurable, or as socially constructed and shaped by context.",
+    2: "What issue in your field genuinely interests you? What problem have you noticed that you'd like to understand or change?",
+    3: "What research have you already read on this topic? Which theories from your coursework feel connected to it?",
+    4: "Given your worldview, are you trying to measure something or understand people's experiences? What kind of data would best answer that?",
+    5: "What exactly are you trying to find out? Try turning your topic into a question (qualitative) or a testable prediction/hypothesis (quantitative).",
+    6: "Who could give you the information you need, and how might you gather it — survey, interview, observation, existing records?",
+    7: "Once you have your data, what would you need to do to make sense of it and answer your research question?",
+    8: "What could make someone doubt your findings, and what steps would reduce that doubt?",
+    9: "Who might your study affect, and how will you protect participants and act responsibly?",
+}
+
+
+def _coach_redirect_message(active_step) -> str:
+    """The warm 'I'll guide you, but you draft it' response returned instead of
+    authoring the student's design content for them."""
+    nudge = _COACH_NUDGES.get(active_step or 0,
+        "Jot down your initial thoughts in the 'My Research Design' panel first.")
+    return (
+        "I'm here to coach you through this — not to write it for you, because doing it "
+        "yourself is how you truly learn to design research. Let's build it together.\n\n"
+        f"To get you started: {nudge}\n\n"
+        "Write your first attempt in the 'My Research Design' panel and I'll give you "
+        "detailed feedback and help you strengthen it."
+    )
+
+
+def _asks_ai_to_author(user_msg: str, active_step) -> bool:
+    """Fast local self-check (intent gate): is the student asking the AI to PRODUCE
+    their own design content (topic, research question, aim, hypothesis, or any step
+    plan) rather than asking for an explanation, feedback, or guidance? Returns True
+    only for 'do it for me' requests. Fails OPEN (False) if the classifier is
+    unavailable — the strengthened system prompt still applies as a backstop."""
+    prompt = (
+        "You are a classifier for a research-methods tutoring app. A student is on "
+        f"Step {active_step or '?'} of designing their OWN research study.\n"
+        "Classify what their message is asking for. Reply with EXACTLY one word:\n"
+        "AUTHOR = they want the AI to write/produce/generate THEIR OWN design content "
+        "for them (e.g. 'write my research question', 'give me a hypothesis', 'what "
+        "should my topic be', 'make my data-collection plan', 'just do it for me', "
+        "'give me the answer', 'write it for me').\n"
+        "COACH = they want a concept explained, a definition, feedback on something "
+        "they already wrote, an example that teaches an idea, or general guidance.\n\n"
+        f"Student message: \"{(user_msg or '')[:500]}\"\n\n"
+        "One word (AUTHOR or COACH):"
+    )
+    msgs = [{"role": "user", "content": prompt}]
+    raw = None
+    try:
+        if LLM_BACKEND == "vllm":
+            raw = _call_vllm(msgs, temperature=0.0, max_tokens=4, timeout=20)
+        if raw is None:
+            raw = _call_ollama({
+                "model": LLM_MODEL, "messages": msgs, "stream": False,
+                "options": {"temperature": 0.0, "num_predict": 4},
+            }, timeout=20)
+    except Exception as e:
+        logger.warning("Intent gate classifier failed: %s", e)
+        return False
+    if not raw:
+        return False
+    # Take the first word to avoid stray tokens flipping the result
+    return raw.strip().upper().startswith("AUTHOR") or "AUTHOR" in raw.strip().upper()[:12]
+
+
 @app.post("/chat/send", response_model=ChatHistoryResp)
 def chat_send(req: ChatSendReq = Body(...), user: dict = Depends(get_current_user)):
     sess = _require_session(req.session_id)
@@ -1780,6 +1915,21 @@ def chat_send(req: ChatSendReq = Body(...), user: dict = Depends(get_current_use
 
     # store user turn
     history.append(ChatTurn(role="user", content=user_msg, step=req.active_step))
+
+    # Safety gate: refuse harmful/unethical requests (Llama Guard 3, local).
+    is_safe, _cats = _moderate_input(user_msg)
+    if not is_safe:
+        history.append(ChatTurn(role="assistant", content=_SAFETY_REFUSAL, step=req.active_step))
+        _persist_session(sess)
+        return ChatHistoryResp(session_id=req.session_id, history=history)
+
+    # Academic-integrity gate: if the student is asking the AI to author their design
+    # content, coach them instead of doing the work for them.
+    if _asks_ai_to_author(user_msg, req.active_step):
+        answer = _coach_redirect_message(req.active_step)
+        history.append(ChatTurn(role="assistant", content=answer, step=req.active_step))
+        _persist_session(sess)
+        return ChatHistoryResp(session_id=req.session_id, history=history)
 
     # Normal LLM + RAG chat using worldview and resources
     worldview_profile = _render_worldview_profile(sess)
@@ -1812,6 +1962,34 @@ def chat_send_stream(req: ChatSendReq = Body(...), user: dict = Depends(get_curr
 
     # store user turn
     history.append(ChatTurn(role="user", content=user_msg, step=req.active_step))
+
+    # Safety gate: refuse harmful/unethical requests (Llama Guard 3, local).
+    is_safe, _cats = _moderate_input(user_msg)
+    if not is_safe:
+        def _refusal_stream():
+            try:
+                yield _SAFETY_REFUSAL
+            finally:
+                history.append(ChatTurn(role="assistant", content=_SAFETY_REFUSAL, step=req.active_step))
+                _persist_session(sess)
+        return StreamingResponse(_refusal_stream(), media_type="text/plain")
+
+    # Academic-integrity gate: if the student is asking the AI to author their design
+    # content, stream a coaching redirect instead of doing the work for them.
+    if _asks_ai_to_author(user_msg, req.active_step):
+        redirect_text = _coach_redirect_message(req.active_step)
+
+        def _redirect_stream():
+            try:
+                # Emit in sentence-sized chunks so it feels like a normal response
+                for chunk in re.split(r"(?<=\n\n)", redirect_text):
+                    if chunk:
+                        yield chunk
+            finally:
+                history.append(ChatTurn(role="assistant", content=redirect_text, step=req.active_step))
+                _persist_session(sess)
+
+        return StreamingResponse(_redirect_stream(), media_type="text/plain")
 
     # Stream LLM answer
     worldview_profile = _render_worldview_profile(sess)
