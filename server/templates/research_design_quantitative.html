@@ -173,7 +173,8 @@
         <div class="step-section">
             <div class="step-header">Step 1: Paradigmatic View of the Researcher</div>
             <div class="step-content">
-                The Worldview you will be bringing to the study is: <strong>{{step1}}</strong>
+                The Worldview you will be bringing to the study is: <strong>{{step1}}</strong>{% if step1_justification %}
+                <div class="subsection"><span class="subsection-label">Your justification:</span> {{step1_justification}}</div>{% endif %}
             </div>
         </div>
     </div>

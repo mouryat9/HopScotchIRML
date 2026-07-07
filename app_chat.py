@@ -1968,9 +1968,10 @@ def export_research_design_pdf(
         value = steps_data[step_key].get(field_name, default)
         return str(value) if value else default
 
-    # Extract Step 1: Worldview
+    # Extract Step 1: Worldview (+ the student's own justification, if provided)
     step1_data = steps_data.get("1", {})
     worldview = step1_data.get("worldview") or step1_data.get("worldview_id") or step1_data.get("worldview_label") or "Not specified"
+    worldview_justification = (step1_data.get("worldview_justification") or "").strip()
 
     # Extract Step 2: Topic & Goals (detailed)
     step2_data = steps_data.get("2", {})
@@ -1985,8 +1986,9 @@ def export_research_design_pdf(
     step3_theoretical = get_field(3, "theoreticalFrameworks") or get_field(3, "theoretical_frameworks") or "Not yet completed"
     step3_problem = get_field(3, "problem_statement") or get_field(3, "problemStatement") or "Not yet completed"
 
-    # Extract Step 4: Methodology
-    step4_notes = get_field(4, "notes", "Not yet completed")
+    # Extract Step 4: actual research design/methodology selection (+ notes),
+    # with option ids resolved to human labels.
+    step4_text = _format_config_step(sess, 4, steps_data.get("4", {})) or "Not yet completed"
 
     # Base template data (common to all templates)
     template_data = {
@@ -1994,6 +1996,7 @@ def export_research_design_pdf(
         "email": pdf_user.get("email") or pdf_user.get("username") or "",
         "date": datetime.now().strftime("%B %d, %Y"),
         "step1": worldview.title(),
+        "step1_justification": worldview_justification,
         "step2_topic": step2_topic,
         "step2_personal_goals": step2_personal_goals,
         "step2_practical_goals": step2_practical_goals,
@@ -2002,47 +2005,33 @@ def export_research_design_pdf(
         "step3_gaps": step3_gaps,
         "step3_theoretical": step3_theoretical,
         "step3_problem": step3_problem,
-        "step4": step4_notes,
+        "step4": step4_text,
     }
 
-    # Determine which template to use and extract appropriate fields
-    if resolved_path == "mixed" or chosen_methodology == "mixed":
-        # Mixed-Methods: Steps 5-8 split into quantitative and qualitative
-        template_name = "research_design_mixed.html"
+    # Build Steps 5-9 straight from each step's real field keys (research aim,
+    # hypothesis, collection method, participants, sampling, analysis method,
+    # trustworthiness, ethics, ...), resolving option ids to labels.
+    def step_text(n: int) -> str:
+        return _format_config_step(sess, n, steps_data.get(str(n), {})) or "Not yet completed"
 
-        # Extract split fields for Steps 5-8
-        step5_data = steps_data.get("5", {})
-        template_data["step5_quant"] = get_field(5, "research_question_quant") or get_field(5, "quantitative_question") or "Not yet completed"
-        template_data["step5_qual"] = get_field(5, "research_question_qual") or get_field(5, "qualitative_question") or "Not yet completed"
+    # Mixed-methods sessions only ever fill ONE sub-methodology's fields for
+    # Steps 5-9 (the pragmatist's chosen methodology), so render that path's
+    # template rather than the split mixed template, which can never be populated.
+    effective_path = resolved_path
+    if resolved_path == "mixed" and chosen_methodology in ("quantitative", "qualitative"):
+        effective_path = chosen_methodology
 
-        template_data["step6_quant"] = get_field(6, "data_collection_quant") or get_field(6, "quantitative_data") or "Not yet completed"
-        template_data["step6_qual"] = get_field(6, "data_collection_qual") or get_field(6, "qualitative_data") or "Not yet completed"
-
-        template_data["step7_quant"] = get_field(7, "analysis_quant") or get_field(7, "quantitative_analysis") or "Not yet completed"
-        template_data["step7_qual"] = get_field(7, "analysis_qual") or get_field(7, "qualitative_analysis") or "Not yet completed"
-
-        template_data["step8_quant"] = get_field(8, "validity") or get_field(8, "quantitative_validity") or "Not yet completed"
-        template_data["step8_qual"] = get_field(8, "trustworthiness") or get_field(8, "qualitative_trustworthiness") or "Not yet completed"
-
-        template_data["step9"] = get_field(9, "notes") or get_field(9, "ethics") or "Not yet completed"
-
-    elif resolved_path == "quantitative":
-        # Quantitative Research Design
+    if effective_path == "quantitative":
         template_name = "research_design_quantitative.html"
-        template_data["step5"] = get_field(5, "research_question") or get_field(5, "notes") or "Not yet completed"
-        template_data["step6"] = get_field(6, "notes") or get_field(6, "data_collection") or "Not yet completed"
-        template_data["step7"] = get_field(7, "notes") or get_field(7, "analysis") or "Not yet completed"
-        template_data["step8"] = get_field(8, "notes") or get_field(8, "validity") or "Not yet completed"
-        template_data["step9"] = get_field(9, "notes") or get_field(9, "ethics") or "Not yet completed"
-
-    else:  # qualitative (default)
-        # Qualitative Research Design
+    elif effective_path == "qualitative":
         template_name = "research_design_qualitative.html"
-        template_data["step5"] = get_field(5, "research_question") or get_field(5, "notes") or "Not yet completed"
-        template_data["step6"] = get_field(6, "notes") or get_field(6, "data_collection") or "Not yet completed"
-        template_data["step7"] = get_field(7, "notes") or get_field(7, "analysis") or "Not yet completed"
-        template_data["step8"] = get_field(8, "notes") or get_field(8, "trustworthiness") or "Not yet completed"
-        template_data["step9"] = get_field(9, "notes") or get_field(9, "ethics") or "Not yet completed"
+    else:
+        # Mixed session with no methodology chosen yet — fall back to qualitative
+        # layout (Steps 5-9 will simply read "Not yet completed").
+        template_name = "research_design_qualitative.html"
+
+    for n in (5, 6, 7, 8, 9):
+        template_data[f"step{n}"] = step_text(n)
 
     # Load and render the appropriate HTML template
     template_path = TEMPLATE_DIR / template_name
@@ -2070,6 +2059,76 @@ def export_research_design_pdf(
             "Content-Disposition": f'attachment; filename="{filename}"'
         }
     )
+
+
+# ---------------- Step-data extraction helpers ----------------
+
+def _effective_step_config(sess: "SessionData", step_num: int) -> tuple:
+    """Return (effective_path, step_config) for a step, resolving mixed-methods
+    inheritance and Step-4 methodology overrides to the sub-path the student
+    actually used. Steps 5-9 of a mixed session inherit the chosen methodology."""
+    all_paths = load_paths_config().get("paths", {})
+    resolved = sess.resolved_path or "qualitative"
+
+    effective = resolved
+    if resolved == "mixed" and step_num >= 5:
+        effective = sess.chosen_methodology or "qualitative"
+    elif resolved != "mixed" and sess.chosen_methodology and sess.chosen_methodology != resolved:
+        effective = sess.chosen_methodology
+
+    step_cfg = all_paths.get(effective, {}).get("steps", {}).get(str(step_num), {})
+    return effective, step_cfg
+
+
+def _resolve_option_labels(options, value) -> str:
+    """Map option id(s) to human labels. `value` may be a string id or a list of ids."""
+    id_to_label = {o.get("id"): o.get("label", o.get("id")) for o in (options or [])}
+    if isinstance(value, list):
+        return ", ".join(str(id_to_label.get(v, v)) for v in value if v not in (None, ""))
+    return str(id_to_label.get(value, value)) if value not in (None, "") else ""
+
+
+def _format_config_step(sess: "SessionData", step_num: int, step_data: dict,
+                        include_notes: bool = True) -> str:
+    """Build a readable, labeled summary of a config-driven step (4-9) straight
+    from the student's real field keys, resolving option ids to human labels.
+    Returns '' if the student filled nothing in for that step."""
+    if not isinstance(step_data, dict) or not step_data:
+        return ""
+    _, cfg = _effective_step_config(sess, step_num)
+    parts = []
+    ftype = cfg.get("field_type")
+
+    if ftype in ("single_select", "multi_select"):
+        label = _resolve_option_labels(cfg.get("options"), step_data.get(cfg.get("field_key")))
+        if label:
+            parts.append(label)
+    elif ftype == "fields":
+        for f in cfg.get("fields", []):
+            # Respect conditional fields — skip if their depends_on condition isn't met
+            dep = f.get("depends_on")
+            if dep and step_data.get(dep.get("field")) != dep.get("value"):
+                continue
+            val = step_data.get(f.get("field_key"))
+            if val in (None, "", []):
+                continue
+            if f.get("type") in ("select", "multi_select"):
+                val = _resolve_option_labels(f.get("options"), val)
+            elif isinstance(val, list):
+                val = ", ".join(str(v) for v in val)
+            if val:
+                parts.append(f"{f.get('label', f.get('field_key'))}: {val}")
+    elif ftype == "methodology_decision":
+        val = step_data.get(cfg.get("field_key") or "design")
+        if val:
+            parts.append(f"Methodology: {val}")
+
+    if include_notes:
+        notes = step_data.get("notes")
+        if notes and str(notes).strip():
+            parts.append(f"Additional notes: {str(notes).strip()}")
+
+    return "\n".join(parts)
 
 
 # ---------------- PPTX Conceptual Framework Export ----------------
@@ -2122,8 +2181,10 @@ def _structure_cf_via_llm(sess: SessionData, raw_fields: dict) -> dict:
         "- 'gaps': 1-2 sentences. Empty string if not provided.\n"
         "- 'problem_statement': 1-2 sentences. Empty string if not provided.\n"
         "- 'personal_goals': 1-2 sentences. Empty string if not provided.\n"
-        "- 'research_questions': 1-2 sentences. Empty string if not provided.\n"
-        "- 'research_design': 1 sentence. Empty string if not provided.\n"
+        "- 'research_questions': Condense but PRESERVE the research question, research aim, "
+        "and hypothesis if present. Keep each clearly labeled/distinguishable (do not merge "
+        "an aim and a hypothesis into one). Empty string if not provided.\n"
+        "- 'research_design': 1 short sentence naming the chosen design/methodology. Empty string if not provided.\n"
         "- 'worldview': ONE word. Empty string if not provided.\n\n"
         f"STUDENT'S DATA (from 'My Research Design' panel):\n{data_block}\n\n"
         "Respond with ONLY valid JSON. No markdown, no explanation:\n"
@@ -2214,10 +2275,18 @@ def _gather_cf_data(session_id: str, current_user: dict) -> dict:
     gaps = step3_data.get("gaps") or step3_data.get("gaps_identified") or ""
     problem = step3_data.get("problem_statement") or step3_data.get("problemStatement") or ""
 
+    # Step 4: the actual selected research design/methodology (+ any notes),
+    # not just the free-text "additional questions" box.
     step4_data = steps_data.get("4", {})
-    research_design = step4_data.get("notes", "")
+    research_design = _format_config_step(sess, 4, step4_data)
+
+    # Step 5: research question, aim, and hypothesis — using the real field keys.
+    # Quantitative students enter research_aim + hypothesis; qualitative students
+    # enter research_question. Preserve each so aims/hypotheses map through clearly.
     step5_data = steps_data.get("5", {})
-    research_questions = (step5_data.get("research_question") or step5_data.get("notes") or "")
+    research_questions = _format_config_step(sess, 5, step5_data)
+    if not research_questions:
+        research_questions = (step5_data.get("research_question") or step5_data.get("notes") or "")
 
     email = current_user.get("email") or current_user.get("username") or ""
     name = current_user.get("name", "Student")
@@ -2269,8 +2338,10 @@ def _gather_cf_data(session_id: str, current_user: dict) -> dict:
         "frameworks": frameworks,
         "gaps": (structured.get("gaps") if gaps.strip() else "") or "",
         "problem_statement": (structured.get("problem_statement") if problem.strip() else "") or "",
-        "research_questions": (structured.get("research_questions") if research_questions.strip() else "") or "",
-        "research_design": (structured.get("research_design") if research_design.strip() else "") or "",
+        # Prefer the LLM-condensed text, but fall back to the student's raw
+        # labeled entries so aims/hypotheses/design are never silently dropped.
+        "research_questions": ((structured.get("research_questions") or research_questions) if research_questions.strip() else "") or "",
+        "research_design": ((structured.get("research_design") or research_design) if research_design.strip() else "") or "",
     }
 
 
