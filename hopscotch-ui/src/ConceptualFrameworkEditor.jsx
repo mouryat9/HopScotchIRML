@@ -109,7 +109,7 @@ export default function ConceptualFrameworkEditor({ data, onClose }) {
       {/* Toolbar */}
       <div className="cf-toolbar no-print">
         <div className="cf-toolbar__left">
-          <button className="cf-toolbar__btn" onClick={onClose}>&larr; Back</button>
+          <button className="cf-toolbar__btn" onClick={onClose} title="Close this tab and return to your research design">&larr; Back to Design</button>
           <span className="cf-toolbar__title">Conceptual Framework Editor</span>
         </div>
         <div className="cf-toolbar__center">

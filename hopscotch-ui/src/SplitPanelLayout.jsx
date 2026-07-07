@@ -1,5 +1,4 @@
 // src/SplitPanelLayout.jsx — Inline pinnable panels: everything fits on one screen
-import { useState, useEffect } from "react";
 import StepResourcePanel from "./StepResourcePanel";
 import StepDetails from "./StepDetails";
 import ChatBox from "./ChatBox";
@@ -17,23 +16,12 @@ export default function SplitPanelLayout({
   status,
   educationLevel = "high_school",
   tourActive = false,
+  // Panel open state is owned by the parent (toggles live in the header)
+  leftOpen = true,
+  rightOpen = true,
+  onCloseLeft,
+  onCloseRight,
 }) {
-  const [leftOpen, setLeftOpen] = useState(true);
-  const [rightOpen, setRightOpen] = useState(true);
-
-  // Auto-open assistant when autoMessage arrives
-  useEffect(() => {
-    if (autoMessage) setRightOpen(true);
-  }, [autoMessage]);
-
-  // Force both panels open during guided tour
-  useEffect(() => {
-    if (tourActive) {
-      setLeftOpen(true);
-      setRightOpen(true);
-    }
-  }, [tourActive]);
-
   return (
     <div className="pin-layout">
       {/* Left panel: Resources */}
@@ -48,7 +36,7 @@ export default function SplitPanelLayout({
               </svg>
               <span className="pin-panel__title">Interactive Resources</span>
             </div>
-            <button className="pin-panel__close" onClick={() => setLeftOpen(false)} aria-label="Close resources panel">
+            <button className="pin-panel__close" onClick={onCloseLeft} aria-label="Close resources panel">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
             </button>
           </div>
@@ -81,7 +69,7 @@ export default function SplitPanelLayout({
               </svg>
               <span className="pin-panel__title">Research Assistant</span>
             </div>
-            <button className="pin-panel__close" onClick={() => setRightOpen(false)} aria-label="Close assistant panel">
+            <button className="pin-panel__close" onClick={onCloseRight} aria-label="Close assistant panel">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
             </button>
           </div>
@@ -106,39 +94,6 @@ export default function SplitPanelLayout({
         </div>
       </div>
 
-      {/* Floating command bar */}
-      <div className="cmd-bar">
-        <span className="cmd-bar__hint">Personalize the layout</span>
-        <div className="cmd-bar__divider" />
-        <button
-          className={`cmd-bar__btn cmd-bar__btn--lesson${leftOpen ? " cmd-bar__btn--active" : ""}`}
-          onClick={() => setLeftOpen(!leftOpen)}
-          aria-label="Toggle resources panel"
-        >
-          <span className="cmd-bar__icon">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
-              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
-            </svg>
-          </span>
-          <span className="cmd-bar__label">Resources</span>
-        </button>
-
-        <div className="cmd-bar__divider" />
-
-        <button
-          className={`cmd-bar__btn cmd-bar__btn--assistant${rightOpen ? " cmd-bar__btn--active" : ""}`}
-          onClick={() => setRightOpen(!rightOpen)}
-          aria-label="Toggle assistant panel"
-        >
-          <span className="cmd-bar__icon">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-            </svg>
-          </span>
-          <span className="cmd-bar__label">Assistant</span>
-        </button>
-      </div>
     </div>
   );
 }

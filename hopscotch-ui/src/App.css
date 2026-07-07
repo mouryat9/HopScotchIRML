@@ -166,6 +166,17 @@ h1, h2, h3, h4, h5, h6 {
   display: flex;
   align-items: center;
   gap: 14px;
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+/* Center section: keeps the layout personalizer horizontally centered
+   regardless of the left/right cluster widths */
+.hop-header__center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
 }
 
 .hop-logo {
@@ -205,7 +216,10 @@ h1, h2, h3, h4, h5, h6 {
 .hop-header__right {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 14px;
+  flex: 1 1 0;
+  min-width: 0;
 }
 
 /* Divider dot between name and sign-out */
@@ -350,6 +364,13 @@ h1, h2, h3, h4, h5, h6 {
   background: var(--hop-neutral-bg);
   padding: 1px 6px;
   border-radius: 999px;
+}
+
+.hop-download__newtab {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  color: var(--hop-muted);
 }
 
 /* ========================================================
@@ -617,10 +638,9 @@ h1, h2, h3, h4, h5, h6 {
   transform: translateY(-5px) scale(1.06);
 }
 
-/* Inactive cards dim slightly when one is active */
+/* Inactive cards keep their full original color (active card is shown via its border highlight) */
 .hop-diagram:has(.hop-step-card--active) .hop-step-card:not(.hop-step-card--active) {
-  filter: brightness(0.88) saturate(0.75);
-  transform: scale(0.97);
+  filter: none;
 }
 
 .hop-diagram:has(.hop-step-card--active) .hop-step-card:not(.hop-step-card--active):hover {
@@ -911,6 +931,36 @@ h1, h2, h3, h4, h5, h6 {
     opacity: 1;
     transform: translateX(-50%) translateY(0);
   }
+}
+
+/* Header variant: inline in the top bar instead of floating at the bottom */
+.cmd-bar--header {
+  position: static;
+  left: auto;
+  bottom: auto;
+  transform: none;
+  z-index: auto;
+  gap: 4px;
+  padding: 4px 8px;
+  background: rgba(255, 255, 255, 0.55);
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+.cmd-bar--header .cmd-bar__btn {
+  padding: 6px 12px;
+  font-size: 12.5px;
+  border-radius: var(--hop-radius-sm);
+}
+
+.cmd-bar--header .cmd-bar__divider {
+  height: 20px;
+  margin: 0 2px;
+}
+
+.cmd-bar--header .cmd-bar__hint {
+  font-size: 10.5px;
 }
 
 .cmd-bar__divider {
@@ -1956,8 +2006,15 @@ select.input:focus {
     padding: 0.75rem 1rem;
   }
 
+  .hop-header__left,
+  .hop-header__center,
   .hop-header__right {
+    flex: 0 0 auto;
+    width: 100%;
     justify-content: center;
+  }
+
+  .hop-header__right {
     flex-wrap: wrap;
   }
 
@@ -2486,6 +2543,121 @@ select.input:focus {
   color: var(--hop-ink);
   font-weight: 600;
   letter-spacing: -0.01em;
+}
+
+/* ── Profile dropdown (rightmost) ── */
+.hop-profile {
+  position: relative;
+}
+
+.hop-profile__trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 10px 4px 4px;
+  border: 1.5px solid transparent;
+  border-radius: var(--hop-radius-pill);
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.hop-profile__trigger:hover,
+.hop-profile__trigger--open {
+  background: rgba(30, 39, 64, 0.05);
+  border-color: var(--hop-border);
+}
+
+.hop-profile__arrow {
+  font-size: 0.6rem;
+  color: var(--hop-muted);
+  transition: transform 0.2s;
+}
+
+.hop-profile__arrow--open {
+  transform: rotate(180deg);
+}
+
+.hop-profile__menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 240px;
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(20px) saturate(1.6);
+  -webkit-backdrop-filter: blur(20px) saturate(1.6);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: var(--hop-radius-md);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.12),
+    0 2px 8px rgba(0, 0, 0, 0.04);
+  z-index: 50;
+  padding: 6px;
+  animation: dropdownFadeIn 0.15s ease-out;
+}
+
+.hop-profile__info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+}
+
+.hop-user__avatar--lg {
+  width: 40px;
+  height: 40px;
+  font-size: 1rem;
+}
+
+.hop-profile__info-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.hop-profile__name {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--hop-ink);
+  letter-spacing: -0.01em;
+}
+
+.hop-profile__email {
+  font-size: 0.76rem;
+  color: var(--hop-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hop-profile__sep {
+  height: 1px;
+  background: rgba(0, 0, 0, 0.08);
+  margin: 6px 4px;
+}
+
+.hop-profile__item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  font-family: inherit;
+  color: var(--hop-ink);
+  background: transparent;
+  border: none;
+  border-radius: var(--hop-radius-sm);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.1s, color 0.1s;
+}
+
+.hop-profile__item:hover {
+  background: rgba(217, 64, 64, 0.10);
+  color: var(--hop-red, #D94040);
 }
 
 /* ========================================================
@@ -3574,10 +3746,21 @@ select.input:focus {
     inset 0 -1px 0 rgba(255, 255, 255, 0.04);
 }
 
-:root[data-theme="dark"] .hop-download__menu {
+:root[data-theme="dark"] .hop-download__menu,
+:root[data-theme="dark"] .hop-profile__menu {
   background: rgba(30, 33, 40, 0.88);
   border-color: rgba(255, 255, 255, 0.08);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+}
+
+:root[data-theme="dark"] .hop-profile__trigger:hover,
+:root[data-theme="dark"] .hop-profile__trigger--open {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.10);
+}
+
+:root[data-theme="dark"] .hop-profile__sep {
+  background: rgba(255, 255, 255, 0.10);
 }
 
 :root[data-theme="dark"] .pin-layout__main {

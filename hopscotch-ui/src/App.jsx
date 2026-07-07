@@ -250,9 +250,27 @@ function StudentApp({ onBackToDashboard }) {
   const [autoMessage, setAutoMessage] = useState(null);
   const [historyOpen, setHistoryOpen] = useState(false);
 
+  // Layout personalization: which side panels are open (lifted here so the
+  // toggle controls can live in the header)
+  const [leftOpen, setLeftOpen] = useState(true);
+  const [rightOpen, setRightOpen] = useState(true);
+
+  // Auto-open the assistant when an auto-message arrives
+  useEffect(() => {
+    if (autoMessage) setRightOpen(true);
+  }, [autoMessage]);
+
   // Guided tour state
   const [runTour, setRunTour] = useState(false);
   const [tourActive, setTourActive] = useState(false);
+
+  // Force both panels open during the guided tour
+  useEffect(() => {
+    if (tourActive) {
+      setLeftOpen(true);
+      setRightOpen(true);
+    }
+  }, [tourActive]);
 
   // Persist session ID to localStorage so refresh stays on the same session
   useEffect(() => {
@@ -373,6 +391,9 @@ function StudentApp({ onBackToDashboard }) {
   const [downloadOpen, setDownloadOpen] = useState(false);
   const downloadRef = useRef(null);
 
+  const [profileOpen, setProfileOpen] = useState(false);
+  const profileRef = useRef(null);
+
   // Close dropdown on outside click
   useEffect(() => {
     if (!downloadOpen) return;
@@ -385,6 +406,18 @@ function StudentApp({ onBackToDashboard }) {
     return () => document.removeEventListener("mousedown", handleClick);
   }, [downloadOpen]);
 
+  // Close profile menu on outside click
+  useEffect(() => {
+    if (!profileOpen) return;
+    function handleClick(e) {
+      if (profileRef.current && !profileRef.current.contains(e.target)) {
+        setProfileOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [profileOpen]);
+
   async function handleDownloadPDF() {
     setDownloadOpen(false);
     if (!sessionId) return;
@@ -396,43 +429,17 @@ function StudentApp({ onBackToDashboard }) {
     }
   }
 
-  const [cfData, setCfData] = useState(null);
-  const [cfOpen, setCfOpen] = useState(false);
-  const [cfLoading, setCfLoading] = useState(false);
-
-  async function handleOpenConceptualFramework() {
+  // Open the Conceptual Framework editor in a NEW TAB so students can keep their
+  // research design open alongside it and edit back and forth. The new tab loads
+  // the app with ?view=cf&session=<id>, which renders the standalone CF page.
+  function handleOpenConceptualFramework() {
     setDownloadOpen(false);
     if (!sessionId) return;
-    try {
-      setCfLoading(true);
-      const data = await API.getConceptualFrameworkData(sessionId);
-      setCfData(data);
-      setCfOpen(true);
-    } catch (e) {
-      console.error("CF data load failed:", e);
-      setStatus("Failed to load conceptual framework data.");
-    } finally {
-      setCfLoading(false);
-    }
+    const url = `${window.location.origin}${window.location.pathname}?view=cf&session=${encodeURIComponent(sessionId)}`;
+    window.open(url, "_blank", "noopener");
   }
 
   const step3Completed = completedSteps.includes(3);
-
-  if (cfLoading) {
-    return (
-      <div className="cf-loading-overlay">
-        <div className="cf-loading-card">
-          <div className="cf-loading-spinner" />
-          <p className="cf-loading-text">Generating Conceptual Framework...</p>
-          <p className="cf-loading-sub">The AI is analyzing your research data to structure the diagram.</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (cfOpen && cfData) {
-    return <ConceptualFrameworkEditor data={cfData} onClose={() => setCfOpen(false)} />;
-  }
 
   return (
     <div className={`hop-wrap${tourActive ? " hop-wrap--touring" : ""}`}>
@@ -464,13 +471,41 @@ function StudentApp({ onBackToDashboard }) {
             </svg>
           </button>
         </div>
+        {/* Center: Layout personalization — toggle side panels */}
+        <div className="hop-header__center">
+          <div className="cmd-bar cmd-bar--header" role="group" aria-label="Personalize the layout">
+            <span className="cmd-bar__hint">Personalize the layout</span>
+            <div className="cmd-bar__divider" />
+            <button
+              className={`cmd-bar__btn cmd-bar__btn--lesson${leftOpen ? " cmd-bar__btn--active" : ""}`}
+              onClick={() => setLeftOpen((o) => !o)}
+              aria-label="Toggle resources panel"
+              aria-pressed={leftOpen}
+            >
+              <span className="cmd-bar__icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                  <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                </svg>
+              </span>
+              <span className="cmd-bar__label">Resources</span>
+            </button>
+            <button
+              className={`cmd-bar__btn cmd-bar__btn--assistant${rightOpen ? " cmd-bar__btn--active" : ""}`}
+              onClick={() => setRightOpen((o) => !o)}
+              aria-label="Toggle assistant panel"
+              aria-pressed={rightOpen}
+            >
+              <span className="cmd-bar__icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                </svg>
+              </span>
+              <span className="cmd-bar__label">Assistant</span>
+            </button>
+          </div>
+        </div>
         <div className="hop-header__right">
-          {user && (
-            <div className="hop-user">
-              <span className="hop-user__avatar">{user.name?.charAt(0).toUpperCase()}</span>
-              <span className="hop-user__name">{user.name}</span>
-            </div>
-          )}
           <FeedbackPanel />
           <button className="theme-toggle" onClick={toggleTheme} aria-label="Toggle dark mode" title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}>
             {theme === "dark" ? "\u2600" : "\u263E"}
@@ -498,17 +533,63 @@ function StudentApp({ onBackToDashboard }) {
                   className={`hop-download__item${!step3Completed ? " hop-download__item--disabled" : ""}`}
                   onClick={step3Completed ? handleOpenConceptualFramework : undefined}
                   disabled={!step3Completed}
-                  title={!step3Completed ? "Complete Step 3 (Literature) to unlock" : "Edit & Print Conceptual Framework"}
+                  title={!step3Completed ? "Complete Step 3 (Literature) to unlock" : "Edit & Print Conceptual Framework (opens in a new tab)"}
                 >
                   <span className="hop-download__icon" style={{ background: "#6AA84F" }}>CF</span>
                   Conceptual Framework
-                  {!step3Completed && <span className="hop-download__lock">Step 3</span>}
+                  {!step3Completed ? (
+                    <span className="hop-download__lock">Step 3</span>
+                  ) : (
+                    <span className="hop-download__newtab" aria-hidden="true" title="Opens in a new tab">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                        <polyline points="15 3 21 3 21 9"/>
+                        <line x1="10" y1="14" x2="21" y2="3"/>
+                      </svg>
+                    </span>
+                  )}
                 </button>
               </div>
             )}
           </div>
-          <span className="hop-header__divider" />
-          <button className="hop-header__signout" onClick={logout}>Sign Out</button>
+          {user && (
+            <>
+              <span className="hop-header__divider" />
+              <div className="hop-profile" ref={profileRef}>
+                <button
+                  className={`hop-profile__trigger${profileOpen ? " hop-profile__trigger--open" : ""}`}
+                  onClick={() => setProfileOpen((o) => !o)}
+                  aria-haspopup="menu"
+                  aria-expanded={profileOpen}
+                  title={user.name}
+                >
+                  <span className="hop-user__avatar">{user.name?.charAt(0).toUpperCase()}</span>
+                  <span className="hop-user__name">{user.name}</span>
+                  <span className={`hop-profile__arrow${profileOpen ? " hop-profile__arrow--open" : ""}`}>&#9662;</span>
+                </button>
+                {profileOpen && (
+                  <div className="hop-profile__menu" role="menu">
+                    <div className="hop-profile__info">
+                      <span className="hop-user__avatar hop-user__avatar--lg">{user.name?.charAt(0).toUpperCase()}</span>
+                      <div className="hop-profile__info-text">
+                        <span className="hop-profile__name">{user.name}</span>
+                        {user.email && <span className="hop-profile__email">{user.email}</span>}
+                      </div>
+                    </div>
+                    <div className="hop-profile__sep" />
+                    <button className="hop-profile__item" onClick={logout} role="menuitem">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                        <polyline points="16 17 21 12 16 7"/>
+                        <line x1="21" y1="12" x2="9" y2="12"/>
+                      </svg>
+                      Sign Out
+                    </button>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
         </div>
       </header>
 
@@ -534,6 +615,10 @@ function StudentApp({ onBackToDashboard }) {
           status={status}
           educationLevel={user?.education_level || "high_school"}
           tourActive={tourActive}
+          leftOpen={leftOpen}
+          rightOpen={rightOpen}
+          onCloseLeft={() => setLeftOpen(false)}
+          onCloseRight={() => setRightOpen(false)}
         />
       </div>
 
@@ -577,9 +662,66 @@ function StudentApp({ onBackToDashboard }) {
 
 /* ----- App router (default export) ----- */
 
+/* ----- Standalone Conceptual Framework page (opened in its own tab) ----- */
+function ConceptualFrameworkPage({ sessionId }) {
+  const [data, setData] = useState(null);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const d = await API.getConceptualFrameworkData(sessionId);
+        if (!cancelled) setData(d);
+      } catch (e) {
+        console.error("CF data load failed:", e);
+        if (!cancelled) setError("Failed to load your conceptual framework. Please return to your design and try again.");
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [sessionId]);
+
+  // Closing returns to the design: close this tab if it was opened by the app,
+  // otherwise fall back to navigating home.
+  const handleClose = () => {
+    window.close();
+    window.location.href = window.location.pathname;
+  };
+
+  if (error) {
+    return (
+      <div className="cf-loading-overlay">
+        <div className="cf-loading-card">
+          <p className="cf-loading-text">Couldn’t open the Conceptual Framework</p>
+          <p className="cf-loading-sub">{error}</p>
+          <button className="hop-header__back-btn" style={{ marginTop: 12 }} onClick={handleClose}>Close tab</button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!data) {
+    return (
+      <div className="cf-loading-overlay">
+        <div className="cf-loading-card">
+          <div className="cf-loading-spinner" />
+          <p className="cf-loading-text">Generating Conceptual Framework...</p>
+          <p className="cf-loading-sub">The AI is analyzing your research data to structure the diagram.</p>
+        </div>
+      </div>
+    );
+  }
+
+  return <ConceptualFrameworkEditor data={data} onClose={handleClose} />;
+}
+
 export default function App() {
   const { user, loading } = useAuth();
   const [teacherView, setTeacherView] = useState("dashboard");
+
+  // Detect the standalone Conceptual Framework tab (?view=cf&session=<id>)
+  const cfParams = new URLSearchParams(window.location.search);
+  const cfSessionId = cfParams.get("view") === "cf" ? cfParams.get("session") : null;
 
   if (loading) {
     return (
@@ -592,6 +734,8 @@ export default function App() {
   }
 
   if (!user) return <LoginPage />;
+  // Standalone Conceptual Framework tab — render the editor directly regardless of role
+  if (cfSessionId) return <ConceptualFrameworkPage sessionId={cfSessionId} />;
   if (user.role === "admin") return <AdminDashboard />;
   // All teachers/faculty get dashboard + ability to create research designs
   if (user.role === "teacher") {
