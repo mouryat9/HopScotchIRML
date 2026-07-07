@@ -1,6 +1,6 @@
 // src/App.jsx
 import "./App.css";
-import React, { useEffect, useState, useRef, useCallback } from "react";
+import React, { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { API } from "./api";
 import SplitPanelLayout from "./SplitPanelLayout";
 import { useAuth } from "./AuthContext";
@@ -157,22 +157,43 @@ const STEP_LABELS = [
   "Data", "Analysis", "Trustworthiness", "Ethics",
 ];
 
-function StepProgressBar({ activeStep, completedSteps = [], onStepChange }) {
+/* ----- Teacher-controlled access/pacing (Phase 2). Mirrors backend logic. ----- */
+const STEP_PHASES = [[1, 2, 3], [4, 5, 6], [7, 8, 9]];
+function phaseOfStep(step) {
+  const i = STEP_PHASES.findIndex((ph) => ph.includes(step));
+  return i >= 0 ? i + 1 : 1;
+}
+function isStepLocked(step, accessMode = "full", unlockedPhase = null, completedSteps = []) {
+  if (accessMode === "step") {
+    if (step <= 1 || completedSteps.includes(step)) return false;
+    let firstIncomplete = 10;
+    for (let n = 1; n <= 9; n++) { if (!completedSteps.includes(n)) { firstIncomplete = n; break; } }
+    return step > firstIncomplete;
+  }
+  if (accessMode === "phase") {
+    return phaseOfStep(step) > (unlockedPhase || 1);
+  }
+  return false;
+}
+
+function StepProgressBar({ activeStep, completedSteps = [], onStepChange, lockedSteps = [] }) {
   return (
     <nav className="step-progress" aria-label="Research steps">
       {STEP_LABELS.map((label, i) => {
         const num = i + 1;
         const isActive = num === activeStep;
         const isCompleted = completedSteps.includes(num);
+        const isLocked = lockedSteps.includes(num);
         return (
           <div className="step-progress__item" key={num}>
             <button
-              className={`step-progress__dot${isActive ? " step-progress__dot--active" : ""}${isCompleted ? " step-progress__dot--completed" : ""}`}
-              onClick={() => onStepChange(num)}
-              aria-label={`Step ${num}: ${label}`}
-              title={label}
+              className={`step-progress__dot${isActive ? " step-progress__dot--active" : ""}${isCompleted ? " step-progress__dot--completed" : ""}${isLocked ? " step-progress__dot--locked" : ""}`}
+              onClick={() => !isLocked && onStepChange(num)}
+              disabled={isLocked}
+              aria-label={`Step ${num}: ${label}${isLocked ? " (locked by your teacher)" : ""}`}
+              title={isLocked ? `${label} \u2014 locked by your teacher` : label}
             >
-              {isCompleted ? "\u2713" : num}
+              {isLocked ? "\ud83d\udd12" : isCompleted ? "\u2713" : num}
             </button>
             {num < 9 && <div className={`step-progress__line${isCompleted ? " step-progress__line--completed" : ""}`} />}
           </div>
@@ -206,7 +227,7 @@ const HOPSCOTCH_COLUMNS = [
 ];
 
 /* ----- Animated step diagram ----- */
-function StepDiagram({ activeStep, completedSteps = [], onStepChange }) {
+function StepDiagram({ activeStep, completedSteps = [], onStepChange, lockedSteps = [] }) {
   return (
     <div className="hop-diagram">
       {HOPSCOTCH_COLUMNS.map((col, ci) => (
@@ -215,18 +236,22 @@ function StepDiagram({ activeStep, completedSteps = [], onStepChange }) {
             const card = STEP_CARDS[stepNum - 1];
             const isActive = activeStep === stepNum;
             const isCompleted = completedSteps.includes(stepNum);
+            const isLocked = lockedSteps.includes(stepNum);
             return (
               <button
                 key={stepNum}
-                className={`hop-step-card hop-step-card--img${isActive ? " hop-step-card--active" : ""}${isCompleted ? " hop-step-card--completed" : ""}`}
+                className={`hop-step-card hop-step-card--img${isActive ? " hop-step-card--active" : ""}${isCompleted ? " hop-step-card--completed" : ""}${isLocked ? " hop-step-card--locked" : ""}`}
                 style={{
                   "--card-color": card.color,
                   animationDelay: `${ci * 0.07}s`,
                 }}
-                onClick={() => onStepChange(stepNum)}
-                aria-label={`Step ${stepNum}: ${card.label}`}
+                onClick={() => !isLocked && onStepChange(stepNum)}
+                disabled={isLocked}
+                aria-label={`Step ${stepNum}: ${card.label}${isLocked ? " (locked by your teacher)" : ""}`}
+                title={isLocked ? "Locked by your teacher" : card.label}
               >
                 <img src={`/Step${stepNum}.png`} alt={`Step ${stepNum}: ${card.label}`} className="hop-step-card__img" />
+                {isLocked && <span className="hop-step-card__lock">🔒</span>}
               </button>
             );
           })}
@@ -249,6 +274,27 @@ function StudentApp({ onBackToDashboard }) {
   const [chatRefreshKey, setChatRefreshKey] = useState(0);
   const [autoMessage, setAutoMessage] = useState(null);
   const [historyOpen, setHistoryOpen] = useState(false);
+
+  // Teacher-controlled modes: AI on/off + access/pacing (Phase 2).
+  // Seeded from the login response, then kept fresh so teacher changes propagate.
+  const [aiEnabled, setAiEnabled] = useState(user?.ai_enabled ?? true);
+  const [accessMode, setAccessMode] = useState(user?.access_mode || "full");
+  const [unlockedPhase, setUnlockedPhase] = useState(user?.unlocked_phase ?? null);
+  useEffect(() => {
+    let cancelled = false;
+    const refresh = async () => {
+      try {
+        const me = await API.me();
+        if (cancelled) return;
+        if (typeof me.ai_enabled === "boolean") setAiEnabled(me.ai_enabled);
+        if (me.access_mode) setAccessMode(me.access_mode);
+        setUnlockedPhase(me.unlocked_phase ?? null);
+      } catch {}
+    };
+    refresh();
+    const id = setInterval(refresh, 45000); // pick up teacher changes within ~45s
+    return () => { cancelled = true; clearInterval(id); };
+  }, []);
 
   // Layout personalization: which side panels are open (lifted here so the
   // toggle controls can live in the header)
@@ -350,7 +396,18 @@ function StudentApp({ onBackToDashboard }) {
     setRunTour(true);
   }
 
+  // Steps locked by the teacher's access/pacing mode (Phase 2)
+  const lockedSteps = useMemo(() => {
+    if (accessMode === "full") return [];
+    const locked = [];
+    for (let n = 1; n <= 9; n++) {
+      if (isStepLocked(n, accessMode, unlockedPhase, completedSteps)) locked.push(n);
+    }
+    return locked;
+  }, [accessMode, unlockedPhase, completedSteps]);
+
   function handleStepChange(step) {
+    if (lockedSteps.includes(step)) return; // teacher has locked this step
     setActiveStep(step);
     if (sessionId) {
       API.updateActiveStep(sessionId, step).catch(console.error);
@@ -596,10 +653,10 @@ function StudentApp({ onBackToDashboard }) {
       {/* Content area — centered max-width */}
       <div className="hop-content">
         {/* Step progress bar */}
-        <StepProgressBar activeStep={activeStep} completedSteps={completedSteps} onStepChange={handleStepChange} />
+        <StepProgressBar activeStep={activeStep} completedSteps={completedSteps} onStepChange={handleStepChange} lockedSteps={lockedSteps} />
 
         {/* Step diagram under header */}
-        <StepDiagram activeStep={activeStep} completedSteps={completedSteps} onStepChange={handleStepChange} />
+        <StepDiagram activeStep={activeStep} completedSteps={completedSteps} onStepChange={handleStepChange} lockedSteps={lockedSteps} />
 
         {/* Split-panel tabbed layout: Resource / Step Details / Chat */}
         <SplitPanelLayout
@@ -619,6 +676,7 @@ function StudentApp({ onBackToDashboard }) {
           rightOpen={rightOpen}
           onCloseLeft={() => setLeftOpen(false)}
           onCloseRight={() => setRightOpen(false)}
+          aiEnabled={aiEnabled}
         />
       </div>
 

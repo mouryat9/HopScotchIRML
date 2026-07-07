@@ -21,6 +21,8 @@ export default function SplitPanelLayout({
   rightOpen = true,
   onCloseLeft,
   onCloseRight,
+  // Teacher-controlled: when false, the AI assistant is turned off for this class
+  aiEnabled = true,
 }) {
   return (
     <div className="pin-layout">
@@ -73,7 +75,7 @@ export default function SplitPanelLayout({
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
             </button>
           </div>
-          <div className="pin-panel__content">
+          <div className={`pin-panel__content${!aiEnabled ? " pin-panel__content--ai-off" : ""}`}>
             {loading && !sessionId ? (
               <div className="badge badge--neutral">Starting session...</div>
             ) : (
@@ -84,9 +86,25 @@ export default function SplitPanelLayout({
                   refreshKey={chatRefreshKey}
                   autoMessage={autoMessage}
                   onAutoMessageSent={onAutoMessageSent}
+                  aiEnabled={aiEnabled}
                 />
                 {status && (
                   <div className="badge" style={{ marginTop: 8 }}>{status}</div>
+                )}
+                {!aiEnabled && (
+                  <div className="ai-off-overlay">
+                    <div className="ai-off-overlay__card">
+                      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                        <line x1="4" y1="4" x2="20" y2="20" />
+                      </svg>
+                      <div className="ai-off-overlay__title">AI assistant is turned off</div>
+                      <div className="ai-off-overlay__text">
+                        Your teacher has turned off the AI assistant for now, so you can work
+                        through your research design on your own. It may be turned back on later.
+                      </div>
+                    </div>
+                  </div>
                 )}
               </>
             )}

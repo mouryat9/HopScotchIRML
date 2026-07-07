@@ -86,6 +86,12 @@ export const API = {
     return res.json();
   },
 
+  async me() {
+    const res = await fetch(`${API_BASE}/auth/me`, { headers: authHeaders() });
+    if (!res.ok) throw new Error(`me failed: ${res.status}`);
+    return res.json();
+  },
+
   // ---------- Teacher / Class Management ----------
 
   async createClass({ class_name, student_count, password }) {
@@ -97,6 +103,19 @@ export const API = {
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       throw new Error(data.detail || `Failed to create class: ${res.status}`);
+    }
+    return res.json();
+  },
+
+  async updateClassSettings(class_id, settings) {
+    const res = await fetch(`${API_BASE}/teacher/class/${class_id}/settings`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify(settings),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.detail || `Failed to update class settings: ${res.status}`);
     }
     return res.json();
   },

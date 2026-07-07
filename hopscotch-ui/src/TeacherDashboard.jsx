@@ -19,6 +19,35 @@ const STEP_COLORS = [
   "#00AEEF", "#F0B429", "#F5922A", "#7B8794",
 ];
 
+// Class avatar helpers — deterministic initials + color for a professional anchor
+const CLASS_COLORS = [
+  "#2B5EA7", "#1A8A7D", "#7A4FBF", "#C0562B", "#3D7A2E",
+  "#B0842A", "#0E7490", "#B23A6E",
+];
+function classInitials(name = "") {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  if (!words.length) return "C";
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+  return (words[0][0] + words[words.length - 1][0]).toUpperCase();
+}
+function classColor(name = "") {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+  return CLASS_COLORS[h % CLASS_COLORS.length];
+}
+
+// Access/pacing (Phase 2) — 9 steps grouped into 3 phases (mirrors backend)
+const ACCESS_MODES = [
+  { id: "full", label: "Full access" },
+  { id: "step", label: "Step-by-step" },
+  { id: "phase", label: "Phase unlock" },
+];
+const ACCESS_PHASES = [
+  { n: 1, label: "Phase 1", name: "Foundations", range: "Steps 1–3" },
+  { n: 2, label: "Phase 2", name: "Design & Data", range: "Steps 4–6" },
+  { n: 3, label: "Phase 3", name: "Analysis & Integrity", range: "Steps 7–9" },
+];
+
 function timeAgo(dateStr) {
   if (!dateStr) return "";
   const ts = dateStr.endsWith("Z") ? dateStr : dateStr + "Z";
@@ -47,6 +76,7 @@ export default function TeacherDashboard({ onOpenDesigns }) {
   const creatingRef = useRef(false);
   const [createResult, setCreateResult] = useState(null);
   const [classError, setClassError] = useState("");
+  const [showCreate, setShowCreate] = useState(false);
   const [expandedClass, setExpandedClass] = useState(null);
   const [loadingClasses, setLoadingClasses] = useState(true);
 
@@ -122,6 +152,87 @@ export default function TeacherDashboard({ onOpenDesigns }) {
     } finally {
       creatingRef.current = false;
       setCreating(false);
+    }
+  }
+
+  // Copy-to-clipboard for class credentials (small professional touch)
+  const [copied, setCopied] = useState(null); // `${class_id}:${field}`
+  async function copyValue(text, key) {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(key);
+      setTimeout(() => setCopied((c) => (c === key ? null : c)), 1400);
+    } catch {}
+  }
+
+  const [detailClass, setDetailClass] = useState(null); // class object shown in the detail modal
+
+  function closeCreate() {
+    setShowCreate(false);
+    setCreateResult(null);
+    setClassError("");
+    setClassName("");
+    setStudentCount(10);
+    setClassPassword("");
+  }
+
+  // Profile dropdown (top-right)
+  const [profileOpen, setProfileOpen] = useState(false);
+  const profileRef = useRef(null);
+  useEffect(() => {
+    if (!profileOpen) return;
+    function handleClick(e) {
+      if (profileRef.current && !profileRef.current.contains(e.target)) setProfileOpen(false);
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [profileOpen]);
+
+  // Teacher-controlled AI mode: turn the assistant on/off for a whole class.
+  const [savingSettings, setSavingSettings] = useState(null); // class_id being saved
+  async function toggleClassAI(cls) {
+    const next = !(cls.settings?.ai_enabled ?? true);
+    setSavingSettings(cls.class_id);
+    // Optimistic update
+    setClasses((prev) => prev.map((c) =>
+      c.class_id === cls.class_id
+        ? { ...c, settings: { ...(c.settings || {}), ai_enabled: next } }
+        : c
+    ));
+    try {
+      const res = await API.updateClassSettings(cls.class_id, { ai_enabled: next });
+      setClasses((prev) => prev.map((c) =>
+        c.class_id === cls.class_id ? { ...c, settings: res.settings } : c
+      ));
+    } catch (err) {
+      // Revert on failure
+      setClasses((prev) => prev.map((c) =>
+        c.class_id === cls.class_id
+          ? { ...c, settings: { ...(c.settings || {}), ai_enabled: !next } }
+          : c
+      ));
+      setClassError(err.message || "Failed to update AI setting");
+    } finally {
+      setSavingSettings(null);
+    }
+  }
+
+  // Generic class-settings patch (access mode, phase unlock, …) with optimistic update.
+  async function patchClassSettings(cls, patch) {
+    setSavingSettings(cls.class_id);
+    setClasses((prev) => prev.map((c) =>
+      c.class_id === cls.class_id ? { ...c, settings: { ...(c.settings || {}), ...patch } } : c
+    ));
+    try {
+      const res = await API.updateClassSettings(cls.class_id, patch);
+      setClasses((prev) => prev.map((c) =>
+        c.class_id === cls.class_id ? { ...c, settings: res.settings } : c
+      ));
+    } catch (err) {
+      setClassError(err.message || "Failed to update settings");
+      try { const fresh = await API.getTeacherClasses(); setClasses(fresh.classes || []); } catch {}
+    } finally {
+      setSavingSettings(null);
     }
   }
 
@@ -217,69 +328,127 @@ export default function TeacherDashboard({ onOpenDesigns }) {
     return { stepCompletion, progressDist, classAvg };
   }, [filteredSessions, sessions]);
 
+  const NAV_ITEMS = [
+    { id: "classes", label: "My Classes", icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+    ) },
+    { id: "progress", label: "Student Progress", icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+    ) },
+  ];
+  const pageTitle = tab === "classes" ? "My Classes" : "Student Progress";
+  const pageSub = tab === "classes"
+    ? "Create classes, share logins, and control each class's AI access."
+    : "Track how your students are progressing through the 9-step research design.";
+
   return (
-    <div className="td">
-      {/* ── Header ── */}
-      <header className="td-header">
-        <div className="td-header__left">
+    <div className="td td--shell">
+      <aside className="td-sidebar">
+        <div className="td-sidebar__brand">
           <img
             src={theme === "dark" ? "/Hopscotch4-all-logo-White-alpha.png" : "/Hopscotch-4-all-logo-alpha.png"}
             alt="Hopscotch"
-            className="td-header__logo"
+            className="td-sidebar__logo"
           />
         </div>
-        <div className="td-header__right">
-          {user && (
-            <div className="td-header__user">
-              <span className="td-header__avatar">{user.name?.charAt(0).toUpperCase()}</span>
-              <span className="td-header__name">{user.name}</span>
-            </div>
-          )}
-          {onOpenDesigns && (
-            <button className="td-btn td-btn--primary td-btn--sm" onClick={onOpenDesigns}>
-              Create Research Design
+        <nav className="td-sidebar__nav">
+          {NAV_ITEMS.map((t) => (
+            <button
+              key={t.id}
+              className={`td-sidebar__item${tab === t.id ? " td-sidebar__item--active" : ""}`}
+              onClick={() => handleTabChange(t.id)}
+            >
+              <span className="td-sidebar__item-icon">{t.icon}</span>
+              <span>{t.label}</span>
             </button>
-          )}
-          <button className="theme-toggle" onClick={toggleTheme} aria-label="Toggle dark mode" title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}>
-            {theme === "dark" ? "\u2600" : "\u263E"}
-          </button>
-          <button className="td-header__signout" onClick={logout}>Sign Out</button>
-        </div>
-      </header>
+          ))}
+        </nav>
+      </aside>
+
+      <div className="td-main">
+        <header className="td-main__head">
+          <div className="td-main__headtext">
+            <h1 className="td-main__title">{pageTitle}</h1>
+            <p className="td-main__sub">{pageSub}</p>
+          </div>
+          <div className="td-main__actions">
+            {onOpenDesigns && (
+              <button className="td-btn td-btn--primary td-btn--sm" onClick={onOpenDesigns}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 5 }}><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Create Design
+              </button>
+            )}
+            <button className="theme-toggle" onClick={toggleTheme} aria-label="Toggle dark mode" title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}>
+              {theme === "dark" ? "☀" : "☾"}
+            </button>
+            {user && (
+              <div className="hop-profile" ref={profileRef}>
+                <button
+                  className={`hop-profile__trigger${profileOpen ? " hop-profile__trigger--open" : ""}`}
+                  onClick={() => setProfileOpen((o) => !o)}
+                  aria-haspopup="menu"
+                  aria-expanded={profileOpen}
+                  title={user.name}
+                >
+                  <span className="hop-user__avatar">{user.name?.charAt(0).toUpperCase()}</span>
+                  <span className="hop-user__name">{user.name}</span>
+                  <span className={`hop-profile__arrow${profileOpen ? " hop-profile__arrow--open" : ""}`}>&#9662;</span>
+                </button>
+                {profileOpen && (
+                  <div className="hop-profile__menu" role="menu">
+                    <div className="hop-profile__info">
+                      <span className="hop-user__avatar hop-user__avatar--lg">{user.name?.charAt(0).toUpperCase()}</span>
+                      <div className="hop-profile__info-text">
+                        <span className="hop-profile__name">{user.name}</span>
+                        <span className="hop-profile__email">{user.education_level === "higher_ed" ? "Faculty" : "Teacher"}</span>
+                      </div>
+                    </div>
+                    <div className="hop-profile__sep" />
+                    <button className="hop-profile__item" onClick={logout} role="menuitem">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                        <polyline points="16 17 21 12 16 7"/>
+                        <line x1="21" y1="12" x2="9" y2="12"/>
+                      </svg>
+                      Sign Out
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </header>
 
       {/* ── Summary stats ── */}
       <div className="td-stats">
         <div className="td-stats__card">
-          <span className="td-stats__number">{classes.length}</span>
-          <span className="td-stats__label">Classes</span>
+          <span className="td-stats__icon td-stats__icon--blue">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+          </span>
+          <div className="td-stats__text">
+            <span className="td-stats__number">{classes.length}</span>
+            <span className="td-stats__label">Classes</span>
+          </div>
         </div>
         <div className="td-stats__card">
-          <span className="td-stats__number">{totalStudents}</span>
-          <span className="td-stats__label">Students</span>
+          <span className="td-stats__icon td-stats__icon--green">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          </span>
+          <div className="td-stats__text">
+            <span className="td-stats__number">{totalStudents}</span>
+            <span className="td-stats__label">Students</span>
+          </div>
         </div>
         <div className="td-stats__card">
-          <span className="td-stats__number">{sessions.length}</span>
-          <span className="td-stats__label">Active Sessions</span>
+          <span className="td-stats__icon td-stats__icon--amber">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+          </span>
+          <div className="td-stats__text">
+            <span className="td-stats__number">{sessions.length}</span>
+            <span className="td-stats__label">Active Sessions</span>
+          </div>
         </div>
       </div>
-
-      {/* ── Nav tabs ── */}
-      <nav className="td-nav">
-        <div className="td-nav__inner">
-          {[
-            { id: "classes", label: "My Classes" },
-            { id: "progress", label: "Student Progress" },
-          ].map((t) => (
-            <button
-              key={t.id}
-              className={`td-nav__tab${tab === t.id ? " td-nav__tab--active" : ""}`}
-              onClick={() => handleTabChange(t.id)}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
-      </nav>
 
       {/* ── Content ── */}
       <main className="td-content">
@@ -287,154 +456,92 @@ export default function TeacherDashboard({ onOpenDesigns }) {
         {/* ===== MY CLASSES TAB ===== */}
         {tab === "classes" && (
           <div className="td-classes">
-            {/* Create form */}
-            <section className="td-card">
-              <div className="td-card__header">
-                <h2 className="td-card__title">Create a New Class</h2>
-                <p className="td-card__desc">
-                  Student accounts will be auto-generated with the shared password you set below.
-                </p>
-              </div>
-              <form className="td-form" onSubmit={handleCreateClass}>
-                <div className="td-form__grid">
-                  <div className="td-form__group td-form__group--grow">
-                    <label className="td-form__label">Class Name</label>
-                    <input
-                      type="text"
-                      className="td-form__input"
-                      placeholder="e.g. Period 3 Research"
-                      value={className}
-                      onChange={(e) => setClassName(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div className="td-form__group td-form__group--narrow">
-                    <label className="td-form__label">Students</label>
-                    <input
-                      type="number"
-                      className="td-form__input"
-                      min={1}
-                      max={100}
-                      value={studentCount}
-                      onChange={(e) => setStudentCount(parseInt(e.target.value) || 1)}
-                      required
-                    />
-                  </div>
-                  <div className="td-form__group td-form__group--grow">
-                    <label className="td-form__label">Shared Password</label>
-                    <input
-                      type="text"
-                      className="td-form__input"
-                      placeholder="Password for all students"
-                      value={classPassword}
-                      onChange={(e) => setClassPassword(e.target.value)}
-                      required
-                      minLength={4}
-                    />
-                  </div>
-                </div>
-                {classError && <div className="td-alert td-alert--error">{classError}</div>}
-                <button type="submit" className="td-btn td-btn--primary" disabled={creating}>
-                  {creating ? "Creating..." : "Create Class"}
-                </button>
-              </form>
-
-              {/* Success result */}
-              {createResult && (
-                <div className="td-result">
-                  <div className="td-result__header">
-                    <span className="td-result__badge">Created</span>
-                    <button className="td-result__dismiss" onClick={() => setCreateResult(null)}>&times;</button>
-                  </div>
-                  <div className="td-kv-row">
-                    <div className="td-kv">
-                      <span className="td-kv__label">Class Code</span>
-                      <span className="td-kv__value">{createResult.class_code}</span>
-                    </div>
-                    <div className="td-kv">
-                      <span className="td-kv__label">Password</span>
-                      <span className="td-kv__value">{createResult.password}</span>
-                    </div>
-                    <div className="td-kv">
-                      <span className="td-kv__label">Students</span>
-                      <span className="td-kv__value">{createResult.students?.length || 0}</span>
-                    </div>
-                  </div>
-                  <div className="td-roster">
-                    {(createResult.students || []).map((s) => (
-                      <span className="td-roster__chip" key={s.username}>{s.username}</span>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </section>
-
-            {/* Class list */}
+            {/* Class card grid */}
             <section className="td-section">
-              <h2 className="td-section__title">
-                Your Classes
-                {!loadingClasses && <span className="td-section__count">{classes.length}</span>}
-              </h2>
+              <div className="td-section__head">
+                <h2 className="td-section__title">
+                  Your Classes
+                  {!loadingClasses && <span className="td-section__count">{classes.length}</span>}
+                </h2>
+                <button
+                  className="td-btn td-btn--primary td-btn--sm"
+                  onClick={() => { setClassError(""); setCreateResult(null); setShowCreate(true); }}
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 5 }}><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                  New Class
+                </button>
+              </div>
 
               {loadingClasses && <p className="td-muted">Loading classes...</p>}
 
-              {!loadingClasses && classes.length === 0 && (
-                <div className="td-empty">
-                  <p>No classes yet. Create one above to get started.</p>
-                </div>
-              )}
-
-              <div className="td-class-list">
+              <div className="td-cardgrid">
+                {/* Add-class tile */}
+                {!loadingClasses && (
+                  <button
+                    className="td-addcard"
+                    onClick={() => { setClassError(""); setCreateResult(null); setShowCreate(true); }}
+                  >
+                    <span className="td-addcard__icon">
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    </span>
+                    <span className="td-addcard__label">New Class</span>
+                    <span className="td-addcard__desc">Auto-generate student logins</span>
+                  </button>
+                )}
                 {!loadingClasses && classes.map((cls) => {
-                  const isExpanded = expandedClass === cls.class_id;
                   const students = cls.students || [];
+                  const aiOn = cls.settings?.ai_enabled ?? true;
+                  const saving = savingSettings === cls.class_id;
                   return (
-                    <div className={`td-class${isExpanded ? " td-class--open" : ""}`} key={cls.class_id}>
-                      <button
-                        className="td-class__header"
-                        onClick={() => setExpandedClass(isExpanded ? null : cls.class_id)}
-                      >
-                        <div className="td-class__title">{cls.class_name}</div>
-                        <div className="td-class__meta">
-                          <span className="td-class__tag">{cls.class_code}</span>
-                          <span className="td-class__stat">{students.length} students</span>
-                          <span className="td-class__date">
-                            {cls.created_at ? new Date(cls.created_at).toLocaleDateString() : ""}
-                          </span>
-                        </div>
-                        <span className={`td-class__chevron${isExpanded ? " td-class__chevron--open" : ""}`}>
-                          &#9662;
+                    <div className="td-ccard" key={cls.class_id}>
+                      <div className="td-ccard__top">
+                        <span className="td-ccard__avatar" style={{ background: classColor(cls.class_name) }}>
+                          {classInitials(cls.class_name)}
                         </span>
-                      </button>
-
-                      {isExpanded && (
-                        <div className="td-class__body">
-                          <div className="td-kv-row">
-                            <div className="td-kv">
-                              <span className="td-kv__label">Class Code</span>
-                              <span className="td-kv__value">{cls.class_code}</span>
-                            </div>
-                            <div className="td-kv">
-                              <span className="td-kv__label">Password</span>
-                              <span className="td-kv__value">{cls.password || "Not available"}</span>
-                            </div>
-                            <div className="td-kv">
-                              <span className="td-kv__label">Students</span>
-                              <span className="td-kv__value">{students.length}</span>
-                            </div>
-                          </div>
-                          <div className="td-roster">
-                            {students.map((s) => (
-                              <span className="td-roster__chip" key={s.username}>{s.username}</span>
-                            ))}
-                          </div>
-                          <div className="td-class__actions">
-                            <button className="td-btn td-btn--outline td-btn--sm" onClick={() => handlePrintCredentials(cls)}>
-                              Print Credentials
-                            </button>
-                          </div>
+                        <div className="td-ccard__titlewrap">
+                          <div className="td-ccard__title" title={cls.class_name}>{cls.class_name}</div>
+                          <span className="td-class__tag">{cls.class_code}</span>
                         </div>
-                      )}
+                        <span className={`td-pill${aiOn ? " td-pill--on" : " td-pill--off"}`}>
+                          <span className="td-pill__dot" /> AI {aiOn ? "On" : "Off"}
+                        </span>
+                      </div>
+
+                      <div className="td-ccard__meta">
+                        <span className="td-ccard__metaitem">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                          {students.length} students
+                        </span>
+                        <span className="td-ccard__metaitem td-ccard__metaitem--muted">
+                          {cls.created_at ? new Date(cls.created_at).toLocaleDateString() : ""}
+                        </span>
+                      </div>
+
+                      {/* AI toggle right on the card */}
+                      <div className="td-ccard__ai">
+                        <span className="td-ccard__ai-label">AI Assistant</span>
+                        <button
+                          type="button"
+                          className={`td-switch${aiOn ? " td-switch--on" : ""}`}
+                          role="switch"
+                          aria-checked={aiOn}
+                          aria-label="Toggle AI assistant for this class"
+                          disabled={saving}
+                          onClick={() => toggleClassAI(cls)}
+                        >
+                          <span className="td-switch__track"><span className="td-switch__thumb" /></span>
+                          <span className="td-switch__state">{saving ? "…" : aiOn ? "On" : "Off"}</span>
+                        </button>
+                      </div>
+
+                      <div className="td-ccard__actions">
+                        <button className="td-btn td-btn--outline td-btn--sm" onClick={() => setDetailClass(cls)}>
+                          Manage
+                        </button>
+                        <button className="td-btn td-btn--ghost td-btn--sm" onClick={() => handlePrintCredentials(cls)}>
+                          Print
+                        </button>
+                      </div>
                     </div>
                   );
                 })}
@@ -464,6 +571,9 @@ export default function TeacherDashboard({ onOpenDesigns }) {
             )}
 
             {/* Charts */}
+            {!loadingSessions && chartData && (
+              <h2 className="td-section__title td-section__title--progress">Class Overview</h2>
+            )}
             {!loadingSessions && chartData && (
               <div className="td-charts">
                 {/* Step Completion Bar Chart */}
@@ -527,7 +637,7 @@ export default function TeacherDashboard({ onOpenDesigns }) {
                           formatter={(val, _, props) => [`${val} avg steps (${props.payload.students} students)`]}
                           contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid var(--hop-border)" }}
                         />
-                        <Bar dataKey="avg" fill="var(--hop-blue)" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="avg" fill="#6C63FF" radius={[6, 6, 0, 0]} />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
@@ -542,6 +652,13 @@ export default function TeacherDashboard({ onOpenDesigns }) {
               <div className="td-empty">
                 <p>No student sessions found yet. Students need to log in and start working first.</p>
               </div>
+            )}
+
+            {!loadingSessions && filteredSessions.length > 0 && (
+              <h2 className="td-section__title td-section__title--progress">
+                Students
+                <span className="td-section__count">{filteredSessions.length}</span>
+              </h2>
             )}
 
             {!loadingSessions && filteredSessions.length > 0 && (
@@ -637,6 +754,7 @@ export default function TeacherDashboard({ onOpenDesigns }) {
           </div>
         )}
       </main>
+      </div>
 
       {/* Student Design View overlay */}
       {viewingStudent && (
@@ -646,6 +764,268 @@ export default function TeacherDashboard({ onOpenDesigns }) {
           className={viewingStudent.class_name}
           onClose={() => setViewingStudent(null)}
         />
+      )}
+
+      {/* Class detail modal */}
+      {detailClass && (() => {
+        const live = classes.find((c) => c.class_id === detailClass.class_id) || detailClass;
+        const students = live.students || [];
+        const aiOn = live.settings?.ai_enabled ?? true;
+        const saving = savingSettings === live.class_id;
+        return (
+          <div className="td-modal" onMouseDown={() => setDetailClass(null)}>
+            <div className="td-modal__card" onMouseDown={(e) => e.stopPropagation()}>
+              <div className="td-modal__head">
+                <span className="td-ccard__avatar" style={{ background: classColor(live.class_name) }}>
+                  {classInitials(live.class_name)}
+                </span>
+                <div className="td-modal__headtext">
+                  <h3 className="td-modal__title">{live.class_name}</h3>
+                  <span className="td-class__tag">{live.class_code}</span>
+                </div>
+                <button className="td-modal__close" onClick={() => setDetailClass(null)} aria-label="Close">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                </button>
+              </div>
+
+              <div className="td-modal__body">
+                {/* Credentials */}
+                <div className="td-cred">
+                  {[
+                    { label: "Class code", value: live.class_code, field: "code" },
+                    { label: "Shared password", value: live.password || "Not available", field: "pw" },
+                  ].map(({ label, value, field }) => {
+                    const key = `${live.class_id}:${field}`;
+                    return (
+                      <div className="td-cred__item" key={field}>
+                        <span className="td-cred__label">{label}</span>
+                        <div className="td-cred__value">
+                          <code>{value}</code>
+                          <button type="button" className="td-copy" onClick={() => copyValue(value, key)} title={`Copy ${label.toLowerCase()}`}>
+                            {copied === key ? "Copied" : "Copy"}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* AI toggle */}
+                <div className="td-mode-row">
+                  <div className="td-mode-row__text">
+                    <span className="td-mode-row__label">AI Assistant</span>
+                    <span className="td-mode-row__desc">
+                      {aiOn
+                        ? "Students can use the AI research assistant."
+                        : "AI is off — students work on their own. Turn it on when they're ready."}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    className={`td-switch${aiOn ? " td-switch--on" : ""}`}
+                    role="switch"
+                    aria-checked={aiOn}
+                    aria-label="Toggle AI assistant for this class"
+                    disabled={saving}
+                    onClick={() => toggleClassAI(live)}
+                  >
+                    <span className="td-switch__track"><span className="td-switch__thumb" /></span>
+                    <span className="td-switch__state">{saving ? "…" : aiOn ? "On" : "Off"}</span>
+                  </button>
+                </div>
+
+                {/* Access / pacing mode */}
+                {(() => {
+                  const mode = live.settings?.access_mode || "full";
+                  const up = live.settings?.unlocked_phase || 1;
+                  return (
+                    <div className="td-access">
+                      <div className="td-mode-row__text" style={{ marginBottom: 8 }}>
+                        <span className="td-mode-row__label">Student access</span>
+                        <span className="td-mode-row__desc">Control which steps students can work on.</span>
+                      </div>
+                      <div className="td-segment">
+                        {ACCESS_MODES.map((opt) => (
+                          <button
+                            key={opt.id}
+                            type="button"
+                            className={`td-segment__btn${mode === opt.id ? " td-segment__btn--active" : ""}`}
+                            disabled={saving}
+                            onClick={() => patchClassSettings(live, {
+                              access_mode: opt.id,
+                              ...(opt.id === "phase" && !live.settings?.unlocked_phase ? { unlocked_phase: 1 } : {}),
+                            })}
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
+
+                      {mode === "step" && (
+                        <p className="td-access__hint">Students must complete each step before the next one unlocks.</p>
+                      )}
+
+                      {mode === "phase" && (
+                        <div className="td-phases">
+                          {ACCESS_PHASES.map((ph) => {
+                            const unlocked = up >= ph.n;
+                            return (
+                              <button
+                                key={ph.n}
+                                type="button"
+                                className={`td-phase${unlocked ? " td-phase--unlocked" : ""}`}
+                                disabled={saving}
+                                onClick={() => patchClassSettings(live, { unlocked_phase: ph.n })}
+                                title={`Unlock through ${ph.label}`}
+                              >
+                                <span className="td-phase__icon">{unlocked ? "🔓" : "🔒"}</span>
+                                <span className="td-phase__text">
+                                  <span className="td-phase__label">{ph.label} · {ph.name}</span>
+                                  <span className="td-phase__range">{ph.range}</span>
+                                </span>
+                              </button>
+                            );
+                          })}
+                          <p className="td-access__hint">Click a phase to unlock everything up to and including it.</p>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+
+                {/* Roster */}
+                <div className="td-class__subhead">
+                  Student logins <span className="td-class__count-mini">{students.length}</span>
+                </div>
+                <div className="td-roster">
+                  {students.map((s) => (
+                    <span className="td-roster__chip" key={s.username}>{s.username}</span>
+                  ))}
+                </div>
+              </div>
+
+              <div className="td-modal__foot">
+                <button className="td-btn td-btn--outline td-btn--sm" onClick={() => handlePrintCredentials(live)}>
+                  Print Credentials
+                </button>
+                <button className="td-btn td-btn--primary td-btn--sm" onClick={() => setDetailClass(null)}>
+                  Done
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Create class modal */}
+      {showCreate && (
+        <div className="td-modal" onMouseDown={closeCreate}>
+          <div className="td-modal__card" onMouseDown={(e) => e.stopPropagation()}>
+            <div className="td-modal__head">
+              <div className="td-modal__headtext">
+                <h3 className="td-modal__title">{createResult ? "Class created" : "Create a new class"}</h3>
+                {!createResult && (
+                  <span className="td-modal__subtitle">Student logins are auto-generated with your shared password.</span>
+                )}
+              </div>
+              <button className="td-modal__close" onClick={closeCreate} aria-label="Close">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+              </button>
+            </div>
+
+            <div className="td-modal__body">
+              {!createResult ? (
+                <form className="td-form" onSubmit={handleCreateClass}>
+                  <div className="td-form__group">
+                    <label className="td-form__label">Class Name</label>
+                    <input
+                      type="text"
+                      className="td-form__input"
+                      placeholder="e.g. Period 3 Research"
+                      value={className}
+                      onChange={(e) => setClassName(e.target.value)}
+                      autoFocus
+                      required
+                    />
+                  </div>
+                  <div className="td-form__grid" style={{ marginTop: 12 }}>
+                    <div className="td-form__group td-form__group--narrow">
+                      <label className="td-form__label">Students</label>
+                      <input
+                        type="number"
+                        className="td-form__input"
+                        min={1}
+                        max={100}
+                        value={studentCount}
+                        onChange={(e) => setStudentCount(parseInt(e.target.value) || 1)}
+                        required
+                      />
+                    </div>
+                    <div className="td-form__group td-form__group--grow">
+                      <label className="td-form__label">Shared Password</label>
+                      <input
+                        type="text"
+                        className="td-form__input"
+                        placeholder="Password for all students"
+                        value={classPassword}
+                        onChange={(e) => setClassPassword(e.target.value)}
+                        required
+                        minLength={4}
+                      />
+                    </div>
+                  </div>
+                  {classError && <div className="td-alert td-alert--error" style={{ marginTop: 12 }}>{classError}</div>}
+                  <div className="td-modal__foot td-modal__foot--inline">
+                    <button type="button" className="td-btn td-btn--ghost td-btn--sm" onClick={closeCreate}>Cancel</button>
+                    <button type="submit" className="td-btn td-btn--primary td-btn--sm" disabled={creating}>
+                      {creating ? "Creating…" : "Create Class"}
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <>
+                  <div className="td-cred">
+                    {[
+                      { label: "Class code", value: createResult.class_code, field: "code" },
+                      { label: "Shared password", value: createResult.password, field: "pw" },
+                    ].map(({ label, value, field }) => {
+                      const key = `new:${field}`;
+                      return (
+                        <div className="td-cred__item" key={field}>
+                          <span className="td-cred__label">{label}</span>
+                          <div className="td-cred__value">
+                            <code>{value}</code>
+                            <button type="button" className="td-copy" onClick={() => copyValue(value, key)}>
+                              {copied === key ? "Copied" : "Copy"}
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="td-class__subhead">
+                    Student logins <span className="td-class__count-mini">{createResult.students?.length || 0}</span>
+                  </div>
+                  <div className="td-roster">
+                    {(createResult.students || []).map((s) => (
+                      <span className="td-roster__chip" key={s.username}>{s.username}</span>
+                    ))}
+                  </div>
+                  <p className="td-modal__note">Share the class code and password with your students, or print the credentials.</p>
+                </>
+              )}
+            </div>
+
+            {createResult && (
+              <div className="td-modal__foot">
+                <button className="td-btn td-btn--outline td-btn--sm" onClick={() => handlePrintCredentials(createResult)}>
+                  Print Credentials
+                </button>
+                <button className="td-btn td-btn--primary td-btn--sm" onClick={closeCreate}>Done</button>
+              </div>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );

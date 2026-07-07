@@ -195,7 +195,7 @@ function isAutoPrompt(msg) {
 
 /* ---------- Main chat component ---------- */
 
-export default function ChatBox({ sessionId, activeStep, refreshKey, autoMessage, onAutoMessageSent }) {
+export default function ChatBox({ sessionId, activeStep, refreshKey, autoMessage, onAutoMessageSent, aiEnabled = true }) {
   const [history, setHistory] = useState([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
@@ -267,6 +267,7 @@ export default function ChatBox({ sessionId, activeStep, refreshKey, autoMessage
   async function send(forcedText, opts = {}) {
     const msg = (forcedText ?? input).trim();
     if (!msg || !sessionId || sendingRef.current) return;
+    if (!aiEnabled) return;  // AI turned off by teacher — ignore sends (incl. auto-messages)
 
     sendingRef.current = true;
     scrolledToResponse.current = false;  // reset so we scroll to the new response start
@@ -411,14 +412,14 @@ export default function ChatBox({ sessionId, activeStep, refreshKey, autoMessage
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={onKey}
-          placeholder="Type your message and press Enter…"
+          placeholder={aiEnabled ? "Type your message and press Enter…" : "The AI assistant is turned off by your teacher."}
           rows={2}
-          disabled={!sessionId || sending}
+          disabled={!aiEnabled || !sessionId || sending}
         />
         <button
           className="btn btn--primary"
           onClick={() => send()}
-          disabled={!input.trim() || sending || !sessionId}
+          disabled={!aiEnabled || !input.trim() || sending || !sessionId}
         >
           {sending ? "Sending…" : "Send"}
         </button>
