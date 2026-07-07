@@ -1,5 +1,6 @@
 // src/StepResourcePanel.jsx
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { GLOSSARY } from "./glossary";
 
 const STEP_VIDEOS = {
   1: "https://share.synthesia.io/embeds/videos/29442014-85bd-4e46-993b-c27216013d33",
@@ -37,6 +38,82 @@ const STEP_GENIALLY_HIGHER_ED = {
   9: "https://view.genially.com/5f614e378cc8340d8feec824",
 };
 
+/* ---- Dictionary tab: searchable, step-aware glossary (works with AI off) ---- */
+function TermCard({ term, def, related }) {
+  return (
+    <div className={`dict-term${related ? " dict-term--related" : ""}`}>
+      <div className="dict-term__name">{term}</div>
+      <div className="dict-term__def">{def}</div>
+    </div>
+  );
+}
+
+function Dictionary({ activeStep }) {
+  const [query, setQuery] = useState("");
+  const q = query.trim().toLowerCase();
+
+  const { related, others } = useMemo(() => {
+    const match = (t) =>
+      !q || t.term.toLowerCase().includes(q) || t.def.toLowerCase().includes(q);
+    const filtered = GLOSSARY.filter(match);
+    const rel = [];
+    const rest = [];
+    for (const t of filtered) {
+      if (t.steps && t.steps.includes(activeStep)) rel.push(t);
+      else rest.push(t);
+    }
+    const byName = (a, b) => a.term.localeCompare(b.term);
+    return { related: rel.sort(byName), others: rest.sort(byName) };
+  }, [q, activeStep]);
+
+  const total = related.length + others.length;
+
+  return (
+    <div className="dict">
+      <div className="dict__search">
+        <svg className="dict__search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+        </svg>
+        <input
+          type="text"
+          className="dict__input"
+          placeholder="Search a term or definition…"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          aria-label="Search the dictionary"
+        />
+        {query && (
+          <button className="dict__clear" onClick={() => setQuery("")} aria-label="Clear search">×</button>
+        )}
+      </div>
+
+      <div className="dict__list">
+        {total === 0 && (
+          <p className="dict__empty">No terms match “{query}”. Try a simpler keyword.</p>
+        )}
+
+        {related.length > 0 && (
+          <>
+            <div className="dict__heading">For this step</div>
+            {related.map((t) => (
+              <TermCard key={t.term} term={t.term} def={t.def} related />
+            ))}
+          </>
+        )}
+
+        {others.length > 0 && (
+          <>
+            <div className="dict__heading">{q ? "Other matches" : "All terms"}</div>
+            {others.map((t) => (
+              <TermCard key={t.term} term={t.term} def={t.def} />
+            ))}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function StepResourcePanel({ activeStep, educationLevel = "high_school" }) {
   const isHighSchool = educationLevel !== "higher_ed";
   const hasVideos = isHighSchool;
@@ -47,69 +124,60 @@ export default function StepResourcePanel({ activeStep, educationLevel = "high_s
   const geniallyUrls = isHighSchool ? STEP_GENIALLY_HIGH_SCHOOL : STEP_GENIALLY_HIGHER_ED;
   const geniallyUrl = geniallyUrls[activeStep];
 
-  // Higher ed: just show the Genially embed, no tabs
-  if (!hasVideos) {
-    return (
-      <div className="embed-card">
-        <div className="embed-frame-wrap">
-          {geniallyUrl ? (
+  return (
+    <div className="embed-card">
+      <div className="embed-tabs">
+        {hasVideos && (
+          <button
+            className={`embed-tabs__btn${tab === "video" ? " embed-tabs__btn--active" : ""}`}
+            onClick={() => setTab("video")}
+          >
+            Video
+          </button>
+        )}
+        <button
+          className={`embed-tabs__btn${tab === "resource" ? " embed-tabs__btn--active" : ""}`}
+          onClick={() => setTab("resource")}
+        >
+          Interactive
+        </button>
+        <button
+          className={`embed-tabs__btn${tab === "dictionary" ? " embed-tabs__btn--active" : ""}`}
+          onClick={() => setTab("dictionary")}
+        >
+          Glossary
+        </button>
+      </div>
+
+      {tab === "dictionary" ? (
+        <Dictionary activeStep={activeStep} />
+      ) : (
+        <div className={`embed-frame-wrap${tab === "video" ? " embed-frame-wrap--video" : ""}`}>
+          {tab === "video" && videoUrl && (
+            <iframe
+              src={videoUrl}
+              title={`Step ${activeStep} video`}
+              loading="lazy"
+              allowFullScreen
+              allow="encrypted-media; fullscreen; microphone; screen-wake-lock;"
+            />
+          )}
+          {tab === "resource" && geniallyUrl && (
             <iframe
               src={geniallyUrl}
               title={`Step ${activeStep} interactive resource`}
               loading="lazy"
               allowFullScreen
             />
-          ) : (
+          )}
+          {tab === "video" && !videoUrl && (
+            <p className="embed-placeholder">No video available for this step yet.</p>
+          )}
+          {tab === "resource" && !geniallyUrl && (
             <p className="embed-placeholder">No interactive resource available for this step yet.</p>
           )}
         </div>
-      </div>
-    );
-  }
-
-  // High school: video + interactive resource tabs
-  return (
-    <div className="embed-card">
-      <div className="embed-tabs">
-        <button
-          className={`embed-tabs__btn${tab === "video" ? " embed-tabs__btn--active" : ""}`}
-          onClick={() => setTab("video")}
-        >
-          Video
-        </button>
-        <button
-          className={`embed-tabs__btn${tab === "resource" ? " embed-tabs__btn--active" : ""}`}
-          onClick={() => setTab("resource")}
-        >
-          Interactive Resource
-        </button>
-      </div>
-
-      <div className={`embed-frame-wrap${tab === "video" ? " embed-frame-wrap--video" : ""}`}>
-        {tab === "video" && videoUrl && (
-          <iframe
-            src={videoUrl}
-            title={`Step ${activeStep} video`}
-            loading="lazy"
-            allowFullScreen
-            allow="encrypted-media; fullscreen; microphone; screen-wake-lock;"
-          />
-        )}
-        {tab === "resource" && geniallyUrl && (
-          <iframe
-            src={geniallyUrl}
-            title={`Step ${activeStep} interactive resource`}
-            loading="lazy"
-            allowFullScreen
-          />
-        )}
-        {tab === "video" && !videoUrl && (
-          <p className="embed-placeholder">No video available for this step yet.</p>
-        )}
-        {tab === "resource" && !geniallyUrl && (
-          <p className="embed-placeholder">No interactive resource available for this step yet.</p>
-        )}
-      </div>
+      )}
     </div>
   );
 }

@@ -309,6 +309,7 @@ function StudentApp({ onBackToDashboard }) {
   // Guided tour state
   const [runTour, setRunTour] = useState(false);
   const [tourActive, setTourActive] = useState(false);
+  const [tourKey, setTourKey] = useState(0); // bump to remount Joyride so it restarts from step 0
 
   // Force both panels open during the guided tour
   useEffect(() => {
@@ -371,29 +372,36 @@ function StudentApp({ onBackToDashboard }) {
     return () => { cancelled = true; };
   }, []);
 
-  // Auto-start guided tour for first-time users
+  // Auto-start the guided tour only once per account (on first login).
+  // Marked "seen" the moment it opens, so a hard refresh won't re-trigger it —
+  // students can always re-open it from the profile menu's "Take a guided tour".
+  const tourSeenKey = `hop_tour_seen_${user?.email || user?.username || "anon"}`;
   useEffect(() => {
-    if (!loading && sessionId && localStorage.getItem("hop_tour_done") !== "1") {
+    if (!loading && sessionId && localStorage.getItem(tourSeenKey) !== "1") {
       const timer = setTimeout(() => {
+        localStorage.setItem(tourSeenKey, "1");
         setTourActive(true);
         setRunTour(true);
       }, 600);
       return () => clearTimeout(timer);
     }
-  }, [loading, sessionId]);
+  }, [loading, sessionId, tourSeenKey]);
 
   function handleTourCallback(data) {
     const { status } = data;
     if (status === STATUS.FINISHED || status === STATUS.SKIPPED) {
       setRunTour(false);
       setTourActive(false);
-      localStorage.setItem("hop_tour_done", "1");
+      localStorage.setItem(tourSeenKey, "1");
     }
   }
 
   function startTour() {
+    setRunTour(false);
+    setTourKey((k) => k + 1); // remount Joyride so it always starts fresh from step 0
     setTourActive(true);
-    setRunTour(true);
+    // Start on the next tick after the remount so react-joyride picks it up
+    setTimeout(() => setRunTour(true), 50);
   }
 
   // Steps locked by the teacher's access/pacing mode (Phase 2)
@@ -564,13 +572,6 @@ function StudentApp({ onBackToDashboard }) {
         </div>
         <div className="hop-header__right">
           <FeedbackPanel />
-          <button className="theme-toggle" onClick={toggleTheme} aria-label="Toggle dark mode" title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}>
-            {theme === "dark" ? "\u2600" : "\u263E"}
-          </button>
-          <button className="hop-tour-btn" onClick={startTour} title="Take a guided tour">
-            ?
-          </button>
-          <span className="hop-header__divider" />
           <div className="hop-download" ref={downloadRef}>
             <button
               className="hop-header__download"
@@ -634,6 +635,33 @@ function StudentApp({ onBackToDashboard }) {
                       </div>
                     </div>
                     <div className="hop-profile__sep" />
+                    <button
+                      className="hop-profile__item"
+                      onClick={() => { toggleTheme(); }}
+                      role="menuitem"
+                    >
+                      {theme === "dark" ? (
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                        </svg>
+                      ) : (
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                        </svg>
+                      )}
+                      {theme === "dark" ? "Light mode" : "Dark mode"}
+                    </button>
+                    <button
+                      className="hop-profile__item"
+                      onClick={() => { setProfileOpen(false); startTour(); }}
+                      role="menuitem"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                      </svg>
+                      Take a guided tour
+                    </button>
+                    <div className="hop-profile__sep" />
                     <button className="hop-profile__item" onClick={logout} role="menuitem">
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
@@ -681,6 +709,7 @@ function StudentApp({ onBackToDashboard }) {
       </div>
 
       <Joyride
+        key={tourKey}
         steps={TOUR_STEPS}
         run={runTour}
         continuous

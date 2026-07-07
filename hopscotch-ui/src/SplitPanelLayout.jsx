@@ -101,7 +101,8 @@ export default function SplitPanelLayout({
                       <div className="ai-off-overlay__title">AI assistant is turned off</div>
                       <div className="ai-off-overlay__text">
                         Your teacher has turned off the AI assistant for now, so you can work
-                        through your research design on your own. It may be turned back on later.
+                        through your research design on your own. Need help with a tricky term?
+                        Open the <strong>Glossary</strong> tab in the Resources panel on the left.
                       </div>
                     </div>
                   </div>

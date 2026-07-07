@@ -1344,6 +1344,118 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--hop-ink);
 }
 
+/* ---- Dictionary (glossary) tab ---- */
+.dict {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding-top: 8px;
+}
+
+.dict__search {
+  position: relative;
+  flex-shrink: 0;
+  margin-bottom: 10px;
+}
+
+.dict__search-icon {
+  position: absolute;
+  left: 11px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--hop-muted);
+  pointer-events: none;
+}
+
+.dict__input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 9px 30px 9px 34px;
+  font-size: 0.85rem;
+  font-family: inherit;
+  color: var(--hop-ink);
+  background: var(--hop-surface);
+  border: 1.5px solid var(--hop-border);
+  border-radius: 10px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.dict__input:focus { border-color: var(--hop-blue); }
+
+.dict__clear {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  border: none;
+  background: var(--hop-neutral-bg, #eceef2);
+  color: var(--hop-muted);
+  border-radius: 50%;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.dict__clear:hover { color: var(--hop-ink); }
+
+.dict__list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.dict__heading {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--hop-muted);
+  margin: 12px 2px 6px;
+}
+
+.dict__list > .dict__heading:first-child { margin-top: 0; }
+
+.dict__empty {
+  font-size: 0.85rem;
+  color: var(--hop-muted);
+  padding: 16px 4px;
+}
+
+.dict-term {
+  padding: 10px 12px;
+  margin-bottom: 6px;
+  background: var(--hop-surface);
+  border: 1px solid var(--hop-border-light);
+  border-radius: 10px;
+}
+
+.dict-term--related {
+  border-left: 3px solid var(--hop-blue);
+}
+
+.dict-term__name {
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--hop-ink);
+  margin-bottom: 3px;
+}
+
+.dict-term__def {
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--hop-ink-secondary, #55606f);
+}
+
+:root[data-theme="dark"] .dict-term {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.07);
+}
+
 /* ========================================================
    Step Details container
    ======================================================== */
