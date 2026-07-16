@@ -11,6 +11,8 @@ import SessionHistoryPanel from "./SessionHistoryPanel";
 import ConceptualFrameworkEditor from "./ConceptualFrameworkEditor";
 import FeedbackPanel from "./FeedbackPanel";
 import AdminDashboard from "./AdminDashboard";
+import ProfileMenu from "./ProfileMenu";
+import SettingsModal from "./SettingsModal";
 import { Joyride, STATUS } from "react-joyride";
 
 /* ----- Guided tour steps ----- */
@@ -23,14 +25,14 @@ const TOUR_STEPS = [
     icon: "👋",
   },
   {
-    target: ".step-progress",
-    title: "Step Progress",
+    target: ".mini-board",
+    title: "Your 9 Steps",
     content: "Your 9-step research journey at a glance. Each dot lights up as you complete a step \u2014 click any to jump back.",
     icon: "🎯",
   },
   {
-    target: ".hop-diagram",
-    title: "Hopscotch Visual",
+    target: ".mini-board__expand",
+    title: "The Hopscotch Map",
     content: "Hopscotch helps you break down the complexity of research design into nine clear, manageable, and recursive steps that guide you through your entire research journey.\nEach step is interactive and clickable, allowing you to easily \u201Chop\u201D between components of your research design as you develop, revise, and refine your ideas.",
     icon: "🗺️",
   },
@@ -153,7 +155,7 @@ const Chip = ({ variant, children }) => (
 
 /* ----- Step labels for progress bar ----- */
 const STEP_LABELS = [
-  "Worldview", "Topic", "Literature", "Methodology", "Question",
+  "Worldview", "Topic", "Framework", "Design", "Research Questions",
   "Data", "Analysis", "Trustworthiness", "Ethics",
 ];
 
@@ -261,6 +263,108 @@ function StepDiagram({ activeStep, completedSteps = [], onStepChange, lockedStep
   );
 }
 
+/* ----- Compact step strip: 9 colored chips + Map button (replaces the
+   stacked dots row + always-open diagram so the workspace gets the screen) ----- */
+function StepStrip({ activeStep, completedSteps = [], onStepChange, lockedSteps = [], onOpenMap, mapOpen = false }) {
+  return (
+    <div className="step-strip">
+      <div className="step-strip__chips" role="tablist" aria-label="Research steps">
+        {STEP_CARDS.map((card) => {
+          const num = card.num;
+          const isActive = num === activeStep;
+          const isCompleted = completedSteps.includes(num);
+          const isLocked = lockedSteps.includes(num);
+          return (
+            <button
+              key={num}
+              className={`step-chip${isActive ? " step-chip--active" : ""}${isCompleted ? " step-chip--done" : ""}${isLocked ? " step-chip--locked" : ""}`}
+              style={{ "--chip-color": card.color }}
+              onClick={() => !isLocked && onStepChange(num)}
+              disabled={isLocked}
+              role="tab"
+              aria-selected={isActive}
+              aria-label={`Step ${num}: ${card.label}${isCompleted ? " (completed)" : ""}${isLocked ? " (locked by your teacher)" : ""}`}
+              title={isLocked ? `${card.label} — locked by your teacher` : isCompleted ? `${card.label} — done` : card.label}
+            >
+              {isCompleted && !isLocked && (
+                <span className="step-chip__medal" aria-hidden="true">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                </span>
+              )}
+              <span className="step-chip__num">{isLocked ? "🔒" : num}</span>
+              <span className="step-chip__label">{STEP_LABELS[num - 1]}</span>
+            </button>
+          );
+        })}
+      </div>
+      <button
+        className={`step-strip__map${mapOpen ? " step-strip__map--open" : ""}`}
+        onClick={onOpenMap}
+        aria-expanded={mapOpen}
+        title={mapOpen ? "Collapse the Hopscotch board" : "Open the Hopscotch board — see your whole research journey"}
+      >
+        <svg width="16" height="16" viewBox="0 0 128 46" fill="none" aria-hidden="true">
+          <rect x="0" y="0" width="34" height="20" rx="5" fill="#2B5EA7"/>
+          <rect x="0" y="26" width="34" height="20" rx="5" fill="#E8618C"/>
+          <rect x="42" y="13" width="34" height="20" rx="5" fill="#1A8A7D"/>
+          <rect x="84" y="0" width="34" height="20" rx="5" fill="#F0B429"/>
+          <rect x="84" y="26" width="34" height="20" rx="5" fill="#F5922A"/>
+        </svg>
+        Hopscotch
+        <span className={`step-strip__chevron${mapOpen ? " step-strip__chevron--open" : ""}`} aria-hidden="true">&#9662;</span>
+      </button>
+    </div>
+  );
+}
+
+/* ----- Persistent mini Hopscotch board (always-visible navigator) ----- */
+function MiniBoard({ activeStep, completedSteps = [], onStepChange, lockedSteps = [], onOpenMap }) {
+  const doneCount = completedSteps.length;
+  return (
+    <div className="mini-board" aria-label="Hopscotch board — research steps">
+      <div className="mini-board__track">
+        {HOPSCOTCH_COLUMNS.map((col, ci) => (
+          <div className={`mini-col mini-col--${col.type}`} key={ci}>
+            {col.steps.map((num) => {
+              const card = STEP_CARDS[num - 1];
+              const isActive = num === activeStep;
+              const isCompleted = completedSteps.includes(num);
+              const isLocked = lockedSteps.includes(num);
+              return (
+                <button
+                  key={num}
+                  className={`mini-sq${isActive ? " mini-sq--active" : ""}${isCompleted ? " mini-sq--done" : ""}${isLocked ? " mini-sq--locked" : ""}${num === 9 ? " mini-sq--finish" : ""}`}
+                  style={{ "--sq-color": card.color }}
+                  onClick={() => !isLocked && onStepChange(num)}
+                  disabled={isLocked}
+                  aria-label={`Step ${num}: ${card.label}${isCompleted ? " (done)" : ""}${isLocked ? " (locked)" : ""}`}
+                  aria-current={isActive ? "step" : undefined}
+                  title={isLocked ? `${card.label} — locked by your teacher` : card.label}
+                >
+                  <span className="mini-sq__mark">{isLocked ? "🔒" : isCompleted ? "✓" : num}</span>
+                </button>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+
+      <div className="mini-board__side">
+        <div className="mini-board__now">
+          <span className="mini-board__now-label">Step {activeStep}</span>
+          <span className="mini-board__now-name">{STEP_LABELS[activeStep - 1]}</span>
+        </div>
+        <div className="mini-board__progress" title={`${doneCount} of 9 steps complete`}>
+          <span className="mini-board__progress-val">{doneCount}/9</span>
+        </div>
+        <button className="mini-board__expand" onClick={onOpenMap} title="Open the full Hopscotch board">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+        </button>
+      </div>
+    </div>
+  );
+}
+
 /* ----- Student App ----- */
 
 function StudentApp({ onBackToDashboard }) {
@@ -310,6 +414,37 @@ function StudentApp({ onBackToDashboard }) {
   const [runTour, setRunTour] = useState(false);
   const [tourActive, setTourActive] = useState(false);
   const [tourKey, setTourKey] = useState(0); // bump to remount Joyride so it restarts from step 0
+
+  // Hopscotch board shown as an on-demand overlay (opened from the step strip)
+  const [mapOpen, setMapOpen] = useState(false);
+
+  // Per-user preference: step navigator style ("strip" = chips [default], "board" = mini Hopscotch board)
+  const prefKey = `hop_pref_nav_${user?.email || user?.username || "anon"}`;
+  const [navStyle, setNavStyle] = useState(() => localStorage.getItem(prefKey) || "strip");
+  const chooseNavStyle = (id) => { setNavStyle(id); localStorage.setItem(prefKey, id); };
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
+  // Surface the patented Hopscotch board automatically: whenever a step is newly
+  // completed, reveal the board (the student sees their "hop" + the new medallion),
+  // then it tucks away so it never permanently costs screen space.
+  const prevCompletedRef = useRef(null);
+  useEffect(() => {
+    const n = completedSteps.length;
+    if (prevCompletedRef.current === null) { prevCompletedRef.current = n; return; }
+    if (n > prevCompletedRef.current) {
+      prevCompletedRef.current = n;
+      setMapOpen(true);
+      const t = setTimeout(() => setMapOpen(false), 5000);
+      return () => clearTimeout(t);
+    }
+    prevCompletedRef.current = n;
+  }, [completedSteps]);
+
+  // Workspace layout — locked to the Hero concept
+  const layoutMode = "hero";
+
+  // Reading mode: expand the Assistant (Resources tucks away) for long exchanges
+  const [assistantFocus, setAssistantFocus] = useState(false);
 
   // Force both panels open during the guided tour
   useEffect(() => {
@@ -456,9 +591,6 @@ function StudentApp({ onBackToDashboard }) {
   const [downloadOpen, setDownloadOpen] = useState(false);
   const downloadRef = useRef(null);
 
-  const [profileOpen, setProfileOpen] = useState(false);
-  const profileRef = useRef(null);
-
   // Close dropdown on outside click
   useEffect(() => {
     if (!downloadOpen) return;
@@ -470,18 +602,6 @@ function StudentApp({ onBackToDashboard }) {
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, [downloadOpen]);
-
-  // Close profile menu on outside click
-  useEffect(() => {
-    if (!profileOpen) return;
-    function handleClick(e) {
-      if (profileRef.current && !profileRef.current.contains(e.target)) {
-        setProfileOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, [profileOpen]);
 
   async function handleDownloadPDF() {
     setDownloadOpen(false);
@@ -525,22 +645,20 @@ function StudentApp({ onBackToDashboard }) {
             </button>
           )}
           <button
-            className="session-history-btn"
+            className="hop-header__designs"
             onClick={() => setHistoryOpen(true)}
-            aria-label="Create a new design"
-            data-tooltip="Create a new design"
+            aria-label="My designs — view, switch, or start a new research design"
+            title="View your designs or start a new one"
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="10" />
-              <polyline points="12 6 12 12 16 14" />
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
             </svg>
+            My Designs
           </button>
         </div>
         {/* Center: Layout personalization — toggle side panels */}
         <div className="hop-header__center">
-          <div className="cmd-bar cmd-bar--header" role="group" aria-label="Personalize the layout">
-            <span className="cmd-bar__hint">Personalize the layout</span>
-            <div className="cmd-bar__divider" />
+          <div className="cmd-bar cmd-bar--header" role="group" aria-label="Show or hide the side panels">
             <button
               className={`cmd-bar__btn cmd-bar__btn--lesson${leftOpen ? " cmd-bar__btn--active" : ""}`}
               onClick={() => setLeftOpen((o) => !o)}
@@ -613,78 +731,51 @@ function StudentApp({ onBackToDashboard }) {
           {user && (
             <>
               <span className="hop-header__divider" />
-              <div className="hop-profile" ref={profileRef}>
-                <button
-                  className={`hop-profile__trigger${profileOpen ? " hop-profile__trigger--open" : ""}`}
-                  onClick={() => setProfileOpen((o) => !o)}
-                  aria-haspopup="menu"
-                  aria-expanded={profileOpen}
-                  title={user.name}
-                >
-                  <span className="hop-user__avatar">{user.name?.charAt(0).toUpperCase()}</span>
-                  <span className="hop-user__name">{user.name}</span>
-                  <span className={`hop-profile__arrow${profileOpen ? " hop-profile__arrow--open" : ""}`}>&#9662;</span>
-                </button>
-                {profileOpen && (
-                  <div className="hop-profile__menu" role="menu">
-                    <div className="hop-profile__info">
-                      <span className="hop-user__avatar hop-user__avatar--lg">{user.name?.charAt(0).toUpperCase()}</span>
-                      <div className="hop-profile__info-text">
-                        <span className="hop-profile__name">{user.name}</span>
-                        {user.email && <span className="hop-profile__email">{user.email}</span>}
-                      </div>
-                    </div>
-                    <div className="hop-profile__sep" />
-                    <button
-                      className="hop-profile__item"
-                      onClick={() => { toggleTheme(); }}
-                      role="menuitem"
-                    >
-                      {theme === "dark" ? (
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
-                        </svg>
-                      ) : (
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-                        </svg>
-                      )}
-                      {theme === "dark" ? "Light mode" : "Dark mode"}
-                    </button>
-                    <button
-                      className="hop-profile__item"
-                      onClick={() => { setProfileOpen(false); startTour(); }}
-                      role="menuitem"
-                    >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/>
-                      </svg>
-                      Take a guided tour
-                    </button>
-                    <div className="hop-profile__sep" />
-                    <button className="hop-profile__item" onClick={logout} role="menuitem">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-                        <polyline points="16 17 21 12 16 7"/>
-                        <line x1="21" y1="12" x2="9" y2="12"/>
-                      </svg>
-                      Sign Out
-                    </button>
-                  </div>
-                )}
-              </div>
+              <ProfileMenu
+                user={user}
+                onSignOut={logout}
+                onOpenSettings={() => setSettingsOpen(true)}
+                onStartTour={startTour}
+              />
             </>
           )}
         </div>
       </header>
 
-      {/* Content area — centered max-width */}
+      {/* Content area — full-height app shell */}
       <div className="hop-content">
-        {/* Step progress bar */}
-        <StepProgressBar activeStep={activeStep} completedSteps={completedSteps} onStepChange={handleStepChange} lockedSteps={lockedSteps} />
+        {/* Step navigator — user-selectable style (Settings) */}
+        {navStyle === "strip" ? (
+          <StepStrip
+            activeStep={activeStep}
+            completedSteps={completedSteps}
+            onStepChange={handleStepChange}
+            lockedSteps={lockedSteps}
+            mapOpen={mapOpen}
+            onOpenMap={() => setMapOpen((o) => !o)}
+          />
+        ) : (
+          <MiniBoard
+            activeStep={activeStep}
+            completedSteps={completedSteps}
+            onStepChange={handleStepChange}
+            lockedSteps={lockedSteps}
+            onOpenMap={() => setMapOpen((o) => !o)}
+          />
+        )}
 
-        {/* Step diagram under header */}
-        <StepDiagram activeStep={activeStep} completedSteps={completedSteps} onStepChange={handleStepChange} lockedSteps={lockedSteps} />
+        {/* Hopscotch board: collapses into the strip; expands inline and
+            auto-collapses after the student hops to a step */}
+        <div className={`hop-board-collapse${mapOpen ? " hop-board-collapse--open" : ""}`} aria-hidden={!mapOpen}>
+          <div className="hop-board-collapse__inner">
+            <StepDiagram
+              activeStep={activeStep}
+              completedSteps={completedSteps}
+              lockedSteps={lockedSteps}
+              onStepChange={(n) => { handleStepChange(n); setMapOpen(false); }}
+            />
+          </div>
+        </div>
 
         {/* Split-panel tabbed layout: Resource / Step Details / Chat */}
         <SplitPanelLayout
@@ -705,8 +796,85 @@ function StudentApp({ onBackToDashboard }) {
           onCloseLeft={() => setLeftOpen(false)}
           onCloseRight={() => setRightOpen(false)}
           aiEnabled={aiEnabled}
+          layoutMode={layoutMode}
+          assistantFocus={assistantFocus}
+          onToggleAssistantFocus={() => setAssistantFocus((f) => !f)}
         />
       </div>
+
+      {/* Settings modal — shared chrome + universal Appearance section */}
+      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} theme={theme} toggleTheme={toggleTheme}>
+
+              {/* ── Step navigation ── */}
+              <section className="hop-settings__section">
+                <div className="hop-settings__section-head">
+                  <span className="hop-settings__section-icon">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/></svg>
+                  </span>
+                  <div className="hop-settings__section-hettext">
+                    <span className="hop-settings__section-title">Step navigation</span>
+                    <span className="hop-settings__section-desc">How the 9 research steps appear at the top of your workspace.</span>
+                  </div>
+                </div>
+                <div className="hop-settings__section-body">
+                  <div className="hop-settings__choices">
+                    {[
+                      { id: "board", title: "Hopscotch Board", desc: "The classic board — squares light up as you progress." },
+                      { id: "strip", title: "Step Strip", desc: "A compact single row of labelled step chips." },
+                    ].map((opt) => (
+                      <button key={opt.id} className={`hop-settings__choice${navStyle === opt.id ? " hop-settings__choice--active" : ""}`} onClick={() => chooseNavStyle(opt.id)}>
+                        <span className={`hop-settings__preview hop-settings__preview--${opt.id}`} aria-hidden="true">
+                          {opt.id === "board" ? (
+                            <>
+                              <span style={{ background: "#2B5EA7" }} /><span style={{ background: "#E8618C" }} />
+                              <span style={{ background: "#1A8A7D" }} /><span style={{ background: "#F0B429" }} />
+                              <span style={{ background: "#F5922A" }} /><span style={{ background: "#7B8794" }} />
+                            </>
+                          ) : (<><i /><i /><i /><i /></>)}
+                        </span>
+                        <span className="hop-settings__choice-text">
+                          <span className="hop-settings__choice-title">{opt.title}</span>
+                          <span className="hop-settings__choice-desc">{opt.desc}</span>
+                        </span>
+                        <span className="hop-settings__radio" aria-hidden="true" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </section>
+
+              {/* ── Panels ── */}
+              <section className="hop-settings__section">
+                <div className="hop-settings__section-head">
+                  <span className="hop-settings__section-icon">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/></svg>
+                  </span>
+                  <div className="hop-settings__section-hettext">
+                    <span className="hop-settings__section-title">Panels</span>
+                    <span className="hop-settings__section-desc">Show or hide the side panels in your workspace.</span>
+                  </div>
+                </div>
+                <div className="hop-settings__section-body">
+                  <div className="hop-settings__toggles">
+                    {[
+                      { on: leftOpen, set: () => setLeftOpen((o) => !o), title: "Interactive Resources", desc: "Videos, interactive activities, and the glossary." },
+                      { on: rightOpen, set: () => setRightOpen((o) => !o), title: "Research Assistant", desc: "Your AI research mentor chat." },
+                    ].map((row, idx) => (
+                      <div className="hop-settings__toggle" key={idx}>
+                        <div className="hop-settings__toggle-text">
+                          <span className="hop-settings__toggle-title">{row.title}</span>
+                          <span className="hop-settings__toggle-desc">{row.desc}</span>
+                        </div>
+                        <button type="button" className={`hop-switch${row.on ? " hop-switch--on" : ""}`} role="switch" aria-checked={row.on} aria-label={`Toggle ${row.title}`} onClick={row.set}>
+                          <span className="hop-switch__thumb" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </section>
+
+      </SettingsModal>
 
       <Joyride
         key={tourKey}

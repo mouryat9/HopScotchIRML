@@ -1,6 +1,7 @@
 // src/StepResourcePanel.jsx
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { GLOSSARY } from "./glossary";
+import { API } from "./api";
 
 const STEP_VIDEOS = {
   1: "https://share.synthesia.io/embeds/videos/29442014-85bd-4e46-993b-c27216013d33",
@@ -50,12 +51,22 @@ function TermCard({ term, def, related }) {
 
 function Dictionary({ activeStep }) {
   const [query, setQuery] = useState("");
+  // Live glossary from the database; falls back to the bundled list so the
+  // tab renders instantly and still works if the fetch fails.
+  const [terms, setTerms] = useState(GLOSSARY);
+  useEffect(() => {
+    let alive = true;
+    API.getGlossary()
+      .then((d) => { if (alive && Array.isArray(d.terms) && d.terms.length) setTerms(d.terms); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, []);
   const q = query.trim().toLowerCase();
 
   const { related, others } = useMemo(() => {
     const match = (t) =>
-      !q || t.term.toLowerCase().includes(q) || t.def.toLowerCase().includes(q);
-    const filtered = GLOSSARY.filter(match);
+      !q || t.term.toLowerCase().includes(q) || (t.def || "").toLowerCase().includes(q);
+    const filtered = terms.filter(match);
     const rel = [];
     const rest = [];
     for (const t of filtered) {
@@ -64,7 +75,7 @@ function Dictionary({ activeStep }) {
     }
     const byName = (a, b) => a.term.localeCompare(b.term);
     return { related: rel.sort(byName), others: rest.sort(byName) };
-  }, [q, activeStep]);
+  }, [q, activeStep, terms]);
 
   const total = related.length + others.length;
 
@@ -114,46 +125,69 @@ function Dictionary({ activeStep }) {
   );
 }
 
+// Bundled defaults — used until the live values load, and as an offline fallback.
+const FALLBACK_STEP_RES = (() => {
+  const out = { high_school: {}, higher_ed: {} };
+  for (let s = 1; s <= 9; s++) {
+    out.high_school[s] = { video_url: STEP_VIDEOS[s] || "", interactive_url: STEP_GENIALLY_HIGH_SCHOOL[s] || "" };
+    out.higher_ed[s] = { video_url: "", interactive_url: STEP_GENIALLY_HIGHER_ED[s] || "" };
+  }
+  return out;
+})();
+
 export default function StepResourcePanel({ activeStep, educationLevel = "high_school" }) {
   const isHighSchool = educationLevel !== "higher_ed";
-  const hasVideos = isHighSchool;
+  const level = isHighSchool ? "high_school" : "higher_ed";
 
-  const [tab, setTab] = useState(hasVideos ? "video" : "resource");
+  // Live per-step resources from the admin-managed database; fall back to bundled.
+  const [resMap, setResMap] = useState(FALLBACK_STEP_RES);
+  useEffect(() => {
+    let alive = true;
+    API.getStepResources()
+      .then((d) => { if (alive && d.resources) setResMap(d.resources); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, []);
 
-  const videoUrl = STEP_VIDEOS[activeStep];
-  const geniallyUrls = isHighSchool ? STEP_GENIALLY_HIGH_SCHOOL : STEP_GENIALLY_HIGHER_ED;
-  const geniallyUrl = geniallyUrls[activeStep];
+  const entry = resMap[level]?.[activeStep] || {};
+  const videoUrl = entry.video_url || "";
+  const geniallyUrl = entry.interactive_url || "";
+  const hasVideos = !!videoUrl;
+
+  const [tab, setTab] = useState(isHighSchool ? "video" : "resource");
+  // If the current step has no video, don't strand the user on the Video tab.
+  const activeTab = tab === "video" && !hasVideos ? "resource" : tab;
 
   return (
     <div className="embed-card">
       <div className="embed-tabs">
         {hasVideos && (
           <button
-            className={`embed-tabs__btn${tab === "video" ? " embed-tabs__btn--active" : ""}`}
+            className={`embed-tabs__btn${activeTab === "video" ? " embed-tabs__btn--active" : ""}`}
             onClick={() => setTab("video")}
           >
             Video
           </button>
         )}
         <button
-          className={`embed-tabs__btn${tab === "resource" ? " embed-tabs__btn--active" : ""}`}
+          className={`embed-tabs__btn${activeTab === "resource" ? " embed-tabs__btn--active" : ""}`}
           onClick={() => setTab("resource")}
         >
           Interactive
         </button>
         <button
-          className={`embed-tabs__btn${tab === "dictionary" ? " embed-tabs__btn--active" : ""}`}
+          className={`embed-tabs__btn${activeTab === "dictionary" ? " embed-tabs__btn--active" : ""}`}
           onClick={() => setTab("dictionary")}
         >
           Glossary
         </button>
       </div>
 
-      {tab === "dictionary" ? (
+      {activeTab === "dictionary" ? (
         <Dictionary activeStep={activeStep} />
       ) : (
-        <div className={`embed-frame-wrap${tab === "video" ? " embed-frame-wrap--video" : ""}`}>
-          {tab === "video" && videoUrl && (
+        <div className={`embed-frame-wrap${activeTab === "video" ? " embed-frame-wrap--video" : ""}`}>
+          {activeTab === "video" && videoUrl && (
             <iframe
               src={videoUrl}
               title={`Step ${activeStep} video`}
@@ -162,7 +196,7 @@ export default function StepResourcePanel({ activeStep, educationLevel = "high_s
               allow="encrypted-media; fullscreen; microphone; screen-wake-lock;"
             />
           )}
-          {tab === "resource" && geniallyUrl && (
+          {activeTab === "resource" && geniallyUrl && (
             <iframe
               src={geniallyUrl}
               title={`Step ${activeStep} interactive resource`}
@@ -170,10 +204,7 @@ export default function StepResourcePanel({ activeStep, educationLevel = "high_s
               allowFullScreen
             />
           )}
-          {tab === "video" && !videoUrl && (
-            <p className="embed-placeholder">No video available for this step yet.</p>
-          )}
-          {tab === "resource" && !geniallyUrl && (
+          {activeTab === "resource" && !geniallyUrl && (
             <p className="embed-placeholder">No interactive resource available for this step yet.</p>
           )}
         </div>

@@ -20,10 +20,10 @@ export default function LoginPage() {
   // Account type: determines both role and education_level
   const [accountType, setAccountType] = useState("hs_student");
   const ACCOUNT_TYPES = {
-    hs_student:  { role: "student", education_level: "high_school",  label: "High School Student" },
-    hs_teacher:  { role: "teacher", education_level: "high_school",  label: "High School Teacher" },
-    he_student:  { role: "student", education_level: "higher_ed",    label: "Higher Ed Student" },
-    he_faculty:  { role: "teacher", education_level: "higher_ed",    label: "Higher Ed Faculty" },
+    hs_student:  { role: "student", education_level: "high_school",  label: "High School Student", icon: "🎒", desc: "Grades 9–12" },
+    hs_teacher:  { role: "teacher", education_level: "high_school",  label: "High School Teacher", icon: "🍎", desc: "Create & manage classes" },
+    he_student:  { role: "student", education_level: "higher_ed",    label: "Higher Ed Student",   icon: "🎓", desc: "College & university" },
+    he_faculty:  { role: "teacher", education_level: "higher_ed",    label: "Higher Ed Faculty",   icon: "🏛️", desc: "Create & manage classes" },
   };
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -123,6 +123,22 @@ export default function LoginPage() {
     }
   }
 
+  // ---------- Field icons ----------
+  const fieldIcon = {
+    user: (
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    ),
+    mail: (
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+    ),
+    lock: (
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+    ),
+    school: (
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+    ),
+  };
+
   // ---------- Reusable eye toggle ----------
   const eyeBtn = (
     <button
@@ -221,11 +237,11 @@ export default function LoginPage() {
 
   // ---------- Form title / subtitle ----------
   const titles = {
-    login:     { title: "Login",             subtitle: "Enter your credentials and get started with us" },
-    register:  { title: "Create Account",    subtitle: "Sign up to get started with Hopscotch" },
-    classroom: { title: "School Student Login", subtitle: "Enter the username and password your teacher gave you" },
-    forgot:    { title: "Forgot Password",   subtitle: "Enter your email and we'll send you a reset link" },
-    reset:     { title: "Set New Password",  subtitle: "Enter your new password below" },
+    login:     { title: "Welcome back",      subtitle: "Log in to continue your research journey" },
+    register:  { title: "Create your account", subtitle: "Pick who you are and you're set in seconds" },
+    classroom: { title: "School Student Login", subtitle: "Jump back into your class workspace" },
+    forgot:    { title: "Forgot password?",  subtitle: "Enter your email and we'll send you a reset link" },
+    reset:     { title: "Set a new password", subtitle: "Choose a new password for your account" },
   };
 
   const { title, subtitle } = titles[view] || titles.login;
@@ -249,17 +265,36 @@ export default function LoginPage() {
               <div className="login-account-type">
                 <label className="login-field__label">I am a...</label>
                 <div className="login-account-type__grid">
-                  {Object.entries(ACCOUNT_TYPES).map(([key, { label }]) => (
+                  {Object.entries(ACCOUNT_TYPES).map(([key, { label, icon, desc }]) => (
                     <button
                       key={key}
                       type="button"
                       className={`login-account-type__btn${accountType === key ? " login-account-type__btn--active" : ""}`}
                       onClick={() => setAccountType(key)}
+                      aria-pressed={accountType === key}
                     >
-                      <span className="login-account-type__label">{label}</span>
+                      <span className="login-account-type__icon" aria-hidden="true">{icon}</span>
+                      <span className="login-account-type__text">
+                        <span className="login-account-type__label">{label}</span>
+                        <span className="login-account-type__desc">{desc}</span>
+                      </span>
+                      <span className="login-account-type__check" aria-hidden="true">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                      </span>
                     </button>
                   ))}
                 </div>
+              </div>
+            )}
+
+            {/* Classroom hint — friendly explainer */}
+            {view === "classroom" && (
+              <div className="login-hint">
+                <span className="login-hint__emoji" aria-hidden="true">🏫</span>
+                <span>
+                  Use the <strong>username and class password</strong> your teacher gave you.
+                  Usernames look like <code>period3research_01</code>.
+                </span>
               </div>
             )}
 
@@ -267,14 +302,17 @@ export default function LoginPage() {
             {view === "register" && (
               <div className="login-field">
                 <label className="login-field__label">Full Name</label>
-                <input
-                  type="text"
-                  placeholder="Full name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  required
-                  className="login-field__input"
-                />
+                <div className="login-field__box">
+                  <span className="login-field__icon">{fieldIcon.user}</span>
+                  <input
+                    type="text"
+                    placeholder="Your name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    required
+                    className="login-field__input"
+                  />
+                </div>
               </div>
             )}
 
@@ -282,29 +320,35 @@ export default function LoginPage() {
             {view === "classroom" && (
               <div className="login-field">
                 <label className="login-field__label">Username</label>
-                <input
-                  type="text"
-                  placeholder="e.g. period3research_01"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  required
-                  className="login-field__input"
-                />
+                <div className="login-field__box">
+                  <span className="login-field__icon">{fieldIcon.school}</span>
+                  <input
+                    type="text"
+                    placeholder="e.g. period3research_01"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    required
+                    className="login-field__input"
+                  />
+                </div>
               </div>
             )}
 
             {/* Email — login, register, forgot */}
             {(view === "login" || view === "register" || view === "forgot") && (
               <div className="login-field">
-                <label className="login-field__label">Email ID</label>
-                <input
-                  type="email"
-                  placeholder="Email ID"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  className="login-field__input"
-                />
+                <label className="login-field__label">Email</label>
+                <div className="login-field__box">
+                  <span className="login-field__icon">{fieldIcon.mail}</span>
+                  <input
+                    type="email"
+                    placeholder="you@school.edu"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    className="login-field__input"
+                  />
+                </div>
               </div>
             )}
 
@@ -312,10 +356,11 @@ export default function LoginPage() {
             {(view === "login" || view === "register" || view === "classroom") && (
               <div className="login-field">
                 <label className="login-field__label">Password</label>
-                <div className="login-field__password-wrap">
+                <div className="login-field__box login-field__password-wrap">
+                  <span className="login-field__icon">{fieldIcon.lock}</span>
                   <input
                     type={showPassword ? "text" : "password"}
-                    placeholder="Password"
+                    placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
@@ -332,7 +377,8 @@ export default function LoginPage() {
               <>
                 <div className="login-field">
                   <label className="login-field__label">New Password</label>
-                  <div className="login-field__password-wrap">
+                  <div className="login-field__box login-field__password-wrap">
+                    <span className="login-field__icon">{fieldIcon.lock}</span>
                     <input
                       type={showPassword ? "text" : "password"}
                       placeholder="New password"
@@ -347,15 +393,18 @@ export default function LoginPage() {
                 </div>
                 <div className="login-field">
                   <label className="login-field__label">Confirm Password</label>
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    placeholder="Confirm password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    required
-                    minLength={6}
-                    className="login-field__input"
-                  />
+                  <div className="login-field__box">
+                    <span className="login-field__icon">{fieldIcon.lock}</span>
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Confirm password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      required
+                      minLength={6}
+                      className="login-field__input"
+                    />
+                  </div>
                 </div>
               </>
             )}
@@ -380,20 +429,26 @@ export default function LoginPage() {
           <div className="login-split__toggle">
             {view === "login" && (
               <>
-                <button className="link-btn" onClick={() => switchView("forgot")}>
-                  Forgot Password?
+                <div className="login-links-row">
+                  <span>
+                    Don't have an account?{" "}
+                    <button className="link-btn" onClick={() => switchView("register")}>
+                      Create Account
+                    </button>
+                  </span>
+                  <button className="link-btn link-btn--muted" onClick={() => switchView("forgot")}>
+                    Forgot password?
+                  </button>
+                </div>
+                <div className="login-or"><span>or</span></div>
+                <button type="button" className="login-callout" onClick={() => switchView("classroom")}>
+                  <span className="login-callout__emoji" aria-hidden="true">🏫</span>
+                  <span className="login-callout__text">
+                    <span className="login-callout__title">School student?</span>
+                    <span className="login-callout__desc">Log in with the username your teacher gave you</span>
+                  </span>
+                  <span className="login-callout__arrow" aria-hidden="true">&rarr;</span>
                 </button>
-                <p style={{ marginTop: "0.75rem" }}>
-                  Don't have an account?{" "}
-                  <button className="link-btn" onClick={() => switchView("register")}>
-                    Create Account
-                  </button>
-                </p>
-                <p style={{ marginTop: "0.5rem" }}>
-                  <button className="link-btn" onClick={() => switchView("classroom")}>
-                    School student? Log in here
-                  </button>
-                </p>
               </>
             )}
             {view === "register" && (

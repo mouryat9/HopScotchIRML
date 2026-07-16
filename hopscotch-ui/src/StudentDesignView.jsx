@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import { API } from "./api";
 
 const STEP_LABELS = [
-  "Worldview", "Topic & Goals", "Literature", "Methodology", "Research Question",
+  "Worldview", "Topic & Goals", "Framework", "Design", "Research Questions",
   "Data Collection", "Analysis", "Trustworthiness", "Ethics",
 ];
 
@@ -97,21 +97,34 @@ export default function StudentDesignView({ sessionId, studentName, className: c
     }
   }
 
+  const [downloading, setDownloading] = useState(null); // "pdf" | "cf" | null
+  const [downloadError, setDownloadError] = useState("");
+
   async function handleDownloadPDF() {
-    if (!sessionId) return;
+    if (!sessionId || downloading) return;
+    setDownloadError("");
+    setDownloading("pdf");
     try {
       await API.downloadResearchDesign(sessionId);
     } catch (e) {
       console.error("PDF download failed:", e);
+      setDownloadError("Couldn't generate the PDF. Please try again.");
+    } finally {
+      setDownloading(null);
     }
   }
 
   async function handleDownloadCF() {
-    if (!sessionId) return;
+    if (!sessionId || downloading) return;
+    setDownloadError("");
+    setDownloading("cf");
     try {
       await API.downloadConceptualFramework(sessionId);
     } catch (e) {
       console.error("Conceptual framework download failed:", e);
+      setDownloadError("Couldn't generate the conceptual framework. Please try again.");
+    } finally {
+      setDownloading(null);
     }
   }
 
@@ -134,11 +147,26 @@ export default function StudentDesignView({ sessionId, studentName, className: c
           )}
         </div>
         <div className="sdv-header__right">
-          <button className="td-btn td-btn--outline td-btn--sm" onClick={handleDownloadCF}>
-            Download Conceptual Framework
+          {downloadError && <span className="sdv-dl-error">{downloadError}</span>}
+          <button className="sdv-dl-btn" onClick={handleDownloadCF} disabled={!!downloading} title="Generate & download the conceptual framework (.pptx)">
+            {downloading === "cf" ? (
+              <><span className="sdv-dl-spinner" />Generating…</>
+            ) : (
+              <>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                Conceptual Framework
+              </>
+            )}
           </button>
-          <button className="td-btn td-btn--outline td-btn--sm" onClick={handleDownloadPDF}>
-            Download PDF
+          <button className="sdv-dl-btn sdv-dl-btn--primary" onClick={handleDownloadPDF} disabled={!!downloading} title="Generate & download the research design (.pdf)">
+            {downloading === "pdf" ? (
+              <><span className="sdv-dl-spinner sdv-dl-spinner--light" />Generating…</>
+            ) : (
+              <>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Download PDF
+              </>
+            )}
           </button>
         </div>
       </div>
@@ -147,9 +175,9 @@ export default function StudentDesignView({ sessionId, studentName, className: c
       {error && <div className="td-alert td-alert--error" style={{ margin: 16 }}>{error}</div>}
 
       {!loading && !error && sessionData && (
-        <div className="sdv-body">
+        <div className="sdv-body sdv-body--v">
           {/* Left sidebar — step navigator */}
-          <nav className="sdv-steps">
+          <div className="sdv-strip" role="tablist" aria-label="Research steps">
             {STEP_LABELS.map((label, i) => {
               const num = i + 1;
               const isActive = num === viewStep;
@@ -157,74 +185,103 @@ export default function StudentDesignView({ sessionId, studentName, className: c
               return (
                 <button
                   key={num}
-                  className={`sdv-step-btn${isActive ? " sdv-step-btn--active" : ""}${isDone ? " sdv-step-btn--done" : ""}`}
+                  className={`sdv-chip${isActive ? " sdv-chip--active" : ""}${isDone ? " sdv-chip--done" : ""}`}
+                  style={{ "--chip-color": STEP_COLORS[i] }}
                   onClick={() => setViewStep(num)}
+                  role="tab"
+                  aria-selected={isActive}
+                  title={`Step ${num}: ${label}`}
                 >
-                  <span
-                    className="sdv-step-btn__dot"
-                    style={isDone ? { background: STEP_COLORS[i] } : {}}
-                  >
-                    {isDone ? "\u2713" : num}
-                  </span>
-                  <span className="sdv-step-btn__label">{label}</span>
+                  <span className="sdv-chip__num">{isDone ? "\u2713" : num}</span>
+                  <span className="sdv-chip__label">{label}</span>
                 </button>
               );
             })}
-          </nav>
+          </div>
 
           {/* Right side — step content + feedback */}
           <div className="sdv-right">
             {/* Step content (scrollable) */}
             <div className="sdv-content">
-              <h3 className="sdv-content__title" style={{ borderLeftColor: STEP_COLORS[viewStep - 1] }}>
-                Step {viewStep}: {STEP_LABELS[viewStep - 1]}
-              </h3>
+              <div className="sdv-doc">
+                <div className="sdv-doc__eyebrow" style={{ color: STEP_COLORS[viewStep - 1] }}>
+                  <span className="sdv-doc__dot" style={{ background: STEP_COLORS[viewStep - 1] }} />
+                  Step {viewStep} of 9
+                  {completed.includes(viewStep)
+                    ? <span className="sdv-doc__status sdv-doc__status--done">Completed</span>
+                    : <span className="sdv-doc__status">In progress</span>}
+                </div>
+                <h3 className="sdv-doc__title">{STEP_LABELS[viewStep - 1]}</h3>
 
-              <ReadOnlyStepContent
-                step={viewStep}
-                data={stepNotes[String(viewStep)] || {}}
-                stepConfig={stepConfig}
-                configLoading={configLoading}
-                sessionData={sessionData}
-              />
+                <ReadOnlyStepContent
+                  step={viewStep}
+                  data={stepNotes[String(viewStep)] || {}}
+                  stepConfig={stepConfig}
+                  configLoading={configLoading}
+                  sessionData={sessionData}
+                />
+              </div>
             </div>
 
-            {/* Feedback section — one for the whole design */}
-            <div className="sdv-feedback">
-              <h4 className="sdv-feedback__title">Feedback</h4>
-
-              {feedbackList.length > 0 && (
-                <div className="sdv-feedback__list">
-                  {[...feedbackList].reverse().map((fb) => (
-                    <div key={fb.id} className="sdv-feedback__item">
-                      <div className="sdv-feedback__meta">
-                        <strong>{fb.teacher_name}</strong>
-                        <span className="sdv-feedback__time">{timeAgo(fb.created_at)}</span>
-                      </div>
-                      <p className="sdv-feedback__text">{fb.text}</p>
-                    </div>
-                  ))}
+            {/* Feedback panel — redesigned as a threaded conversation */}
+            <div className="sdv-fb">
+              <div className="sdv-fb__head">
+                <span className="sdv-fb__head-icon">
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                </span>
+                <div className="sdv-fb__head-text">
+                  <h4 className="sdv-fb__title">Feedback</h4>
+                  <p className="sdv-fb__sub">Visible to {(studentName || "the student").split(" ")[0]} in their workspace.</p>
                 </div>
-              )}
+                {feedbackList.length > 0 && <span className="sdv-fb__count">{feedbackList.length}</span>}
+              </div>
 
-              {feedbackList.length === 0 && (
-                <p className="sdv-feedback__empty">No feedback yet.</p>
-              )}
+              <div className="sdv-fb__thread">
+                {feedbackList.length === 0 ? (
+                  <div className="sdv-fb__empty">
+                    <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                    <p className="sdv-fb__empty-title">No feedback yet</p>
+                    <span className="sdv-fb__empty-sub">Leave your first note on this research design below.</span>
+                  </div>
+                ) : (
+                  [...feedbackList].reverse().map((fb) => (
+                    <div key={fb.id} className="sdv-fb__item">
+                      <span className="sdv-fb__avatar">{(fb.teacher_name || "T").charAt(0).toUpperCase()}</span>
+                      <div className="sdv-fb__bubble">
+                        <div className="sdv-fb__meta">
+                          <strong>{fb.teacher_name}</strong>
+                          <span className="sdv-fb__time">{timeAgo(fb.created_at)}</span>
+                        </div>
+                        <p className="sdv-fb__text">{fb.text}</p>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
 
-              <div className="sdv-feedback__input">
+              <div className="sdv-fb__composer">
                 <textarea
-                  className="textarea"
-                  rows={3}
-                  placeholder="Write your feedback on this student's research design..."
+                  className="sdv-fb__input"
+                  rows={2}
+                  placeholder="Write feedback for this student…  (⌘/Ctrl + Enter to send)"
                   value={feedbackText}
                   onChange={(e) => setFeedbackText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); handleSubmitFeedback(); }
+                  }}
                 />
                 <button
-                  className="td-btn td-btn--primary td-btn--sm"
+                  className="sdv-fb__send"
                   onClick={handleSubmitFeedback}
                   disabled={submitting || !feedbackText.trim()}
+                  title="Send feedback"
                 >
-                  {submitting ? "Sending..." : "Send Feedback"}
+                  {submitting ? (
+                    <span className="sdv-fb__spinner" />
+                  ) : (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                  )}
+                  <span>{submitting ? "Sending" : "Send"}</span>
                 </button>
               </div>
             </div>

@@ -4,13 +4,15 @@ import { useAuth } from "./AuthContext";
 import { useTheme } from "./ThemeContext";
 import { API } from "./api";
 import StudentDesignView from "./StudentDesignView";
+import ProfileMenu from "./ProfileMenu";
+import SettingsModal from "./SettingsModal";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, Legend,
+  PieChart, Pie, Cell, Legend, LabelList,
 } from "recharts";
 
 const STEP_LABELS = [
-  "Worldview", "Topic", "Literature", "Methodology", "Question",
+  "Worldview", "Topic", "Framework", "Design", "Research Questions",
   "Data", "Analysis", "Trustworthiness", "Ethics",
 ];
 
@@ -69,6 +71,8 @@ export default function TeacherDashboard({ onOpenDesigns }) {
 
   // Class management state
   const [classes, setClasses] = useState([]);
+  const [classQuery, setClassQuery] = useState("");
+  const [studentQuery, setStudentQuery] = useState("");
   const [className, setClassName] = useState("");
   const [studentCount, setStudentCount] = useState(10);
   const [classPassword, setClassPassword] = useState("");
@@ -176,17 +180,8 @@ export default function TeacherDashboard({ onOpenDesigns }) {
     setClassPassword("");
   }
 
-  // Profile dropdown (top-right)
-  const [profileOpen, setProfileOpen] = useState(false);
-  const profileRef = useRef(null);
-  useEffect(() => {
-    if (!profileOpen) return;
-    function handleClick(e) {
-      if (profileRef.current && !profileRef.current.contains(e.target)) setProfileOpen(false);
-    }
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, [profileOpen]);
+  // Settings modal (shared with every page)
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   // Teacher-controlled AI mode: turn the assistant on/off for a whole class.
   const [savingSettings, setSavingSettings] = useState(null); // class_id being saved
@@ -275,6 +270,15 @@ export default function TeacherDashboard({ onOpenDesigns }) {
     ? sessions
     : sessions.filter((s) => s.class_code === progressFilter);
 
+  // Table rows: class-filtered sessions further narrowed by the student search
+  const sq = studentQuery.trim().toLowerCase();
+  const tableSessions = sq
+    ? filteredSessions.filter((s) =>
+        (s.user?.name || "").toLowerCase().includes(sq) ||
+        (s.user?.username || "").toLowerCase().includes(sq) ||
+        (s.user?.email || "").toLowerCase().includes(sq))
+    : filteredSessions;
+
   // Unique class codes from sessions for filter dropdown
   const sessionClassCodes = [...new Set(sessions.map((s) => s.class_code).filter(Boolean))];
 
@@ -315,6 +319,7 @@ export default function TeacherDashboard({ onOpenDesigns }) {
         classGroups[key].latest = ts;
       }
     });
+    // Show ALL classes (scales to many), sorted by average progress
     const classAvg = Object.entries(classGroups)
       .map(([name, { counts, latest }]) => ({
         name,
@@ -322,10 +327,10 @@ export default function TeacherDashboard({ onOpenDesigns }) {
         students: counts.length,
         latest,
       }))
-      .sort((a, b) => (b.latest || "").localeCompare(a.latest || ""))
-      .slice(0, 5);
+      .sort((a, b) => b.avg - a.avg || (b.latest || "").localeCompare(a.latest || ""));
 
-    return { stepCompletion, progressDist, classAvg };
+    const totalStudents = filteredSessions.length;
+    return { stepCompletion, progressDist, classAvg, totalStudents };
   }, [filteredSessions, sessions]);
 
   const NAV_ITEMS = [
@@ -342,15 +347,35 @@ export default function TeacherDashboard({ onOpenDesigns }) {
     : "Track how your students are progressing through the 9-step research design.";
 
   return (
-    <div className="td td--shell">
-      <aside className="td-sidebar">
-        <div className="td-sidebar__brand">
+    <div className="td-wrap">
+      {/* Full-width top nav bar — matches the design page */}
+      <header className="hop-header">
+        <div className="hop-header__left">
           <img
             src={theme === "dark" ? "/Hopscotch4-all-logo-White-alpha.png" : "/Hopscotch-4-all-logo-alpha.png"}
-            alt="Hopscotch"
-            className="td-sidebar__logo"
+            alt="Hopscotch 4 All"
+            className="hop-logo"
           />
         </div>
+        <div className="hop-header__right">
+          {onOpenDesigns && (
+            <button className="td-btn td-btn--primary td-btn--sm" onClick={onOpenDesigns}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 5 }}><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Create Design
+            </button>
+          )}
+          <span className="hop-header__divider" />
+          <ProfileMenu
+            user={user}
+            onSignOut={logout}
+            onOpenSettings={() => setSettingsOpen(true)}
+            roleLabel={user?.education_level === "higher_ed" ? "Faculty" : "Teacher"}
+          />
+        </div>
+      </header>
+
+      <div className="td td--shell">
+        <aside className="td-sidebar">
         <nav className="td-sidebar__nav">
           {NAV_ITEMS.map((t) => (
             <button
@@ -370,52 +395,6 @@ export default function TeacherDashboard({ onOpenDesigns }) {
           <div className="td-main__headtext">
             <h1 className="td-main__title">{pageTitle}</h1>
             <p className="td-main__sub">{pageSub}</p>
-          </div>
-          <div className="td-main__actions">
-            {onOpenDesigns && (
-              <button className="td-btn td-btn--primary td-btn--sm" onClick={onOpenDesigns}>
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 5 }}><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                Create Design
-              </button>
-            )}
-            <button className="theme-toggle" onClick={toggleTheme} aria-label="Toggle dark mode" title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}>
-              {theme === "dark" ? "☀" : "☾"}
-            </button>
-            {user && (
-              <div className="hop-profile" ref={profileRef}>
-                <button
-                  className={`hop-profile__trigger${profileOpen ? " hop-profile__trigger--open" : ""}`}
-                  onClick={() => setProfileOpen((o) => !o)}
-                  aria-haspopup="menu"
-                  aria-expanded={profileOpen}
-                  title={user.name}
-                >
-                  <span className="hop-user__avatar">{user.name?.charAt(0).toUpperCase()}</span>
-                  <span className="hop-user__name">{user.name}</span>
-                  <span className={`hop-profile__arrow${profileOpen ? " hop-profile__arrow--open" : ""}`}>&#9662;</span>
-                </button>
-                {profileOpen && (
-                  <div className="hop-profile__menu" role="menu">
-                    <div className="hop-profile__info">
-                      <span className="hop-user__avatar hop-user__avatar--lg">{user.name?.charAt(0).toUpperCase()}</span>
-                      <div className="hop-profile__info-text">
-                        <span className="hop-profile__name">{user.name}</span>
-                        <span className="hop-profile__email">{user.education_level === "higher_ed" ? "Faculty" : "Teacher"}</span>
-                      </div>
-                    </div>
-                    <div className="hop-profile__sep" />
-                    <button className="hop-profile__item" onClick={logout} role="menuitem">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-                        <polyline points="16 17 21 12 16 7"/>
-                        <line x1="21" y1="12" x2="9" y2="12"/>
-                      </svg>
-                      Sign Out
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
           </div>
         </header>
 
@@ -460,66 +439,68 @@ export default function TeacherDashboard({ onOpenDesigns }) {
             <section className="td-section">
               <div className="td-section__head">
                 <h2 className="td-section__title">
-                  Your Classes
+                  All Classes
                   {!loadingClasses && <span className="td-section__count">{classes.length}</span>}
                 </h2>
-                <button
-                  className="td-btn td-btn--primary td-btn--sm"
-                  onClick={() => { setClassError(""); setCreateResult(null); setShowCreate(true); }}
-                >
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 5 }}><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                  New Class
-                </button>
+                <div className="td-section__head-actions">
+                  <div className="td-search">
+                    <svg className="td-search__icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    <input
+                      type="text"
+                      className="td-search__input"
+                      placeholder="Search classes or students…"
+                      value={classQuery}
+                      onChange={(e) => setClassQuery(e.target.value)}
+                      aria-label="Search classes"
+                    />
+                    {classQuery && (
+                      <button className="td-search__clear" onClick={() => setClassQuery("")} aria-label="Clear search">×</button>
+                    )}
+                  </div>
+                  <button
+                    className="td-btn td-btn--primary td-btn--sm"
+                    onClick={() => { setClassError(""); setCreateResult(null); setShowCreate(true); }}
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 5 }}><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    New Class
+                  </button>
+                </div>
               </div>
 
               {loadingClasses && <p className="td-muted">Loading classes...</p>}
 
-              <div className="td-cardgrid">
-                {/* Add-class tile */}
-                {!loadingClasses && (
-                  <button
-                    className="td-addcard"
-                    onClick={() => { setClassError(""); setCreateResult(null); setShowCreate(true); }}
-                  >
-                    <span className="td-addcard__icon">
-                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                    </span>
-                    <span className="td-addcard__label">New Class</span>
-                    <span className="td-addcard__desc">Auto-generate student logins</span>
-                  </button>
-                )}
-                {!loadingClasses && classes.map((cls) => {
+              {(() => {
+                const q = classQuery.trim().toLowerCase();
+                const shown = q
+                  ? classes.filter((c) =>
+                      (c.class_name || "").toLowerCase().includes(q) ||
+                      (c.class_code || "").toLowerCase().includes(q) ||
+                      (c.students || []).some((s) => (s.username || "").toLowerCase().includes(q)))
+                  : classes;
+                if (!loadingClasses && q && shown.length === 0) {
+                  return <div className="td-empty">No classes match “{classQuery}”.</div>;
+                }
+                return (
+              <div className="td-classlist">
+                <div className="td-classlist__head">
+                  <span className="td-classlist__col td-classlist__col--name">Class</span>
+                  <span className="td-classlist__col td-classlist__col--students">Students</span>
+                  <span className="td-classlist__col td-classlist__col--ai">AI Assistant</span>
+                  <span className="td-classlist__col td-classlist__col--actions" />
+                </div>
+                {!loadingClasses && shown.map((cls) => {
                   const students = cls.students || [];
                   const aiOn = cls.settings?.ai_enabled ?? true;
                   const saving = savingSettings === cls.class_id;
                   return (
-                    <div className="td-ccard" key={cls.class_id}>
-                      <div className="td-ccard__top">
-                        <span className="td-ccard__avatar" style={{ background: classColor(cls.class_name) }}>
-                          {classInitials(cls.class_name)}
-                        </span>
-                        <div className="td-ccard__titlewrap">
-                          <div className="td-ccard__title" title={cls.class_name}>{cls.class_name}</div>
-                          <span className="td-class__tag">{cls.class_code}</span>
-                        </div>
-                        <span className={`td-pill${aiOn ? " td-pill--on" : " td-pill--off"}`}>
-                          <span className="td-pill__dot" /> AI {aiOn ? "On" : "Off"}
-                        </span>
-                      </div>
+                    <div className="td-classrow" key={cls.class_id}>
+                      <button className="td-classrow__name" onClick={() => setDetailClass(cls)}>
+                        <span className="td-classrow__title" title={cls.class_name}>{cls.class_name}</span>
+                      </button>
 
-                      <div className="td-ccard__meta">
-                        <span className="td-ccard__metaitem">
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                          {students.length} students
-                        </span>
-                        <span className="td-ccard__metaitem td-ccard__metaitem--muted">
-                          {cls.created_at ? new Date(cls.created_at).toLocaleDateString() : ""}
-                        </span>
-                      </div>
+                      <span className="td-classrow__students">{students.length} students</span>
 
-                      {/* AI toggle right on the card */}
-                      <div className="td-ccard__ai">
-                        <span className="td-ccard__ai-label">AI Assistant</span>
+                      <div className="td-classrow__ai">
                         <button
                           type="button"
                           className={`td-switch${aiOn ? " td-switch--on" : ""}`}
@@ -534,11 +515,13 @@ export default function TeacherDashboard({ onOpenDesigns }) {
                         </button>
                       </div>
 
-                      <div className="td-ccard__actions">
-                        <button className="td-btn td-btn--outline td-btn--sm" onClick={() => setDetailClass(cls)}>
+                      <div className="td-classrow__actions">
+                        <button className="td-btn td-btn--ghost td-btn--sm" onClick={() => setDetailClass(cls)}>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 5 }}><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
                           Manage
                         </button>
                         <button className="td-btn td-btn--ghost td-btn--sm" onClick={() => handlePrintCredentials(cls)}>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 5 }}><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
                           Print
                         </button>
                       </div>
@@ -546,6 +529,8 @@ export default function TeacherDashboard({ onOpenDesigns }) {
                   );
                 })}
               </div>
+                );
+              })()}
             </section>
           </div>
         )}
@@ -554,19 +539,23 @@ export default function TeacherDashboard({ onOpenDesigns }) {
         {tab === "progress" && (
           <div className="td-progress">
             {/* Filter bar */}
-            {sessions.length > 0 && sessionClassCodes.length > 0 && (
+            {sessions.length > 0 && (
               <div className="td-progress__filter">
-                <label className="td-progress__filter-label">Filter by class:</label>
-                <select
-                  className="td-progress__select"
-                  value={progressFilter}
-                  onChange={(e) => setProgressFilter(e.target.value)}
-                >
-                  <option value="all">All Classes</option>
-                  {sessionClassCodes.map((code) => (
-                    <option key={code} value={code}>{code}</option>
-                  ))}
-                </select>
+                {sessionClassCodes.length > 0 && (
+                  <>
+                    <label className="td-progress__filter-label">Filter by class:</label>
+                    <select
+                      className="td-progress__select"
+                      value={progressFilter}
+                      onChange={(e) => setProgressFilter(e.target.value)}
+                    >
+                      <option value="all">All Classes</option>
+                      {sessionClassCodes.map((code) => (
+                        <option key={code} value={code}>{code}</option>
+                      ))}
+                    </select>
+                  </>
+                )}
               </div>
             )}
 
@@ -577,8 +566,11 @@ export default function TeacherDashboard({ onOpenDesigns }) {
             {!loadingSessions && chartData && (
               <div className="td-charts">
                 {/* Step Completion Bar Chart */}
-                <div className="td-chart-card">
-                  <h3 className="td-chart-card__title">Step Completion Overview</h3>
+                <div className="td-chart-card td-chart-card--purple">
+                  <h3 className="td-chart-card__title">
+                    <span className="td-chart-card__ic"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span>
+                    Step Completion Overview
+                  </h3>
                   <p className="td-chart-card__desc">Number of students who completed each step</p>
                   <ResponsiveContainer width="100%" height={220}>
                     <BarChart data={chartData.stepCompletion} margin={{ top: 8, right: 8, bottom: 4, left: -16 }}>
@@ -599,8 +591,11 @@ export default function TeacherDashboard({ onOpenDesigns }) {
                 </div>
 
                 {/* Progress Distribution Donut */}
-                <div className="td-chart-card">
-                  <h3 className="td-chart-card__title">Progress Distribution</h3>
+                <div className="td-chart-card td-chart-card--green">
+                  <h3 className="td-chart-card__title">
+                    <span className="td-chart-card__ic"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg></span>
+                    Progress Distribution
+                  </h3>
                   <p className="td-chart-card__desc">Where students are in the 9-step process</p>
                   <ResponsiveContainer width="100%" height={220}>
                     <PieChart>
@@ -623,23 +618,42 @@ export default function TeacherDashboard({ onOpenDesigns }) {
                   </ResponsiveContainer>
                 </div>
 
-                {/* Class Average Progress */}
+                {/* Class Average Progress — horizontal bars, scales to any number of classes */}
                 {chartData.classAvg.length > 1 && (
-                  <div className="td-chart-card td-chart-card--wide">
-                    <h3 className="td-chart-card__title">Average Progress by Class</h3>
-                    <p className="td-chart-card__desc">Average steps completed per class</p>
-                    <ResponsiveContainer width="100%" height={200}>
-                      <BarChart data={chartData.classAvg} margin={{ top: 8, right: 8, bottom: 4, left: -16 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="var(--hop-border)" />
-                        <XAxis dataKey="name" tick={{ fontSize: 11, fill: "var(--hop-muted)" }} />
-                        <YAxis domain={[0, 9]} tick={{ fontSize: 11, fill: "var(--hop-muted)" }} />
-                        <Tooltip
-                          formatter={(val, _, props) => [`${val} avg steps (${props.payload.students} students)`]}
-                          contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid var(--hop-border)" }}
-                        />
-                        <Bar dataKey="avg" fill="#6C63FF" radius={[6, 6, 0, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
+                  <div className="td-chart-card td-chart-card--wide td-chart-card--amber">
+                    <h3 className="td-chart-card__title">
+                      <span className="td-chart-card__ic"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg></span>
+                      Average Progress by Class
+                    </h3>
+                    <p className="td-chart-card__desc">
+                      Average steps completed per class · {chartData.classAvg.length} classes (sorted, scroll for more)
+                    </p>
+                    <div className="td-chart-scroll" style={{ maxHeight: 320, overflowY: chartData.classAvg.length > 8 ? "auto" : "visible" }}>
+                      <ResponsiveContainer width="100%" height={Math.max(160, chartData.classAvg.length * 34 + 20)}>
+                        <BarChart
+                          layout="vertical"
+                          data={chartData.classAvg}
+                          margin={{ top: 4, right: 40, bottom: 4, left: 8 }}
+                          barCategoryGap="22%"
+                        >
+                          <CartesianGrid strokeDasharray="3 3" stroke="var(--hop-border)" horizontal={false} />
+                          <XAxis type="number" domain={[0, 9]} ticks={[0, 3, 6, 9]} tick={{ fontSize: 11, fill: "var(--hop-muted)" }} />
+                          <YAxis
+                            type="category" dataKey="name" width={130}
+                            tick={{ fontSize: 11, fill: "var(--hop-ink-secondary)" }}
+                            interval={0}
+                            tickFormatter={(n) => (n.length > 18 ? n.slice(0, 17) + "…" : n)}
+                          />
+                          <Tooltip
+                            formatter={(val, _, props) => [`${val} of 9 avg steps · ${props.payload.students} students`, props.payload.name]}
+                            contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid var(--hop-border)" }}
+                          />
+                          <Bar dataKey="avg" fill="#7C8AA0" radius={[0, 6, 6, 0]} maxBarSize={22}>
+                            <LabelList dataKey="avg" position="right" style={{ fontSize: 11, fontWeight: 700, fill: "var(--hop-ink-secondary)" }} />
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
                   </div>
                 )}
               </div>
@@ -655,13 +669,33 @@ export default function TeacherDashboard({ onOpenDesigns }) {
             )}
 
             {!loadingSessions && filteredSessions.length > 0 && (
-              <h2 className="td-section__title td-section__title--progress">
-                Students
-                <span className="td-section__count">{filteredSessions.length}</span>
-              </h2>
+              <div className="td-section__head td-students__head">
+                <h2 className="td-section__title td-section__title--progress">
+                  Students
+                  <span className="td-section__count">{tableSessions.length}</span>
+                </h2>
+                <div className="td-search">
+                  <svg className="td-search__icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                  <input
+                    type="text"
+                    className="td-search__input"
+                    placeholder="Search students…"
+                    value={studentQuery}
+                    onChange={(e) => setStudentQuery(e.target.value)}
+                    aria-label="Search students by name or username"
+                  />
+                  {studentQuery && (
+                    <button className="td-search__clear" onClick={() => setStudentQuery("")} aria-label="Clear search">×</button>
+                  )}
+                </div>
+              </div>
             )}
 
-            {!loadingSessions && filteredSessions.length > 0 && (
+            {!loadingSessions && filteredSessions.length > 0 && tableSessions.length === 0 && (
+              <div className="td-empty">No students match “{studentQuery}”.</div>
+            )}
+
+            {!loadingSessions && tableSessions.length > 0 && (
               <div className="td-table-wrap">
                 <table className="td-table">
                   <thead>
@@ -677,14 +711,14 @@ export default function TeacherDashboard({ onOpenDesigns }) {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredSessions.map((s, i) => {
+                    {tableSessions.map((s, i) => {
                       const completed = s.completed_steps || [];
                       const pct = Math.round((completed.length / 9) * 100);
                       return (
                         <tr key={s.session_id || `student-${s.user?.username || i}`} className={!s.session_id ? "td-table__row--inactive" : ""}>
                           <td>
                             <div className="td-table__student">
-                              <span className="td-table__student-avatar">
+                              <span className="td-table__student-avatar" style={{ background: classColor(s.user?.name || s.user?.username || "?") }}>
                                 {(s.user?.name || "?").charAt(0).toUpperCase()}
                               </span>
                               <div>
@@ -704,8 +738,9 @@ export default function TeacherDashboard({ onOpenDesigns }) {
                             {!s.session_id ? (
                               <span className="td-table__not-started">Not started</span>
                             ) : s.active_step ? (
-                              <span className="td-step-badge" style={{ borderLeftColor: STEP_COLORS[s.active_step - 1] || "#ccc" }}>
-                                Step {s.active_step}: {STEP_LABELS[s.active_step - 1] || ""}
+                              <span className="td-step-badge" style={{ "--step-color": STEP_COLORS[s.active_step - 1] || "#94a3b8" }}>
+                                <span className="td-step-badge__dot" />
+                                Step {s.active_step} · {STEP_LABELS[s.active_step - 1] || ""}
                               </span>
                             ) : "\u2014"}
                           </td>
@@ -772,37 +807,40 @@ export default function TeacherDashboard({ onOpenDesigns }) {
         const students = live.students || [];
         const aiOn = live.settings?.ai_enabled ?? true;
         const saving = savingSettings === live.class_id;
+        const mode = live.settings?.access_mode || "full";
+        const up = live.settings?.unlocked_phase || 1;
         return (
-          <div className="td-modal" onMouseDown={() => setDetailClass(null)}>
-            <div className="td-modal__card" onMouseDown={(e) => e.stopPropagation()}>
-              <div className="td-modal__head">
-                <span className="td-ccard__avatar" style={{ background: classColor(live.class_name) }}>
-                  {classInitials(live.class_name)}
-                </span>
-                <div className="td-modal__headtext">
-                  <h3 className="td-modal__title">{live.class_name}</h3>
-                  <span className="td-class__tag">{live.class_code}</span>
+          <div className="mcm-overlay" onMouseDown={() => setDetailClass(null)}>
+            <div className="mcm" onMouseDown={(e) => e.stopPropagation()}>
+              <header className="mcm__head">
+                <div className="mcm__headtext">
+                  <span className="mcm__eyebrow">Manage class</span>
+                  <h3 className="mcm__title">{live.class_name}</h3>
                 </div>
-                <button className="td-modal__close" onClick={() => setDetailClass(null)} aria-label="Close">
+                <button className="mcm__close" onClick={() => setDetailClass(null)} aria-label="Close">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
                 </button>
-              </div>
+              </header>
 
-              <div className="td-modal__body">
+              <div className="mcm__body">
                 {/* Credentials */}
-                <div className="td-cred">
+                <div className="mcm-cred">
                   {[
                     { label: "Class code", value: live.class_code, field: "code" },
                     { label: "Shared password", value: live.password || "Not available", field: "pw" },
                   ].map(({ label, value, field }) => {
                     const key = `${live.class_id}:${field}`;
                     return (
-                      <div className="td-cred__item" key={field}>
-                        <span className="td-cred__label">{label}</span>
-                        <div className="td-cred__value">
-                          <code>{value}</code>
-                          <button type="button" className="td-copy" onClick={() => copyValue(value, key)} title={`Copy ${label.toLowerCase()}`}>
-                            {copied === key ? "Copied" : "Copy"}
+                      <div className="mcm-cred__field" key={field}>
+                        <span className="mcm-cred__label">{label}</span>
+                        <div className="mcm-cred__row">
+                          <code className="mcm-cred__value">{value}</code>
+                          <button type="button" className="mcm-cred__copy" onClick={() => copyValue(value, key)} title={`Copy ${label.toLowerCase()}`}>
+                            {copied === key ? (
+                              <><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Copied</>
+                            ) : (
+                              <><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy</>
+                            )}
                           </button>
                         </div>
                       </div>
@@ -810,11 +848,11 @@ export default function TeacherDashboard({ onOpenDesigns }) {
                   })}
                 </div>
 
-                {/* AI toggle */}
-                <div className="td-mode-row">
-                  <div className="td-mode-row__text">
-                    <span className="td-mode-row__label">AI Assistant</span>
-                    <span className="td-mode-row__desc">
+                {/* AI Assistant */}
+                <div className="mcm-row">
+                  <div className="mcm-row__text">
+                    <span className="mcm-row__label">AI Assistant</span>
+                    <span className="mcm-row__desc">
                       {aiOn
                         ? "Students can use the AI research assistant."
                         : "AI is off — students work on their own. Turn it on when they're ready."}
@@ -834,84 +872,87 @@ export default function TeacherDashboard({ onOpenDesigns }) {
                   </button>
                 </div>
 
-                {/* Access / pacing mode */}
-                {(() => {
-                  const mode = live.settings?.access_mode || "full";
-                  const up = live.settings?.unlocked_phase || 1;
-                  return (
-                    <div className="td-access">
-                      <div className="td-mode-row__text" style={{ marginBottom: 8 }}>
-                        <span className="td-mode-row__label">Student access</span>
-                        <span className="td-mode-row__desc">Control which steps students can work on.</span>
-                      </div>
-                      <div className="td-segment">
-                        {ACCESS_MODES.map((opt) => (
+                {/* Student access */}
+                <div className="mcm-section">
+                  <div className="mcm-row__text mcm-section__head">
+                    <span className="mcm-row__label">Student access</span>
+                    <span className="mcm-row__desc">Control which steps students can work on.</span>
+                  </div>
+                  <div className="mcm-seg">
+                    {ACCESS_MODES.map((opt) => (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        className={`mcm-seg__btn${mode === opt.id ? " mcm-seg__btn--active" : ""}`}
+                        disabled={saving}
+                        onClick={() => patchClassSettings(live, {
+                          access_mode: opt.id,
+                          ...(opt.id === "phase" && !live.settings?.unlocked_phase ? { unlocked_phase: 1 } : {}),
+                        })}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {mode === "step" && (
+                    <p className="mcm-hint">Students must complete each step before the next one unlocks.</p>
+                  )}
+
+                  {mode === "phase" && (
+                    <div className="mcm-phases">
+                      {ACCESS_PHASES.map((ph) => {
+                        const unlocked = up >= ph.n;
+                        return (
                           <button
-                            key={opt.id}
+                            key={ph.n}
                             type="button"
-                            className={`td-segment__btn${mode === opt.id ? " td-segment__btn--active" : ""}`}
+                            className={`mcm-phase${unlocked ? " mcm-phase--unlocked" : ""}`}
                             disabled={saving}
-                            onClick={() => patchClassSettings(live, {
-                              access_mode: opt.id,
-                              ...(opt.id === "phase" && !live.settings?.unlocked_phase ? { unlocked_phase: 1 } : {}),
-                            })}
+                            onClick={() => patchClassSettings(live, { unlocked_phase: ph.n })}
                           >
-                            {opt.label}
+                            <span className="mcm-phase__icon">
+                              {unlocked ? (
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>
+                              ) : (
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                              )}
+                            </span>
+                            <span className="mcm-phase__text">
+                              <span className="mcm-phase__label">{ph.label} · {ph.name}</span>
+                              <span className="mcm-phase__range">{ph.range}</span>
+                            </span>
+                            {unlocked && <span className="mcm-phase__tag">Unlocked</span>}
                           </button>
-                        ))}
-                      </div>
-
-                      {mode === "step" && (
-                        <p className="td-access__hint">Students must complete each step before the next one unlocks.</p>
-                      )}
-
-                      {mode === "phase" && (
-                        <div className="td-phases">
-                          {ACCESS_PHASES.map((ph) => {
-                            const unlocked = up >= ph.n;
-                            return (
-                              <button
-                                key={ph.n}
-                                type="button"
-                                className={`td-phase${unlocked ? " td-phase--unlocked" : ""}`}
-                                disabled={saving}
-                                onClick={() => patchClassSettings(live, { unlocked_phase: ph.n })}
-                                title={`Unlock through ${ph.label}`}
-                              >
-                                <span className="td-phase__icon">{unlocked ? "🔓" : "🔒"}</span>
-                                <span className="td-phase__text">
-                                  <span className="td-phase__label">{ph.label} · {ph.name}</span>
-                                  <span className="td-phase__range">{ph.range}</span>
-                                </span>
-                              </button>
-                            );
-                          })}
-                          <p className="td-access__hint">Click a phase to unlock everything up to and including it.</p>
-                        </div>
-                      )}
+                        );
+                      })}
+                      <p className="mcm-hint">Click a phase to unlock everything up to and including it.</p>
                     </div>
-                  );
-                })()}
+                  )}
+                </div>
 
                 {/* Roster */}
-                <div className="td-class__subhead">
-                  Student logins <span className="td-class__count-mini">{students.length}</span>
-                </div>
-                <div className="td-roster">
-                  {students.map((s) => (
-                    <span className="td-roster__chip" key={s.username}>{s.username}</span>
-                  ))}
+                <div className="mcm-section">
+                  <div className="mcm-roster__head">
+                    <span className="mcm-row__label">Student logins</span>
+                    <span className="mcm-count">{students.length}</span>
+                  </div>
+                  <div className="mcm-roster">
+                    {students.map((s) => (
+                      <span className="mcm-roster__chip" key={s.username}>{s.username}</span>
+                    ))}
+                  </div>
                 </div>
               </div>
 
-              <div className="td-modal__foot">
-                <button className="td-btn td-btn--outline td-btn--sm" onClick={() => handlePrintCredentials(live)}>
-                  Print Credentials
+              <footer className="mcm__foot">
+                <button className="td-btn td-btn--ghost td-btn--sm" onClick={() => handlePrintCredentials(live)}>
+                  Print credentials
                 </button>
                 <button className="td-btn td-btn--primary td-btn--sm" onClick={() => setDetailClass(null)}>
                   Done
                 </button>
-              </div>
+              </footer>
             </div>
           </div>
         );
@@ -1027,6 +1068,9 @@ export default function TeacherDashboard({ onOpenDesigns }) {
           </div>
         </div>
       )}
+
+      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} theme={theme} toggleTheme={toggleTheme} />
+      </div>
     </div>
   );
 }

@@ -17,6 +17,8 @@ sessions_col = db["sessions"]
 classes_col = db["classes"]
 login_history_col = db["login_history"]
 admin_audit_col = db["admin_audit_log"]
+glossary_col = db["glossary"]
+step_resources_col = db["step_resources"]
 
 
 def ensure_indexes():
@@ -36,6 +38,8 @@ def ensure_indexes():
     login_history_col.create_index("login_at")
     login_history_col.create_index([("lat", 1), ("lng", 1)])
     admin_audit_col.create_index("timestamp")
+    glossary_col.create_index("term")
+    step_resources_col.create_index([("step", 1), ("level", 1)], unique=True)
 
 
 # --------------- User CRUD ---------------
@@ -568,3 +572,139 @@ def get_user_detail(user_id: str) -> Optional[Dict]:
         "sessions": sessions,
         "logins": logins,
     }
+
+
+# --------------- Glossary CRUD ---------------
+
+def _glossary_public(doc: Dict) -> Dict:
+    """Shape a glossary doc for API responses."""
+    return {
+        "id": str(doc["_id"]),
+        "term": doc.get("term", ""),
+        "def": doc.get("def", ""),
+        "steps": doc.get("steps", []),
+    }
+
+
+def get_all_glossary_terms() -> List[Dict]:
+    """All glossary terms, alphabetical by term. Used by students and admin."""
+    cursor = glossary_col.find({}).collation({"locale": "en"}).sort("term", 1)
+    return [_glossary_public(d) for d in cursor]
+
+
+def count_glossary_terms() -> int:
+    return glossary_col.count_documents({})
+
+
+def create_glossary_term(term: str, definition: str, steps: List[int]) -> str:
+    now = datetime.utcnow().isoformat() + "Z"
+    res = glossary_col.insert_one({
+        "term": term.strip(),
+        "def": definition.strip(),
+        "steps": steps or [],
+        "created_at": now,
+        "updated_at": now,
+    })
+    return str(res.inserted_id)
+
+
+def update_glossary_term(term_id: str, fields: Dict[str, Any]) -> bool:
+    from bson import ObjectId
+    updates = {}
+    if "term" in fields and fields["term"] is not None:
+        updates["term"] = str(fields["term"]).strip()
+    if "def" in fields and fields["def"] is not None:
+        updates["def"] = str(fields["def"]).strip()
+    if "steps" in fields and fields["steps"] is not None:
+        updates["steps"] = fields["steps"]
+    if not updates:
+        return False
+    updates["updated_at"] = datetime.utcnow().isoformat() + "Z"
+    try:
+        res = glossary_col.update_one({"_id": ObjectId(term_id)}, {"$set": updates})
+        return res.matched_count > 0
+    except Exception:
+        return False
+
+
+def delete_glossary_term(term_id: str) -> bool:
+    from bson import ObjectId
+    try:
+        res = glossary_col.delete_one({"_id": ObjectId(term_id)})
+        return res.deleted_count > 0
+    except Exception:
+        return False
+
+
+def seed_glossary_if_empty(terms: List[Dict]) -> int:
+    """Populate the glossary collection from a seed list on first run only.
+    Returns the number of terms inserted (0 if it was already populated)."""
+    if glossary_col.count_documents({}) > 0:
+        return 0
+    if not terms:
+        return 0
+    now = datetime.utcnow().isoformat() + "Z"
+    docs = [{
+        "term": (t.get("term") or "").strip(),
+        "def": (t.get("def") or "").strip(),
+        "steps": t.get("steps") or [],
+        "created_at": now,
+        "updated_at": now,
+    } for t in terms if t.get("term")]
+    if docs:
+        glossary_col.insert_many(docs)
+    return len(docs)
+
+
+# --------------- Step resources (student Resources panel) ---------------
+
+STEP_LEVELS = ("high_school", "higher_ed")
+
+
+def get_step_resources() -> Dict[str, Dict[str, Dict[str, str]]]:
+    """Return {level: {step(str): {video_url, interactive_url}}} for all steps."""
+    out: Dict[str, Dict[str, Dict[str, str]]] = {lvl: {} for lvl in STEP_LEVELS}
+    for d in step_resources_col.find({}):
+        lvl = d.get("level")
+        if lvl not in out:
+            continue
+        out[lvl][str(d.get("step"))] = {
+            "video_url": d.get("video_url", ""),
+            "interactive_url": d.get("interactive_url", ""),
+        }
+    return out
+
+
+def upsert_step_resource(step: int, level: str, video_url: str, interactive_url: str) -> bool:
+    if level not in STEP_LEVELS or not (1 <= int(step) <= 9):
+        return False
+    step_resources_col.update_one(
+        {"step": int(step), "level": level},
+        {"$set": {
+            "video_url": (video_url or "").strip(),
+            "interactive_url": (interactive_url or "").strip(),
+            "updated_at": datetime.utcnow().isoformat() + "Z",
+        }},
+        upsert=True,
+    )
+    return True
+
+
+def seed_step_resources_if_empty(seed: Dict[str, Dict[str, Dict[str, str]]]) -> int:
+    """Populate step resources from a seed on first run only. Returns rows inserted."""
+    if step_resources_col.count_documents({}) > 0:
+        return 0
+    now = datetime.utcnow().isoformat() + "Z"
+    docs = []
+    for level in STEP_LEVELS:
+        for step_str, vals in (seed.get(level) or {}).items():
+            docs.append({
+                "step": int(step_str),
+                "level": level,
+                "video_url": (vals.get("video_url") or "").strip(),
+                "interactive_url": (vals.get("interactive_url") or "").strip(),
+                "updated_at": now,
+            })
+    if docs:
+        step_resources_col.insert_many(docs)
+    return len(docs)

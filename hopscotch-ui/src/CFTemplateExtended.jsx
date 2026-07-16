@@ -77,50 +77,39 @@ export default function CFTemplateExtended({ d, upd, updTopic, updFramework, E }
               </div>
             </div>
 
-            {/* Circle infographic (decorative, static text) */}
+            {/* Components infographic (decorative, static text) — hexagon core
+                with contained component cards so text never overflows shapes. */}
             <div className="cfe-infographic">
               <div className="cfe-infographic__title">Components of a Conceptual Framework</div>
-              <div className="cfe-wheel">
-                <svg className="cfe-wheel__svg" viewBox="0 0 500 500">
-                  {/* 5 equal pie sectors (72° each), starting from top-center */}
-                  <path d="M250,250 L120.7,72 A220,220 0 0,1 379.3,72 Z"   fill="#1C4587" stroke="#fff" strokeWidth="2.5"/>
-                  <path d="M250,250 L379.3,72 A220,220 0 0,1 459.2,318 Z"   fill="#1A8A7D" stroke="#fff" strokeWidth="2.5"/>
-                  <path d="M250,250 L459.2,318 A220,220 0 0,1 250,470 Z"    fill="#BF9730" stroke="#fff" strokeWidth="2.5"/>
-                  <path d="M250,250 L250,470 A220,220 0 0,1 40.8,318 Z"     fill="#8B3A3A" stroke="#fff" strokeWidth="2.5"/>
-                  <path d="M250,250 L40.8,318 A220,220 0 0,1 120.7,72 Z"    fill="#8B7D3C" stroke="#fff" strokeWidth="2.5"/>
-                  {/* Center circle */}
-                  <circle cx="250" cy="250" r="110" fill="#6AA84F" stroke="#fff" strokeWidth="2.5"/>
-                </svg>
 
-                {/* Section labels positioned at each slice centroid */}
-                <div className="cfe-slabel cfe-slabel--0">
-                  <strong>Topical Research</strong>
-                  <span>Empirical work within your area of interest found in academic journals, books, and policy reports.</span>
-                </div>
-                <div className="cfe-slabel cfe-slabel--1">
-                  <strong>Theoretical Frameworks</strong>
-                  <span>Formal theories and constructs that help examine relationships and guide the framework.</span>
-                </div>
-                <div className="cfe-slabel cfe-slabel--2">
-                  <strong>Problem Statement</strong>
-                  <span>Establishes the intent of the entire research study. Must be clear, specific, and informative.</span>
-                </div>
-                <div className="cfe-slabel cfe-slabel--3">
-                  <strong>Research Design</strong>
-                  <span>Methods and procedures used: quantitative, qualitative, or mixed methods.</span>
-                </div>
-                <div className="cfe-slabel cfe-slabel--4">
-                  <strong>Personal Connection</strong>
-                  <span>Your interests, goals, and the worldview you bring as a researcher.</span>
+              <div className="cfe-cf">
+                {/* Central hexagon core */}
+                <div className="cfe-cf__core">
+                  <div className="cfe-cf__hex">
+                    <span className="cfe-cf__hex-label">Conceptual<br/>Framework</span>
+                  </div>
                 </div>
 
-                {/* Center circle label */}
-                <div className="cfe-wheel__center">
-                  <span>A conceptual framework is an argument about why the topic one wishes to study matters, and why the means proposed to study it are appropriate and rigorous (Ravitch &amp; Riggan, 2016)</span>
+                {/* Five components — text lives inside cards, cannot spill out */}
+                <div className="cfe-cf__grid">
+                  {[
+                    { c: "#1C4587", t: "Topical Research", d: "Empirical work in your area of interest — journals, books, and policy reports." },
+                    { c: "#1A8A7D", t: "Theoretical Frameworks", d: "Formal theories and constructs that examine relationships and guide the study." },
+                    { c: "#BF9730", t: "Problem Statement", d: "Establishes the intent of the study — clear, specific, and informative." },
+                    { c: "#8B3A3A", t: "Research Design", d: "The methods and procedures used: quantitative, qualitative, or mixed." },
+                    { c: "#6AA84F", t: "Personal Connection", d: "Your interests, goals, and the worldview you bring as a researcher." },
+                  ].map((n) => (
+                    <div className="cfe-cf__node" key={n.t} style={{ "--node-color": n.c }}>
+                      <span className="cfe-cf__node-title">{n.t}</span>
+                      <span className="cfe-cf__node-desc">{n.d}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
+
               <div className="cfe-infographic__citation">
-                Extended version of components proposed by Ravitch &amp; Riggan (2016)
+                “A conceptual framework is an argument about why a topic matters and why the means proposed to
+                study it are appropriate and rigorous.” — Ravitch &amp; Riggan (2016)
               </div>
             </div>
 

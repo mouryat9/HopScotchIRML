@@ -1,0 +1,78 @@
+{
+  "high_school": {
+    "1": {
+      "video_url": "https://share.synthesia.io/embeds/videos/29442014-85bd-4e46-993b-c27216013d33",
+      "interactive_url": "https://view.genially.com/6626b5edb31fe80014324408"
+    },
+    "2": {
+      "video_url": "https://share.synthesia.io/embeds/videos/bbc3d87a-2b09-4920-a3f8-bc6b868717bf",
+      "interactive_url": "https://view.genially.com/6626b5ff75024b0014c9c279"
+    },
+    "3": {
+      "video_url": "https://share.synthesia.io/embeds/videos/a451443c-e24e-466f-8fea-7c084b0afddf",
+      "interactive_url": "https://view.genially.com/6626b64db31fe8001432844c"
+    },
+    "4": {
+      "video_url": "https://share.synthesia.io/embeds/videos/9504ed58-2e8c-468f-b034-9f131594d9ff",
+      "interactive_url": "https://view.genially.com/6626b6648a9b7d0014fd0809"
+    },
+    "5": {
+      "video_url": "https://share.synthesia.io/embeds/videos/53d60b55-659c-4cf7-bf76-2161982d24b1",
+      "interactive_url": "https://view.genially.com/6626b6792aa762001439fe8f"
+    },
+    "6": {
+      "video_url": "https://share.synthesia.io/embeds/videos/321e953d-68e2-4bdd-8a24-5fe3c5951618",
+      "interactive_url": "https://view.genially.com/6626b6a92b4ff00014385a51"
+    },
+    "7": {
+      "video_url": "https://share.synthesia.io/embeds/videos/97b73f09-c293-4416-b8a1-232bd18cb3a7",
+      "interactive_url": "https://view.genially.com/6626b6c22b4ff000143872e2"
+    },
+    "8": {
+      "video_url": "https://share.synthesia.io/embeds/videos/80fa7610-b9f2-481f-8160-e9086db5ef63",
+      "interactive_url": "https://view.genially.com/6626b6e02b4ff0001438901b"
+    },
+    "9": {
+      "video_url": "https://share.synthesia.io/embeds/videos/d9104c4d-75cd-4fde-bf9a-c5c85c7ad706",
+      "interactive_url": "https://view.genially.com/6626b6f22aa76200143a6d36"
+    }
+  },
+  "higher_ed": {
+    "1": {
+      "video_url": "",
+      "interactive_url": "https://view.genially.com/5f37277f06a4070d7cba0c5d"
+    },
+    "2": {
+      "video_url": "",
+      "interactive_url": "https://view.genially.com/5f37f51e5635db0d754e977c"
+    },
+    "3": {
+      "video_url": "",
+      "interactive_url": "https://view.genially.com/5f4e7d0234ffdc0d8de5b73a"
+    },
+    "4": {
+      "video_url": "",
+      "interactive_url": "https://view.genially.com/5f5ab6efe232c50d95078afd"
+    },
+    "5": {
+      "video_url": "",
+      "interactive_url": "https://view.genially.com/5f5abc6775c8e90d887bb76b"
+    },
+    "6": {
+      "video_url": "",
+      "interactive_url": "https://view.genially.com/5f614bfe8cc8340d8feec7fe"
+    },
+    "7": {
+      "video_url": "",
+      "interactive_url": "https://view.genially.com/5f9ae42970a5c30cfcf89865/vertical-infographic-step-7-data-analysis"
+    },
+    "8": {
+      "video_url": "",
+      "interactive_url": "https://view.genially.com/5f614daa8cc8340d8feec81d/vertical-infographic-step-8-trustworthiness-and-validity"
+    },
+    "9": {
+      "video_url": "",
+      "interactive_url": "https://view.genially.com/5f614e378cc8340d8feec824"
+    }
+  }
+}

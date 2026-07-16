@@ -1,14 +1,23 @@
 // src/AdminDashboard.jsx — Superuser admin dashboard
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { API } from "./api";
 import { useAuth } from "./AuthContext";
 import { useTheme } from "./ThemeContext";
 import UserLocationMap from "./UserLocationMap";
 import StudentDesignView from "./StudentDesignView";
+import ProfileMenu from "./ProfileMenu";
+import SettingsModal from "./SettingsModal";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend, LineChart, Line,
 } from "recharts";
+
+function fmtBytes(n) {
+  if (!n && n !== 0) return "";
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(0)} KB`;
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+}
 
 const ROLE_COLORS = {
   admin: "#7C3AED",
@@ -25,7 +34,7 @@ const ROLE_LABELS = {
 };
 
 const STEP_LABELS = [
-  "Worldview", "Topic", "Literature", "Methodology", "Question",
+  "Worldview", "Topic", "Framework", "Design", "Research Questions",
   "Data", "Analysis", "Trustworthiness", "Ethics",
 ];
 
@@ -74,6 +83,7 @@ export default function AdminDashboard() {
   };
   const tipLabelStyle = { color: dark ? "#B0BAC5" : "#6b7280" };
   const [tab, setTab] = useState("overview");
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -126,6 +136,29 @@ export default function AdminDashboard() {
   const [health, setHealth] = useState(null);
   const [healthLoading, setHealthLoading] = useState(false);
 
+  // Glossary tab
+  const [glossaryTerms, setGlossaryTerms] = useState([]);
+  const [glossaryLoading, setGlossaryLoading] = useState(false);
+  const [glossarySearch, setGlossarySearch] = useState("");
+  const [glossaryEditor, setGlossaryEditor] = useState(null); // term obj (edit) or blank (new)
+  const [glossaryModalError, setGlossaryModalError] = useState("");
+
+  // Resources (knowledge base) tab
+  const [resources, setResources] = useState([]);
+  const [resourceIndex, setResourceIndex] = useState(null);
+  const [resourcesLoading, setResourcesLoading] = useState(false);
+  const [uploadingResource, setUploadingResource] = useState(false);
+  const [rebuildingIndex, setRebuildingIndex] = useState(false);
+  const [resourceMsg, setResourceMsg] = useState("");
+  const resourceFileRef = useRef(null);
+
+  // Step resources (student panel: video + interactive per step/level)
+  const [stepRes, setStepRes] = useState(null);
+  const [stepResLevel, setStepResLevel] = useState("high_school");
+  const [stepResLoading, setStepResLoading] = useState(false);
+  const [stepResSaving, setStepResSaving] = useState("");
+  const [stepResSaved, setStepResSaved] = useState("");
+
   // Load stats on mount
   useEffect(() => {
     setLoading(true);
@@ -156,8 +189,111 @@ export default function AdminDashboard() {
     } else if (tab === "health") {
       setHealthLoading(true);
       API.adminGetHealth().then(setHealth).catch(console.error).finally(() => setHealthLoading(false));
+    } else if (tab === "glossary") {
+      loadGlossary();
+    } else if (tab === "resources") {
+      loadResources();
+    } else if (tab === "stepres") {
+      loadStepRes();
     }
   }, [tab]);
+
+  const loadGlossary = useCallback(() => {
+    setGlossaryLoading(true);
+    API.adminGlossaryList()
+      .then((d) => setGlossaryTerms(d.terms || []))
+      .catch(console.error)
+      .finally(() => setGlossaryLoading(false));
+  }, []);
+
+  async function handleDeleteTerm(t) {
+    if (!window.confirm(`Delete the term "${t.term}"? This cannot be undone.`)) return;
+    try {
+      await API.adminGlossaryDelete(t.id);
+      loadGlossary();
+    } catch (e) { alert(e.message); }
+  }
+
+  const loadResources = useCallback(() => {
+    setResourcesLoading(true);
+    API.adminResourcesList()
+      .then((d) => { setResources(d.files || []); setResourceIndex(d.index || null); })
+      .catch(console.error)
+      .finally(() => setResourcesLoading(false));
+  }, []);
+
+  async function handleUploadResource(e) {
+    const file = e.target.files?.[0];
+    if (resourceFileRef.current) resourceFileRef.current.value = ""; // allow re-selecting same file
+    if (!file) return;
+    setResourceMsg("");
+    setUploadingResource(true);
+    try {
+      await API.adminResourcesUpload(file);
+      setResourceMsg(`Uploaded "${file.name}". Rebuild the knowledge base to apply it.`);
+      loadResources();
+    } catch (err) { setResourceMsg(err.message); }
+    finally { setUploadingResource(false); }
+  }
+
+  async function handleDeleteResource(name) {
+    if (!window.confirm(`Delete "${name}" from the knowledge base? Rebuild afterward to apply.`)) return;
+    setResourceMsg("");
+    try {
+      await API.adminResourcesDelete(name);
+      loadResources();
+    } catch (err) { setResourceMsg(err.message); }
+  }
+
+  async function handleViewResource(name) {
+    try { await API.adminResourceOpen(name, { download: false }); }
+    catch (err) { setResourceMsg(err.message); }
+  }
+  async function handleDownloadResource(name) {
+    try { await API.adminResourceOpen(name, { download: true }); }
+    catch (err) { setResourceMsg(err.message); }
+  }
+
+  const loadStepRes = useCallback(() => {
+    setStepResLoading(true);
+    API.adminStepResourcesList()
+      .then((d) => setStepRes(d.resources || { high_school: {}, higher_ed: {} }))
+      .catch(console.error)
+      .finally(() => setStepResLoading(false));
+  }, []);
+
+  function setStepField(level, step, field, value) {
+    setStepRes((r) => ({
+      ...r,
+      [level]: { ...r[level], [step]: { ...(r[level]?.[step] || {}), [field]: value } },
+    }));
+  }
+
+  async function saveStepRes(level, step) {
+    const e = stepRes[level]?.[step] || {};
+    const key = `${level}:${step}`;
+    setStepResSaving(key);
+    try {
+      await API.adminStepResourceUpdate({
+        step: Number(step), level,
+        video_url: e.video_url || "", interactive_url: e.interactive_url || "",
+      });
+      setStepResSaved(key);
+      setTimeout(() => setStepResSaved((k) => (k === key ? "" : k)), 1800);
+    } catch (err) { alert(err.message); }
+    finally { setStepResSaving(""); }
+  }
+
+  async function handleRebuildIndex() {
+    setResourceMsg("");
+    setRebuildingIndex(true);
+    try {
+      const r = await API.adminResourcesRebuild();
+      setResourceMsg(`Knowledge base rebuilt — ${r.sources} document${r.sources === 1 ? "" : "s"}, ${r.chunks} chunks indexed.`);
+      loadResources();
+    } catch (err) { setResourceMsg(err.message); }
+    finally { setRebuildingIndex(false); }
+  }
 
   const loadUsers = useCallback(() => {
     API.adminGetUsers({
@@ -237,6 +373,9 @@ export default function AdminDashboard() {
     { id: "sessions", label: "Sessions" },
     { id: "map", label: "Map" },
     { id: "activity", label: "Activity" },
+    { id: "glossary", label: "Glossary" },
+    { id: "resources", label: "Knowledge Base" },
+    { id: "stepres", label: "Step Resources" },
     { id: "health", label: "Health" },
   ];
 
@@ -260,7 +399,12 @@ export default function AdminDashboard() {
             <button className="ad-back-btn" onClick={() => { setUserDetail(null); setUserDetailLoading(false); }}>&larr; Back to Users</button>
           </div>
           <div className="ad-header__right">
-            <button className="hop-header__signout" onClick={logout}>Sign Out</button>
+            <ProfileMenu
+              user={user}
+              onSignOut={logout}
+              onOpenSettings={() => setSettingsOpen(true)}
+              roleLabel="Administrator"
+            />
           </div>
         </header>
         <div className="ad-body">
@@ -284,17 +428,12 @@ export default function AdminDashboard() {
           <span className="ad-header__badge">Admin</span>
         </div>
         <div className="ad-header__right">
-          {user && (
-            <div className="hop-user">
-              <span className="hop-user__avatar">{user.name?.charAt(0).toUpperCase()}</span>
-              <span className="hop-user__name">{user.name}</span>
-            </div>
-          )}
-          <button className="theme-toggle" onClick={toggleTheme} title={theme === "dark" ? "Light mode" : "Dark mode"}>
-            {theme === "dark" ? "\u2600" : "\u263E"}
-          </button>
-          <span className="hop-header__divider" />
-          <button className="hop-header__signout" onClick={logout}>Sign Out</button>
+          <ProfileMenu
+            user={user}
+            onSignOut={logout}
+            onOpenSettings={() => setSettingsOpen(true)}
+            roleLabel="Administrator"
+          />
         </div>
       </header>
 
@@ -723,76 +862,76 @@ export default function AdminDashboard() {
               <div className="ad-chart-row" style={{ marginTop: 20 }}>
                 <div className="ad-chart-card">
                   <h4>Users by Country</h4>
-                  {geoCountries.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={260}>
-                      <PieChart>
-                        <Pie
-                          data={geoCountries.slice(0, 8).map((c) => ({ name: c.country, value: c.unique_users }))}
-                          dataKey="value"
-                          nameKey="name"
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={50}
-                          outerRadius={90}
-                          label={({ name, value }) => `${name} (${value})`}
-                        >
-                          {geoCountries.slice(0, 8).map((_, i) => (
-                            <Cell key={i} fill={GEO_PALETTE[i % GEO_PALETTE.length]} />
-                          ))}
-                        </Pie>
-                        <Tooltip contentStyle={tipStyle} labelStyle={tipLabelStyle} itemStyle={{ color: tipStyle.color }} />
-                        <Legend />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  ) : (
+                  {geoCountries.length > 0 ? (() => {
+                    // Top 7 + grouped "Other" so the donut stays readable and still totals 100%
+                    const sorted = [...geoCountries].sort((a, b) => (b.unique_users || 0) - (a.unique_users || 0));
+                    const TOP = 7;
+                    const pie = sorted.slice(0, TOP).map((c) => ({ name: c.country, value: c.unique_users }));
+                    const rest = sorted.slice(TOP);
+                    if (rest.length) pie.push({ name: `Other · ${rest.length} countries`, value: rest.reduce((s, c) => s + (c.unique_users || 0), 0) });
+                    return (
+                      <ResponsiveContainer width="100%" height={280}>
+                        <PieChart>
+                          <Pie data={pie} dataKey="value" nameKey="name" cx="50%" cy="48%" innerRadius={54} outerRadius={92} paddingAngle={2}>
+                            {pie.map((d, i) => (
+                              <Cell key={i} fill={d.name.startsWith("Other") ? "#94a3b8" : GEO_PALETTE[i % GEO_PALETTE.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip contentStyle={tipStyle} labelStyle={tipLabelStyle} itemStyle={{ color: tipStyle.color }} formatter={(v) => [`${v} users`]} />
+                          <Legend iconType="circle" wrapperStyle={{ fontSize: 11 }} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    );
+                  })() : (
                     <p className="ad-empty">No country data yet.</p>
                   )}
                 </div>
 
                 <div className="ad-chart-card">
-                  <h4>Logins by Country</h4>
+                  <h4>Logins by Country <span className="ad-chart-count">{geoCountries.length}</span></h4>
                   {geoCountries.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={260}>
-                      <BarChart
-                        layout="vertical"
-                        data={geoCountries.slice(0, 10)}
-                        margin={{ left: 20 }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" stroke="var(--hop-border, #e5e7eb)" />
-                        <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
-                        <YAxis type="category" dataKey="country" width={80} tick={{ fontSize: 11 }} />
-                        <Tooltip contentStyle={tipStyle} labelStyle={tipLabelStyle} itemStyle={{ color: tipStyle.color }} />
-                        <Bar dataKey="logins" name="Logins" fill="#2B5EA7" radius={[0, 4, 4, 0]} />
-                        <Bar dataKey="unique_users" name="Users" fill="#1A8A7D" radius={[0, 4, 4, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
+                    <div className="td-chart-scroll" style={{ maxHeight: 320, overflowY: geoCountries.length > 8 ? "auto" : "visible" }}>
+                      <ResponsiveContainer width="100%" height={Math.max(180, geoCountries.length * 34 + 16)}>
+                        <BarChart layout="vertical" data={[...geoCountries].sort((a, b) => (b.logins || 0) - (a.logins || 0))} margin={{ left: 20, right: 16 }} barCategoryGap="20%">
+                          <CartesianGrid strokeDasharray="3 3" stroke="var(--hop-border, #e5e7eb)" horizontal={false} />
+                          <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
+                          <YAxis type="category" dataKey="country" width={90} interval={0} tick={{ fontSize: 11 }} tickFormatter={(n) => (n && n.length > 14 ? n.slice(0, 13) + "…" : n)} />
+                          <Tooltip contentStyle={tipStyle} labelStyle={tipLabelStyle} itemStyle={{ color: tipStyle.color }} />
+                          <Bar dataKey="logins" name="Logins" fill="#2B5EA7" radius={[0, 4, 4, 0]} maxBarSize={18} />
+                          <Bar dataKey="unique_users" name="Users" fill="#1A8A7D" radius={[0, 4, 4, 0]} maxBarSize={18} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
                   ) : (
                     <p className="ad-empty">No country data yet.</p>
                   )}
                 </div>
               </div>
 
-              {/* Region/city bar chart */}
+              {/* Region/city bar chart — all rows, scrollable */}
               <div className="ad-chart-card ad-chart-card--wide" style={{ marginTop: 20 }}>
-                <h4>Top Cities / Regions</h4>
+                <h4>Cities / Regions <span className="ad-chart-count">{geoRegions.length}</span></h4>
                 {geoRegions.length > 0 ? (
-                  <ResponsiveContainer width="100%" height={Math.max(200, geoRegions.slice(0, 15).length * 32)}>
-                    <BarChart
-                      layout="vertical"
-                      data={geoRegions.slice(0, 15).map((r) => ({
-                        ...r,
-                        label: `${r.city}${r.region ? `, ${r.region}` : ""}${r.country ? ` (${r.country})` : ""}`,
-                      }))}
-                      margin={{ left: 30 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" stroke="var(--hop-border, #e5e7eb)" />
-                      <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
-                      <YAxis type="category" dataKey="label" width={180} tick={{ fontSize: 10 }} />
-                      <Tooltip contentStyle={tipStyle} labelStyle={tipLabelStyle} itemStyle={{ color: tipStyle.color }} />
-                      <Bar dataKey="logins" name="Logins" fill="#E8618C" radius={[0, 4, 4, 0]} />
-                      <Bar dataKey="unique_users" name="Users" fill="#F0B429" radius={[0, 4, 4, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
+                  <div className="td-chart-scroll" style={{ maxHeight: 420, overflowY: geoRegions.length > 11 ? "auto" : "visible" }}>
+                    <ResponsiveContainer width="100%" height={Math.max(200, geoRegions.length * 32 + 16)}>
+                      <BarChart
+                        layout="vertical"
+                        data={[...geoRegions].sort((a, b) => (b.logins || 0) - (a.logins || 0)).map((r) => ({
+                          ...r,
+                          label: `${r.city}${r.region ? `, ${r.region}` : ""}${r.country ? ` (${r.country})` : ""}`,
+                        }))}
+                        margin={{ left: 30, right: 16 }}
+                        barCategoryGap="20%"
+                      >
+                        <CartesianGrid strokeDasharray="3 3" stroke="var(--hop-border, #e5e7eb)" horizontal={false} />
+                        <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
+                        <YAxis type="category" dataKey="label" width={190} interval={0} tick={{ fontSize: 10 }} tickFormatter={(n) => (n && n.length > 30 ? n.slice(0, 29) + "…" : n)} />
+                        <Tooltip contentStyle={tipStyle} labelStyle={tipLabelStyle} itemStyle={{ color: tipStyle.color }} />
+                        <Bar dataKey="logins" name="Logins" fill="#E8618C" radius={[0, 4, 4, 0]} maxBarSize={16} />
+                        <Bar dataKey="unique_users" name="Users" fill="#F0B429" radius={[0, 4, 4, 0]} maxBarSize={16} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
                 ) : (
                   <p className="ad-empty">No region data yet.</p>
                 )}
@@ -880,6 +1019,231 @@ export default function AdminDashboard() {
             </div>
           )}
 
+          {/* ===== GLOSSARY ===== */}
+          {tab === "glossary" && (
+            <div className="ad-users">
+              <div className="ad-users__toolbar">
+                <input
+                  type="text"
+                  className="ad-users__search"
+                  placeholder="Search terms or definitions..."
+                  value={glossarySearch}
+                  onChange={(e) => setGlossarySearch(e.target.value)}
+                />
+                <span className="ad-glossary__count">
+                  {glossaryTerms.length} term{glossaryTerms.length === 1 ? "" : "s"}
+                </span>
+                <button
+                  className="td-btn td-btn--primary td-btn--sm"
+                  onClick={() => { setGlossaryEditor({ term: "", def: "", steps: [] }); setGlossaryModalError(""); }}
+                >
+                  + Add Term
+                </button>
+              </div>
+
+              {glossaryLoading && <div className="ad-loading">Loading glossary...</div>}
+
+              <div className="ad-glossary__list">
+                {(() => {
+                  const q = glossarySearch.trim().toLowerCase();
+                  const shown = q
+                    ? glossaryTerms.filter((t) =>
+                        t.term.toLowerCase().includes(q) || (t.def || "").toLowerCase().includes(q))
+                    : glossaryTerms;
+                  if (!glossaryLoading && shown.length === 0) {
+                    return <div className="ad-empty">No terms {q ? "match your search" : "yet"}.</div>;
+                  }
+                  return shown.map((t) => (
+                    <div className="ad-glossary__row" key={t.id}>
+                      <div className="ad-glossary__main">
+                        <div className="ad-glossary__term">{t.term}</div>
+                        <div className="ad-glossary__def">{t.def}</div>
+                        {t.steps && t.steps.length > 0 && (
+                          <div className="ad-glossary__steps">
+                            {t.steps.map((s) => (
+                              <span className="ad-glossary__step" key={s}>Step {s}</span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <div className="ad-glossary__actions">
+                        <button className="td-btn td-btn--ghost td-btn--sm" onClick={() => { setGlossaryEditor(t); setGlossaryModalError(""); }}>Edit</button>
+                        <button className="td-btn td-btn--ghost td-btn--sm" onClick={() => handleDeleteTerm(t)}>Delete</button>
+                      </div>
+                    </div>
+                  ));
+                })()}
+              </div>
+
+              {glossaryEditor && (
+                <GlossaryEditorModal
+                  term={glossaryEditor}
+                  error={glossaryModalError}
+                  onClose={() => setGlossaryEditor(null)}
+                  onSave={async (fields) => {
+                    setGlossaryModalError("");
+                    try {
+                      if (glossaryEditor.id) await API.adminGlossaryUpdate(glossaryEditor.id, fields);
+                      else await API.adminGlossaryCreate(fields);
+                      setGlossaryEditor(null);
+                      loadGlossary();
+                    } catch (e) { setGlossaryModalError(e.message); }
+                  }}
+                />
+              )}
+            </div>
+          )}
+
+          {/* ===== RESOURCES (knowledge base) ===== */}
+          {tab === "resources" && (
+            <div className="ad-res">
+              <div className="ad-res__intro">
+                <p className="ad-res__lead">
+                  Documents the AI assistant draws on when answering students. Upload PDF, TXT, or Markdown
+                  files, then rebuild the knowledge base to make changes take effect.
+                </p>
+                <div className="ad-res__toolbar">
+                  <input
+                    ref={resourceFileRef}
+                    type="file"
+                    accept=".pdf,.txt,.md,.markdown"
+                    style={{ display: "none" }}
+                    onChange={handleUploadResource}
+                  />
+                  <button
+                    className="td-btn td-btn--outline td-btn--sm"
+                    disabled={uploadingResource || rebuildingIndex}
+                    onClick={() => resourceFileRef.current?.click()}
+                  >
+                    {uploadingResource ? "Uploading…" : "+ Upload document"}
+                  </button>
+                  <button
+                    className="td-btn td-btn--primary td-btn--sm"
+                    disabled={rebuildingIndex || uploadingResource}
+                    onClick={handleRebuildIndex}
+                  >
+                    {rebuildingIndex ? "Rebuilding…" : "Rebuild knowledge base"}
+                  </button>
+                </div>
+              </div>
+
+              {resourceIndex && (
+                <div className={`ad-res__status${resourceIndex.stale ? " ad-res__status--stale" : ""}`}>
+                  {!resourceIndex.rag_available ? (
+                    <span>Retrieval engine unavailable on this server.</span>
+                  ) : resourceIndex.stale ? (
+                    <span><strong>Changes pending.</strong> Files have changed since the last build — click “Rebuild knowledge base” to apply them to the AI.</span>
+                  ) : (
+                    <span><strong>Up to date.</strong> {resourceIndex.sources} document{resourceIndex.sources === 1 ? "" : "s"} · {resourceIndex.total_chunks} chunks indexed.</span>
+                  )}
+                </div>
+              )}
+
+              {resourceMsg && <div className="ad-res__msg">{resourceMsg}</div>}
+              {rebuildingIndex && <div className="ad-res__msg">Re-embedding all documents… this can take up to a minute.</div>}
+
+              {resourcesLoading && <div className="ad-loading">Loading documents…</div>}
+
+              <div className="ad-res__list">
+                {!resourcesLoading && resources.length === 0 && (
+                  <div className="ad-empty">No documents yet. Upload a PDF, TXT, or Markdown file.</div>
+                )}
+                {resources.map((f) => (
+                  <div className="ad-res__row" key={f.name}>
+                    <span className={`ad-res__ext ad-res__ext--${f.ext}`}>{f.ext}</span>
+                    <div className="ad-res__main">
+                      <div className="ad-res__name" title={f.name}>{f.name}</div>
+                      <div className="ad-res__meta">
+                        {fmtBytes(f.size)}
+                        <span className="ad-res__dot">·</span>
+                        {f.indexed
+                          ? <span className="ad-res__indexed">{f.chunks} chunk{f.chunks === 1 ? "" : "s"} indexed</span>
+                          : <span className="ad-res__pending">not yet indexed</span>}
+                      </div>
+                    </div>
+                    <div className="ad-res__actions">
+                      <button className="td-btn td-btn--ghost td-btn--sm" onClick={() => handleViewResource(f.name)}>View</button>
+                      <button className="td-btn td-btn--ghost td-btn--sm" onClick={() => handleDownloadResource(f.name)}>Download</button>
+                      <button className="td-btn td-btn--ghost td-btn--sm" onClick={() => handleDeleteResource(f.name)}>Delete</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ===== STEP RESOURCES (student panel: video + interactive) ===== */}
+          {tab === "stepres" && (
+            <div className="ad-stepres">
+              <p className="ad-res__lead">
+                The <strong>Video</strong> and <strong>Interactive</strong> resources shown to students in each
+                step's Resources panel. Edit them per education level — changes go live immediately (students
+                see them next time they open the panel). Leave a field blank to hide that resource.
+              </p>
+
+              <div className="ad-seg ad-stepres__levels">
+                {[["high_school", "High / Middle School"], ["higher_ed", "Higher Ed"]].map(([id, label]) => (
+                  <button
+                    key={id}
+                    className={`ad-seg__btn${stepResLevel === id ? " ad-seg__btn--active" : ""}`}
+                    onClick={() => setStepResLevel(id)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              {stepResLoading && <div className="ad-loading">Loading step resources…</div>}
+
+              {stepRes && (
+                <div className="ad-stepres__list">
+                  {STEP_LABELS.map((label, i) => {
+                    const step = i + 1;
+                    const e = stepRes[stepResLevel]?.[step] || {};
+                    const key = `${stepResLevel}:${step}`;
+                    return (
+                      <div className="ad-stepres__row" key={step}>
+                        <div className="ad-stepres__head">
+                          <span className="ad-stepres__num">{step}</span>
+                          <span className="ad-stepres__label">{label}</span>
+                        </div>
+                        <div className="ad-stepres__fields">
+                          <label className="ad-stepres__field">
+                            <span>Video URL</span>
+                            <input
+                              value={e.video_url || ""}
+                              onChange={(ev) => setStepField(stepResLevel, step, "video_url", ev.target.value)}
+                              placeholder="Video embed URL (optional)"
+                            />
+                          </label>
+                          <label className="ad-stepres__field">
+                            <span>Interactive URL</span>
+                            <input
+                              value={e.interactive_url || ""}
+                              onChange={(ev) => setStepField(stepResLevel, step, "interactive_url", ev.target.value)}
+                              placeholder="Genially / interactive embed URL"
+                            />
+                          </label>
+                        </div>
+                        <div className="ad-stepres__rowactions">
+                          {e.video_url && <a className="ad-stepres__open" href={e.video_url} target="_blank" rel="noopener noreferrer">video ↗</a>}
+                          {e.interactive_url && <a className="ad-stepres__open" href={e.interactive_url} target="_blank" rel="noopener noreferrer">interactive ↗</a>}
+                          <button
+                            className="td-btn td-btn--primary td-btn--sm"
+                            disabled={stepResSaving === key}
+                            onClick={() => saveStepRes(stepResLevel, step)}
+                          >
+                            {stepResSaving === key ? "Saving…" : stepResSaved === key ? "Saved ✓" : "Save"}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* ===== HEALTH ===== */}
           {tab === "health" && (
             <div className="ad-health">
@@ -937,6 +1301,8 @@ export default function AdminDashboard() {
           )}
         </div>
       </div>
+
+      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} theme={theme} toggleTheme={toggleTheme} />
     </div>
   );
 
@@ -1165,6 +1531,74 @@ function EditUserModal({ user: u, onClose, onSave, error }) {
         <div className="ad-modal__actions">
           <button className="td-btn td-btn--outline td-btn--sm" onClick={onClose}>Cancel</button>
           <button className="td-btn td-btn--primary td-btn--sm" onClick={() => onSave(form)}>Save</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+const GLOSSARY_STEP_LABELS = [
+  "Worldview", "Topic", "Framework", "Design", "Research Questions",
+  "Data", "Analysis", "Trustworthiness", "Ethics",
+];
+
+function GlossaryEditorModal({ term, onClose, onSave, error }) {
+  const [form, setForm] = useState({
+    term: term.term || "",
+    definition: term.def || "",
+    steps: term.steps || [],
+  });
+  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+  const toggleStep = (n) =>
+    setForm((f) => ({
+      ...f,
+      steps: f.steps.includes(n) ? f.steps.filter((s) => s !== n) : [...f.steps, n].sort((a, b) => a - b),
+    }));
+  const canSave = form.term.trim() && form.definition.trim();
+  return (
+    <div className="ad-modal-backdrop" onClick={onClose}>
+      <div className="ad-modal ad-modal--wide" onClick={(e) => e.stopPropagation()}>
+        <h3>{term.id ? "Edit Term" : "Add Term"}</h3>
+        {error && <div className="ad-modal__error">{error}</div>}
+        <label>Term<input value={form.term} onChange={(e) => set("term", e.target.value)} placeholder="e.g. Conceptual Framework" /></label>
+        <label>Definition
+          <textarea
+            className="ad-glossary__textarea"
+            rows={4}
+            value={form.definition}
+            onChange={(e) => set("definition", e.target.value)}
+            placeholder="A plain-language, student-friendly explanation."
+          />
+        </label>
+        <div className="ad-glossary__stepfield">
+          <span className="ad-glossary__stepfield-label">Related steps</span>
+          <div className="ad-glossary__stepgrid">
+            {GLOSSARY_STEP_LABELS.map((label, i) => {
+              const n = i + 1;
+              const on = form.steps.includes(n);
+              return (
+                <button
+                  type="button"
+                  key={n}
+                  className={`ad-glossary__stepchip${on ? " ad-glossary__stepchip--on" : ""}`}
+                  onClick={() => toggleStep(n)}
+                >
+                  <span className="ad-glossary__stepnum">{n}</span> {label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        <div className="ad-modal__actions">
+          <button className="td-btn td-btn--outline td-btn--sm" onClick={onClose}>Cancel</button>
+          <button
+            className="td-btn td-btn--primary td-btn--sm"
+            disabled={!canSave}
+            onClick={() => onSave({ term: form.term.trim(), definition: form.definition.trim(), steps: form.steps })}
+          >
+            Save
+          </button>
         </div>
       </div>
     </div>

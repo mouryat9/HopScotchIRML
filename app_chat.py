@@ -27,7 +27,7 @@ import json
 import logging
 
 import requests
-from fastapi import FastAPI, HTTPException, Body, Query, Depends, Request
+from fastapi import FastAPI, HTTPException, Body, Query, Depends, Request, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, Response
 from pydantic import BaseModel, Field
@@ -64,6 +64,11 @@ from database import (
     get_all_sessions, get_session_full,
     get_user_detail,
     get_login_stats_by_country, get_login_stats_by_region,
+    # Glossary
+    get_all_glossary_terms, count_glossary_terms, create_glossary_term,
+    update_glossary_term, delete_glossary_term, seed_glossary_if_empty,
+    # Step resources
+    get_step_resources, upsert_step_resource, seed_step_resources_if_empty,
 )
 
 # -------------------------------------------------
@@ -377,24 +382,30 @@ def _ensure_embedder():
         _embedder = SentenceTransformer(EMBED_MODEL_NAME)
 
 
-def _build_index():
-    """Build or load FAISS index; if RAG unavailable, no-op."""
-    global _faiss_index, _chunks
+def _build_index(force: bool = False):
+    """Build or load the FAISS index; if RAG unavailable, no-op.
+    With force=True, always rebuild from the resources folder (used by the
+    admin 'rebuild knowledge base' action after files change)."""
+    global _faiss_index, _chunks, _raw_docs_cache
     if not RAG_AVAILABLE:
         _faiss_index = None
         _chunks = []
-        return
+        return {"rag_available": False, "sources": 0, "chunks": 0}
 
     _ensure_embedder()
 
-    if INDEX_PATH.exists() and META_PATH.exists():
+    if not force and INDEX_PATH.exists() and META_PATH.exists():
         try:
             _faiss_index = faiss.read_index(str(INDEX_PATH))
             _chunks = json.loads(META_PATH.read_text(encoding="utf-8"))
-            return
+            return {"rag_available": True,
+                    "sources": len({c.get("source") for c in _chunks}),
+                    "chunks": len(_chunks)}
         except Exception as e:
             logger.warning("Failed to load existing index; rebuilding. %s", e)
 
+    # Fresh build — re-read every doc so newly added/removed files are reflected.
+    _raw_docs_cache = None
     docs = _load_all_docs()
     chunks: List[Dict[str, Any]] = []
     for d in docs:
@@ -404,7 +415,7 @@ def _build_index():
     if not chunks:
         _faiss_index = faiss.IndexFlatIP(EMBED_DIM) if RAG_AVAILABLE else None
         _chunks = []
-        return
+        return {"rag_available": True, "sources": 0, "chunks": 0}
 
     texts = [c["text"] for c in chunks]
     _ensure_embedder()
@@ -425,6 +436,44 @@ def _build_index():
         encoding="utf-8",
     )
     _chunks = [{"id": i, **c} for i, c in enumerate(chunks)]
+    return {"rag_available": True,
+            "sources": len({c["source"] for c in chunks}),
+            "chunks": len(chunks)}
+
+
+# Extensions the knowledge base can ingest.
+RESOURCE_EXTS = (".pdf", ".txt", ".md", ".markdown")
+
+
+def _list_resource_files() -> List[Dict[str, Any]]:
+    """List files in the resources folder with index coverage info."""
+    indexed_counts: Dict[str, int] = {}
+    for c in _chunks:
+        s = c.get("source", "")
+        indexed_counts[s] = indexed_counts.get(s, 0) + 1
+    files: List[Dict[str, Any]] = []
+    if DOCS_DIR.exists():
+        for p in sorted(DOCS_DIR.glob("*")):
+            if not p.is_file() or p.suffix.lower() not in RESOURCE_EXTS:
+                continue
+            st = p.stat()
+            files.append({
+                "name": p.name,
+                "ext": p.suffix.lower().lstrip("."),
+                "size": st.st_size,
+                "modified": datetime.utcfromtimestamp(st.st_mtime).isoformat() + "Z",
+                "chunks": indexed_counts.get(p.name, 0),
+                "indexed": p.name in indexed_counts,
+            })
+    return files
+
+
+def _index_stale() -> bool:
+    """True if the resources folder no longer matches the built index."""
+    on_disk = {p.name for p in DOCS_DIR.glob("*")
+               if p.is_file() and p.suffix.lower() in RESOURCE_EXTS} if DOCS_DIR.exists() else set()
+    in_index = {c.get("source", "") for c in _chunks}
+    return on_disk != in_index
 
 
 def _keyword_fallback(query: str, k: int = 5) -> List[Dict[str, Any]]:
@@ -549,12 +598,44 @@ def _seed_admin():
     logger.info("Created admin user: %s", ADMIN_EMAIL)
 
 
+def _seed_glossary():
+    """Populate the glossary collection from glossary_seed.json on first run."""
+    try:
+        seed_path = ROOT / "glossary_seed.json"
+        if not seed_path.exists():
+            return
+        with open(seed_path, "r", encoding="utf-8") as f:
+            terms = json.load(f)
+        inserted = seed_glossary_if_empty(terms)
+        if inserted:
+            print(f"[glossary] Seeded {inserted} terms into the database")
+    except Exception as e:
+        print(f"[glossary] Seed skipped: {e}")
+
+
+def _seed_step_resources():
+    """Populate step resources (video + interactive per step/level) on first run."""
+    try:
+        seed_path = ROOT / "step_resources_seed.json"
+        if not seed_path.exists():
+            return
+        with open(seed_path, "r", encoding="utf-8") as f:
+            seed = json.load(f)
+        inserted = seed_step_resources_if_empty(seed)
+        if inserted:
+            print(f"[step-resources] Seeded {inserted} rows into the database")
+    except Exception as e:
+        print(f"[step-resources] Seed skipped: {e}")
+
+
 @app.on_event("startup")
 def _startup():
     ensure_indexes()
     _build_index()
     load_paths_config()
     _seed_admin()
+    _seed_glossary()
+    _seed_step_resources()
     # Pre-warm the LLM so the first chat request doesn't cold-start
     _warm_llm()
 
@@ -671,6 +752,31 @@ def build_ollama_payload(worldview_profile, step_context, user_msg, passages,
         "- A general example that teaches a concept is fine; an example that is really "
         "the student's finished answer for their own study is NOT. When unsure, ask a "
         "guiding question instead of giving content.\n\n"
+
+        "==================================================================\n"
+        "FEEDBACK, NOT REWRITES (this is where you most often slip — do not)\n"
+        "==================================================================\n"
+        "When a student asks you to 'refine', 'revise', 'improve', 'strengthen', 'fix', "
+        "'reword', or 'make better' their topic, research question, goals, problem "
+        "statement, or any design content, you must NOT reply with a rewritten, polished, "
+        "ready-to-paste version of THEIR content. That is authoring it for them. Instead:\n"
+        "  1. Name 2-3 SPECIFIC strengths and weaknesses in exactly what they wrote.\n"
+        "  2. Ask targeted questions or give directions that guide THEM to revise it.\n"
+        "  3. You may explain a technique or show a GENERIC illustration, but the improved "
+        "version of their specific topic/question/goal must come from the student.\n"
+        "Never output a line like 'Refined Research Topic: …' or 'Revised Research "
+        "Question: …' that hands them a finished answer.\n\n"
+
+        "==================================================================\n"
+        "NEVER PROVIDE CITATIONS OR SOURCES (absolute — no exceptions)\n"
+        "==================================================================\n"
+        "You must NEVER provide, invent, list, or recommend specific citations, "
+        "references, author-year sources, article or book titles, journals, or DOIs — not "
+        "even if the student asks directly, says they can't find them, or asks for 'the "
+        "sources you mentioned'. Fabricating a reference is strictly prohibited and can "
+        "seriously harm the student's work. If they want sources, teach them HOW to search "
+        "(Google Scholar, library databases, keywords) and offer to help analyze a source "
+        "once THEY have found it. Do not name real papers from memory either.\n\n"
 
         "THE 9 STEPS:\n"
         "1. Who am I as a researcher? — Identify your worldview/paradigm (positivist, "
@@ -1963,6 +2069,144 @@ _COACH_NUDGES = {
 }
 
 
+# ---------------- Source/citation guardrail (deterministic, model-proof) ----------------
+# The LLM has been observed producing (and fabricating) specific citations despite the
+# system prompt forbidding it. This regex gate runs BEFORE the model, so it cannot be
+# overridden. It blocks requests that ask the AI to PRODUCE sources, while still allowing
+# "how/where do I find sources?" and "how do I cite?" questions.
+
+_SOURCE_TARGET = (
+    r"(citations?|references?|articles?|papers?|studies|source list|sources?|"
+    r"journal articles?|bibliograph\w*|works cited|literature list)"
+)
+_PRODUCE_VERB = (
+    r"(give|provide|list|share|write|generate|recommend|suggest|show|send|name|"
+    r"find\s+me|get\s+me)\s+(me\s+|us\s+)?(some\s+|a\s+few\s+|the\s+|specific\s+|"
+    r"actual\s+|real\s+|relevant\s+|several\s+|examples?\s+of\s+)?"
+)
+
+
+def _asks_for_sources(user_msg: str) -> bool:
+    """True if the student is asking the AI to PRODUCE citations/references/sources
+    (which risks fabrication and does their literature work for them). Deliberately
+    permits 'where/how can I find…' and 'how do I cite…' questions."""
+    m = (user_msg or "").lower()
+    if not m:
+        return False
+    # Allow genuine "how to find / how to cite / how to format" questions.
+    if re.search(r"how\s+(do|can|should|would)\s+i\s+(cite|format|reference)\b", m):
+        return False
+    # Block: "the citations/sources you recommended/gave/mentioned/listed"
+    if re.search(_SOURCE_TARGET + r"\s+(you|u)\s+(recommend|mention|gave|give|suggest|provid|list|cite)\w*", m):
+        return True
+    # Block: "title(s) of the article(s)/paper(s)/study/studies/source(s)"
+    if re.search(r"titles?\s+(of|for)\s+(the\s+|those\s+|these\s+)?(articles?|papers?|studies|study|sources?|references?)", m):
+        return True
+    # Block: a 'produce' verb followed by a source target ("give me references",
+    # "provide sources", "recommend studies on X", "find me articles").
+    if re.search(_PRODUCE_VERB + _SOURCE_TARGET, m):
+        return True
+    # Block: question forms that ask the AI to surface sources
+    # ("what are some studies on X", "any articles about Y", "which papers discuss Z").
+    if re.search(r"\b(what|which|are there any|any|got any|know any)\b[^.?!]{0,22}\b"
+                 + _SOURCE_TARGET
+                 + r"\b[^.?!]{0,18}\b(on|about|for|regarding|related|discuss|examin|support|show|cover)", m):
+        return True
+    return False
+
+
+def _source_redirect_message(active_step) -> str:
+    """Returned instead of letting the model invent or hand over citations."""
+    return (
+        "I'm not going to hand you specific citations or article titles — for two "
+        "reasons. First, finding and judging sources is a core research skill this step "
+        "is here to build. Second, an AI can get references wrong or invent ones that "
+        "don't exist, and citing a fake source would seriously hurt your work.\n\n"
+        "Here's how to find strong, real sources yourself:\n"
+        "• Search Google Scholar (scholar.google.com) or your library databases "
+        "(PsycINFO, PubMed, ERIC, JSTOR) using 2-3 keywords from your topic.\n"
+        "• Skim the abstract to check it actually fits your question, and follow the "
+        "reference lists of good papers to find more.\n\n"
+        "Once you've found a study, paste what it says or what it found, and I'll help "
+        "you analyze how it connects to your topic and where the gaps are."
+    )
+
+
+# ---------------- Output guard: strip handed-over deliverables ----------------
+# Even with a strong system prompt, the local model sometimes hands the student a
+# finished "Revised Topic: …" / "Example Research Question: …" block — i.e. it does
+# their work. This deterministic filter removes those blocks from the output (both
+# streaming and non-streaming) so the answer keeps the coaching but not the answer.
+
+_HANDED_LABEL_RE = re.compile(
+    r'^[#>*_\s\d.\-]*'
+    r'(revised|refined|suggested|improved|reworded|polished|reformulated|proposed|example)\s+'
+    r'(research\s+)?'
+    r'(topic|research\s+question|question|problem\s+statement|hypothesis|aim|objective)\b'
+    r'[^A-Za-z]*(:|$)',
+    re.I,
+)
+_HANDED_NUDGE = (
+    "_(I've held back the exact wording here — that part is yours to write. Draft it in "
+    "the 'My Research Design' panel and I'll give you feedback on what you come up with.)_"
+)
+
+
+def _sanitize_stream(raw_iter):
+    """Line-buffer a token stream and drop 'handed-over deliverable' blocks, emitting a
+    single coaching nudge in their place. Yields sanitized text pieces."""
+    pending = ""
+    st = {"suppress": False, "seen_content": False, "just_nudged": False}
+
+    def start_block():
+        st["suppress"] = True
+        st["seen_content"] = False
+        if st["just_nudged"]:
+            return ""
+        st["just_nudged"] = True
+        return _HANDED_NUDGE + "\n"
+
+    def process_line(line):
+        s = line.strip()
+        is_label = bool(_HANDED_LABEL_RE.match(s))
+        if st["suppress"]:
+            if is_label or s.startswith("#"):
+                # A new label/heading ends the current block; handle this line fresh.
+                st["suppress"] = False
+            elif s == "":
+                if not st["seen_content"]:
+                    return ""  # blank sitting between the label and its value → drop
+                st["suppress"] = False
+                st["just_nudged"] = False
+                return "\n"       # blank after the value → block ends here
+            else:
+                st["seen_content"] = True
+                return ""         # the handed-over value itself → drop
+        if is_label:
+            return start_block()
+        st["just_nudged"] = False
+        return line + "\n"
+
+    for delta in raw_iter:
+        pending += delta
+        while "\n" in pending:
+            line, pending = pending.split("\n", 1)
+            out = process_line(line)
+            if out:
+                yield out
+    if pending:
+        out = process_line(pending)
+        if out:
+            yield out.rstrip("\n") if not pending.endswith("\n") else out
+
+
+def _strip_handed_answers(text: str) -> str:
+    """Non-streaming version of the output guard."""
+    if not text:
+        return text
+    return "".join(_sanitize_stream(iter([text]))).rstrip("\n")
+
+
 def _coach_redirect_message(active_step) -> str:
     """The warm 'I'll guide you, but you draft it' response returned instead of
     authoring the student's design content for them."""
@@ -1987,12 +2231,17 @@ def _asks_ai_to_author(user_msg: str, active_step) -> bool:
         "You are a classifier for a research-methods tutoring app. A student is on "
         f"Step {active_step or '?'} of designing their OWN research study.\n"
         "Classify what their message is asking for. Reply with EXACTLY one word:\n"
-        "AUTHOR = they want the AI to write/produce/generate THEIR OWN design content "
-        "for them (e.g. 'write my research question', 'give me a hypothesis', 'what "
-        "should my topic be', 'make my data-collection plan', 'just do it for me', "
-        "'give me the answer', 'write it for me').\n"
-        "COACH = they want a concept explained, a definition, feedback on something "
-        "they already wrote, an example that teaches an idea, or general guidance.\n\n"
+        "AUTHOR = they want the AI to write/produce/generate/REWRITE THEIR OWN design "
+        "content for them, or to hand them a finished version. Examples: 'write my "
+        "research question', 'give me a hypothesis', 'what should my topic be', 'make my "
+        "data-collection plan', 'just do it for me', 'give me the answer', 'write it for "
+        "me', 'rewrite/reword/rephrase my question into a better version', 'give me a "
+        "revised/improved version of my topic', 'give me citations/references/articles/"
+        "sources', 'what are some studies on X'.\n"
+        "COACH = they want a concept explained, a definition, feedback/critique on "
+        "something they ALREADY wrote (pointing out strengths and weaknesses without "
+        "rewriting it for them), an example that teaches an idea, guidance on HOW to find "
+        "sources, or general guidance.\n\n"
         f"Student message: \"{(user_msg or '')[:500]}\"\n\n"
         "One word (AUTHOR or COACH):"
     )
@@ -2033,6 +2282,14 @@ def chat_send(req: ChatSendReq = Body(...), user: dict = Depends(get_current_use
         _persist_session(sess)
         return ChatHistoryResp(session_id=req.session_id, history=history)
 
+    # Source gate (deterministic): a citation/source request is never a safety concern,
+    # so handle it before moderation to return the helpful coaching message.
+    if _asks_for_sources(user_msg):
+        answer = _source_redirect_message(req.active_step)
+        history.append(ChatTurn(role="assistant", content=answer, step=req.active_step))
+        _persist_session(sess)
+        return ChatHistoryResp(session_id=req.session_id, history=history)
+
     # Safety gate: refuse harmful/unethical requests (Llama Guard 3, local).
     is_safe, _cats = _moderate_input(user_msg)
     if not is_safe:
@@ -2058,6 +2315,8 @@ def chat_send(req: ChatSendReq = Body(...), user: dict = Depends(get_current_use
         active_step=req.active_step, step_llm_guidance=step_llm_guidance,
         chat_history=history,
     )
+    # Output guard: strip any handed-over deliverable blocks the model slipped in.
+    answer = _strip_handed_answers(answer)
 
     history.append(ChatTurn(role="assistant", content=answer, step=req.active_step))
     _persist_session(sess)
@@ -2090,6 +2349,22 @@ def chat_send_stream(req: ChatSendReq = Body(...), user: dict = Depends(get_curr
                 _persist_session(sess)
         return StreamingResponse(_ai_off_stream(), media_type="text/plain")
 
+    # Source gate (deterministic): a citation/source request is never a safety concern,
+    # so handle it before moderation to return the helpful coaching message.
+    if _asks_for_sources(user_msg):
+        redirect_text = _source_redirect_message(req.active_step)
+
+        def _src_stream():
+            try:
+                for chunk in re.split(r"(?<=\n\n)", redirect_text):
+                    if chunk:
+                        yield chunk
+            finally:
+                history.append(ChatTurn(role="assistant", content=redirect_text, step=req.active_step))
+                _persist_session(sess)
+
+        return StreamingResponse(_src_stream(), media_type="text/plain")
+
     # Safety gate: refuse harmful/unethical requests (Llama Guard 3, local).
     is_safe, _cats = _moderate_input(user_msg)
     if not is_safe:
@@ -2101,8 +2376,7 @@ def chat_send_stream(req: ChatSendReq = Body(...), user: dict = Depends(get_curr
                 _persist_session(sess)
         return StreamingResponse(_refusal_stream(), media_type="text/plain")
 
-    # Academic-integrity gate: if the student is asking the AI to author their design
-    # content, stream a coaching redirect instead of doing the work for them.
+    # Academic-integrity gate: block "do/rewrite it for me" requests.
     if _asks_ai_to_author(user_msg, req.active_step):
         redirect_text = _coach_redirect_message(req.active_step)
 
@@ -2177,30 +2451,35 @@ def chat_send_stream(req: ChatSendReq = Body(...), user: dict = Depends(get_curr
                 if delta:
                     yield delta
 
+    def _raw_deltas():
+        """Raw model token stream: try primary backend, fall back to the other."""
+        stream_fn = _stream_vllm if LLM_BACKEND == "vllm" else _stream_ollama
+        try:
+            for delta in stream_fn():
+                yield delta
+        except GeneratorExit:
+            raise
+        except Exception as primary_err:
+            logger.warning("Primary stream (%s) failed: %s — trying fallback", LLM_BACKEND, primary_err)
+            fallback_fn = _stream_ollama if LLM_BACKEND == "vllm" else _stream_vllm
+            for delta in fallback_fn():
+                yield delta
+
     def event_stream():
         assistant_text_parts: List[str] = []
         try:
-            try:
-                # Try vLLM first if configured, fall back to Ollama
-                stream_fn = _stream_vllm if LLM_BACKEND == "vllm" else _stream_ollama
-                try:
-                    for delta in stream_fn():
-                        assistant_text_parts.append(delta)
-                        yield delta
-                except Exception as primary_err:
-                    logger.warning("Primary stream (%s) failed: %s — trying fallback", LLM_BACKEND, primary_err)
-                    fallback_fn = _stream_ollama if LLM_BACKEND == "vllm" else _stream_vllm
-                    for delta in fallback_fn():
-                        assistant_text_parts.append(delta)
-                        yield delta
-            except GeneratorExit:
-                logger.info("Client disconnected during stream for session %s", session_id)
-                return  # finally block still runs
-            except Exception as e:
-                logger.exception("LLM stream failed (both backends): %s", e)
-                yield "\n[Error streaming from model]\n"
+            # Output guard: sanitized, line-buffered stream (drops handed-over answers).
+            for piece in _sanitize_stream(_raw_deltas()):
+                assistant_text_parts.append(piece)
+                yield piece
+        except GeneratorExit:
+            logger.info("Client disconnected during stream for session %s", session_id)
+            return  # finally block still runs
+        except Exception as e:
+            logger.exception("LLM stream failed (both backends): %s", e)
+            yield "\n[Error streaming from model]\n"
         finally:
-            # Always persist, even if client disconnected mid-stream
+            # Always persist the sanitized text, even if client disconnected mid-stream
             full_text = "".join(assistant_text_parts).strip()
             if full_text:
                 history.append(ChatTurn(role="assistant", content=full_text, step=req.active_step))
@@ -2593,8 +2872,15 @@ def _gather_cf_data(session_id: str, current_user: dict) -> dict:
     if not research_questions:
         research_questions = (step5_data.get("research_question") or step5_data.get("notes") or "")
 
-    email = current_user.get("email") or current_user.get("username") or ""
-    name = current_user.get("name", "Student")
+    # Attribute the export to the SESSION OWNER (the student), not whoever is
+    # downloading it — a teacher/admin viewing a student's design must not have
+    # their own name/email stamped on the student's conceptual framework.
+    raw_doc = find_session(session_id)
+    owner_id = raw_doc.get("user_id") if raw_doc else None
+    owner = find_user_by_id(owner_id) if owner_id else None
+    export_user = owner or current_user
+    email = export_user.get("email") or export_user.get("username") or ""
+    name = export_user.get("name", "Student")
     timestamp = datetime.now().strftime("%B %d, %Y")
 
     # Pass raw text to LLM — it will extract short titles and structure everything
@@ -2917,6 +3203,196 @@ def admin_audit_log(
     admin: dict = Depends(require_admin),
 ):
     return {"log": get_admin_audit_log(limit, skip)}
+
+
+# ── Glossary ────────────────────────────────────────────
+
+@app.get("/glossary")
+def public_glossary():
+    """All glossary terms — read by the student Dictionary tab. Public."""
+    return {"terms": get_all_glossary_terms()}
+
+
+class GlossaryTermReq(BaseModel):
+    term: Optional[str] = None
+    definition: Optional[str] = None
+    steps: Optional[List[int]] = None
+
+
+@app.get("/admin/glossary")
+def admin_list_glossary(admin: dict = Depends(require_admin)):
+    return {"terms": get_all_glossary_terms(), "total": count_glossary_terms()}
+
+
+@app.post("/admin/glossary")
+def admin_create_glossary(req: GlossaryTermReq, admin: dict = Depends(require_admin)):
+    if not (req.term or "").strip() or not (req.definition or "").strip():
+        raise HTTPException(status_code=400, detail="Term and definition are required")
+    steps = [int(s) for s in (req.steps or []) if 1 <= int(s) <= 9]
+    term_id = create_glossary_term(req.term, req.definition, steps)
+    record_admin_action(
+        str(admin["_id"]), admin.get("email", ""),
+        "create_glossary_term", term_id, "", {"term": req.term.strip()}
+    )
+    return {"ok": True, "id": term_id}
+
+
+@app.patch("/admin/glossary/{term_id}")
+def admin_update_glossary(term_id: str, req: GlossaryTermReq, admin: dict = Depends(require_admin)):
+    fields: dict = {}
+    if req.term is not None:
+        fields["term"] = req.term
+    if req.definition is not None:
+        fields["def"] = req.definition
+    if req.steps is not None:
+        fields["steps"] = [int(s) for s in req.steps if 1 <= int(s) <= 9]
+    if not fields:
+        raise HTTPException(status_code=400, detail="No fields to update")
+    ok = update_glossary_term(term_id, fields)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Term not found")
+    record_admin_action(
+        str(admin["_id"]), admin.get("email", ""),
+        "update_glossary_term", term_id, "", {"term": fields.get("term")}
+    )
+    return {"ok": True}
+
+
+@app.delete("/admin/glossary/{term_id}")
+def admin_delete_glossary(term_id: str, admin: dict = Depends(require_admin)):
+    ok = delete_glossary_term(term_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Term not found")
+    record_admin_action(
+        str(admin["_id"]), admin.get("email", ""),
+        "delete_glossary_term", term_id, "", {}
+    )
+    return {"ok": True}
+
+
+# ── Knowledge base / RAG resources ──────────────────────
+
+def _safe_resource_name(filename: str) -> str:
+    """Sanitize an uploaded filename to a bare, safe basename."""
+    name = os.path.basename(filename or "").strip()
+    if not name or name in (".", "..") or "/" in name or "\\" in name:
+        raise HTTPException(status_code=400, detail="Invalid file name")
+    if Path(name).suffix.lower() not in RESOURCE_EXTS:
+        raise HTTPException(status_code=400, detail="Only PDF, TXT, or Markdown files are allowed")
+    return name
+
+
+@app.get("/admin/resources")
+def admin_list_resources(admin: dict = Depends(require_admin)):
+    return {
+        "files": _list_resource_files(),
+        "index": {
+            "rag_available": RAG_AVAILABLE,
+            "total_chunks": len(_chunks),
+            "sources": len({c.get("source") for c in _chunks}),
+            "stale": _index_stale(),
+        },
+    }
+
+
+@app.post("/admin/resources")
+async def admin_upload_resource(file: UploadFile = File(...), admin: dict = Depends(require_admin)):
+    name = _safe_resource_name(file.filename)
+    DOCS_DIR.mkdir(parents=True, exist_ok=True)
+    dest = DOCS_DIR / name
+    data = await file.read()
+    if not data:
+        raise HTTPException(status_code=400, detail="Uploaded file is empty")
+    with open(dest, "wb") as f:
+        f.write(data)
+    record_admin_action(
+        str(admin["_id"]), admin.get("email", ""),
+        "upload_resource", "", "", {"name": name, "size": len(data)}
+    )
+    return {"ok": True, "name": name, "size": len(data), "stale": _index_stale()}
+
+
+@app.delete("/admin/resources/{filename}")
+def admin_delete_resource(filename: str, admin: dict = Depends(require_admin)):
+    name = _safe_resource_name(filename)
+    target = DOCS_DIR / name
+    if not target.exists():
+        raise HTTPException(status_code=404, detail="File not found")
+    target.unlink()
+    record_admin_action(
+        str(admin["_id"]), admin.get("email", ""),
+        "delete_resource", "", "", {"name": name}
+    )
+    return {"ok": True, "stale": _index_stale()}
+
+
+@app.post("/admin/resources/rebuild")
+def admin_rebuild_index(admin: dict = Depends(require_admin)):
+    if not RAG_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Retrieval engine is not available on this server")
+    stats = _build_index(force=True)
+    record_admin_action(
+        str(admin["_id"]), admin.get("email", ""),
+        "rebuild_knowledge_base", "", "", stats or {}
+    )
+    return {"ok": True, **(stats or {}), "stale": _index_stale()}
+
+
+@app.get("/admin/resources/file/{filename}")
+def admin_get_resource_file(filename: str, download: int = Query(0), admin: dict = Depends(require_admin)):
+    """View (inline) or download a knowledge-base document."""
+    from fastapi.responses import FileResponse
+    name = _safe_resource_name(filename)
+    target = DOCS_DIR / name
+    if not target.exists():
+        raise HTTPException(status_code=404, detail="File not found")
+    media = {
+        "pdf": "application/pdf",
+        "txt": "text/plain",
+        "md": "text/markdown",
+        "markdown": "text/markdown",
+    }.get(target.suffix.lower().lstrip("."), "application/octet-stream")
+    disposition = "attachment" if download else "inline"
+    return FileResponse(
+        str(target), media_type=media, filename=name,
+        headers={"Content-Disposition": f'{disposition}; filename="{name}"'},
+    )
+
+
+# ── Step resources (student Resources panel: video + interactive per step) ──
+
+@app.get("/step-resources")
+def public_step_resources():
+    """All per-step video + interactive URLs, keyed by level. Read by students."""
+    return {"resources": get_step_resources()}
+
+
+class StepResourceReq(BaseModel):
+    step: int
+    level: str
+    video_url: Optional[str] = ""
+    interactive_url: Optional[str] = ""
+
+
+@app.get("/admin/step-resources")
+def admin_list_step_resources(admin: dict = Depends(require_admin)):
+    return {"resources": get_step_resources()}
+
+
+@app.patch("/admin/step-resources")
+def admin_update_step_resource(req: StepResourceReq, admin: dict = Depends(require_admin)):
+    if req.level not in ("high_school", "higher_ed"):
+        raise HTTPException(status_code=400, detail="Invalid education level")
+    if not (1 <= req.step <= 9):
+        raise HTTPException(status_code=400, detail="Step must be 1–9")
+    ok = upsert_step_resource(req.step, req.level, req.video_url or "", req.interactive_url or "")
+    if not ok:
+        raise HTTPException(status_code=400, detail="Could not save step resource")
+    record_admin_action(
+        str(admin["_id"]), admin.get("email", ""),
+        "update_step_resource", "", "", {"step": req.step, "level": req.level}
+    )
+    return {"ok": True}
 
 
 # ── Admin: Class Management ─────────────────────────────

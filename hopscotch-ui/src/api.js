@@ -562,4 +562,150 @@ export const API = {
     if (!res.ok) throw new Error(`Failed to load student step config: ${res.status}`);
     return res.json();
   },
+
+  // ---------- Glossary ----------
+
+  async getGlossary() {
+    const res = await fetch(`${API_BASE}/glossary`);
+    if (!res.ok) throw new Error(`Failed to load glossary: ${res.status}`);
+    return res.json();
+  },
+
+  async adminGlossaryList() {
+    const res = await fetch(`${API_BASE}/admin/glossary`, { headers: authHeaders() });
+    if (!res.ok) throw new Error(`Failed to load glossary: ${res.status}`);
+    return res.json();
+  },
+
+  async adminGlossaryCreate({ term, definition, steps }) {
+    const res = await fetch(`${API_BASE}/admin/glossary`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify({ term, definition, steps }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.detail || `Failed to create term: ${res.status}`);
+    }
+    return res.json();
+  },
+
+  async adminGlossaryUpdate(termId, { term, definition, steps }) {
+    const res = await fetch(`${API_BASE}/admin/glossary/${termId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify({ term, definition, steps }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.detail || `Failed to update term: ${res.status}`);
+    }
+    return res.json();
+  },
+
+  async adminGlossaryDelete(termId) {
+    const res = await fetch(`${API_BASE}/admin/glossary/${termId}`, {
+      method: "DELETE",
+      headers: authHeaders(),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.detail || `Failed to delete term: ${res.status}`);
+    }
+    return res.json();
+  },
+
+  // ---------- Admin: Knowledge base resources ----------
+
+  async adminResourcesList() {
+    const res = await fetch(`${API_BASE}/admin/resources`, { headers: authHeaders() });
+    if (!res.ok) throw new Error(`Failed to load resources: ${res.status}`);
+    return res.json();
+  },
+
+  async adminResourcesUpload(file) {
+    const form = new FormData();
+    form.append("file", file);
+    const res = await fetch(`${API_BASE}/admin/resources`, {
+      method: "POST",
+      headers: authHeaders(), // do NOT set Content-Type; browser sets multipart boundary
+      body: form,
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.detail || `Failed to upload: ${res.status}`);
+    }
+    return res.json();
+  },
+
+  async adminResourcesDelete(name) {
+    const res = await fetch(`${API_BASE}/admin/resources/${encodeURIComponent(name)}`, {
+      method: "DELETE",
+      headers: authHeaders(),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.detail || `Failed to delete: ${res.status}`);
+    }
+    return res.json();
+  },
+
+  async adminResourcesRebuild() {
+    const res = await fetch(`${API_BASE}/admin/resources/rebuild`, {
+      method: "POST",
+      headers: authHeaders(),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.detail || `Rebuild failed: ${res.status}`);
+    }
+    return res.json();
+  },
+
+  // View (open in a new tab) or download a KB file — both need the auth header,
+  // so fetch as a blob rather than linking to the URL directly.
+  async adminResourceOpen(name, { download = false } = {}) {
+    const q = download ? "?download=1" : "";
+    const res = await fetch(`${API_BASE}/admin/resources/file/${encodeURIComponent(name)}${q}`, {
+      headers: authHeaders(),
+    });
+    if (!res.ok) throw new Error(`Failed to open ${name}: ${res.status}`);
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    if (download) {
+      const a = document.createElement("a");
+      a.href = url; a.download = name;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    } else {
+      window.open(url, "_blank", "noopener");
+    }
+    setTimeout(() => window.URL.revokeObjectURL(url), 60000);
+  },
+
+  // ---------- Step resources (student Resources panel) ----------
+
+  async getStepResources() {
+    const res = await fetch(`${API_BASE}/step-resources`);
+    if (!res.ok) throw new Error(`Failed to load step resources: ${res.status}`);
+    return res.json();
+  },
+
+  async adminStepResourcesList() {
+    const res = await fetch(`${API_BASE}/admin/step-resources`, { headers: authHeaders() });
+    if (!res.ok) throw new Error(`Failed to load step resources: ${res.status}`);
+    return res.json();
+  },
+
+  async adminStepResourceUpdate({ step, level, video_url, interactive_url }) {
+    const res = await fetch(`${API_BASE}/admin/step-resources`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify({ step, level, video_url, interactive_url }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.detail || `Failed to save: ${res.status}`);
+    }
+    return res.json();
+  },
 };
