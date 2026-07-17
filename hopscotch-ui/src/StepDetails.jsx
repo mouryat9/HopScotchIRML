@@ -25,7 +25,7 @@ const STEP_DIRECTIONS = {
 const EMPTY_STEP_DATA = {
   1: { worldview: "", worldview_justification: "" },
   2: { topic: "", personalGoals: "", practicalGoals: "", intellectualGoals: "" },
-  3: { topicalResearch: "", theoreticalFrameworks: "" },
+  3: { topicalResearch: "", theoreticalFrameworks: "", gaps: "", problem_statement: "" },
 };
 
 // ---- If your backend expects worldview_id, map dropdown values to those ids
@@ -412,13 +412,47 @@ export default function StepDetails({ step, sessionId, onChatRefresh, onAutoSend
             disabled={!sessionId}
           />
 
+          <label className="hop-desc" style={{ display: "block", marginTop: 10 }}>
+            Gaps identified in the literature
+          </label>
+          <textarea
+            className="textarea"
+            rows={3}
+            placeholder="What has existing research not yet answered? Describe the gap your study will help fill…"
+            value={data.gaps || ""}
+            onChange={(e) => updateField("gaps", e.target.value)}
+            disabled={!sessionId}
+          />
+
+          <label className="hop-desc" style={{ display: "block", marginTop: 10 }}>
+            Problem statement
+          </label>
+          <details className="hop-template">
+            <summary>Need help? Open the problem statement template</summary>
+            <div className="hop-template__body">
+              <p><strong>Part 1. Describe the real-world problem.</strong> Within [community, organization, population, or setting], there is a problem concerning [___]. Although [what should ideally be happening], [the problem] continues to occur. Evidence includes [statistics, reports, or scholarly evidence].</p>
+              <p><strong>Part 2. Explain why it matters.</strong> This problem negatively affects [individuals, communities, or systems] by [___]. If it continues, it may result in [___].</p>
+              <p><strong>Part 3. Connect to existing research.</strong> Previous research has shown [___]. Researchers suggest factors such as [___] may contribute. However, little is known about [___], particularly among [___].</p>
+              <p><strong>Part 4. State the research problem (knowledge gap).</strong> Because existing literature does not adequately explain [___], there is a need for research that examines [___]. Understanding this could help [educators, policymakers, practitioners] make more informed decisions.</p>
+              <p><strong>Part 5. Connect to your proposed study.</strong> Therefore, this study will investigate [___] using a [qualitative, quantitative, or mixed-methods] approach in order to [explore, examine, measure, compare, or understand ___]. The findings may contribute by [___].</p>
+            </div>
+          </details>
+          <textarea
+            className="textarea"
+            rows={5}
+            placeholder="Write your problem statement here. Open the template above if you'd like a structure to follow…"
+            value={data.problem_statement || ""}
+            onChange={(e) => updateField("problem_statement", e.target.value)}
+            disabled={!sessionId}
+          />
+
           <div className="step-save-row">
             <button
               className="btn btn--primary"
-              disabled={!sessionId || (!data.topicalResearch && !data.theoreticalFrameworks)}
+              disabled={!sessionId || (!data.topicalResearch && !data.theoreticalFrameworks && !data.gaps && !data.problem_statement)}
               onClick={() => {
                 if (onAutoSend) onAutoSend(
-                  `I'm on Step 3. My topical research is: "${data.topicalResearch || ""}". My theoretical frameworks are: "${data.theoreticalFrameworks || ""}". Can you give me feedback and help me strengthen my literature review?`
+                  `I'm on Step 3. My topical research is: "${data.topicalResearch || ""}". My theoretical frameworks are: "${data.theoreticalFrameworks || ""}". The gap I identified is: "${data.gaps || ""}". My draft problem statement is: "${data.problem_statement || ""}". Can you give me feedback and help me strengthen my literature review and problem statement?`
                 );
               }}
             >

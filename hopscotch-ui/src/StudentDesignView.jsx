@@ -332,6 +332,8 @@ function ReadOnlyStepContent({ step, data, stepConfig, configLoading, sessionDat
       <div className="sdv-fields">
         <ReadOnlyField label="Topical Research" value={data.topicalResearch || data.topical_research} />
         <ReadOnlyField label="Theoretical Frameworks" value={data.theoreticalFrameworks || data.theoretical_frameworks} />
+        <ReadOnlyField label="Gaps Identified" value={data.gaps || data.gaps_identified} />
+        <ReadOnlyField label="Problem Statement" value={data.problem_statement || data.problemStatement} />
       </div>
     );
   }
