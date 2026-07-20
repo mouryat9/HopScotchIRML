@@ -2,11 +2,54 @@
 // For local development:
 // const API_BASE = "http://127.0.0.1:9580";
 
-// For production — auto-detect domain so both hopscotchai.us and hopscotch4-all.com work:
-const API_BASE =
-  typeof window !== "undefined" && window.location.hostname === "hopscotch4all.com"
-    ? "https://api.hopscotch4all.com"
-    : "https://api.hopscotchai.us";
+import { Capacitor } from "@capacitor/core";
+import { Filesystem, Directory } from "@capacitor/filesystem";
+import { Share } from "@capacitor/share";
+
+// In the native iOS/iPad app the page is served from localhost, so the domain
+// check below can't identify the environment — native builds always talk to
+// the production API. On the web we auto-detect the domain so both
+// hopscotchai.us and hopscotch4all.com work.
+const IS_NATIVE = (() => {
+  try { return Capacitor.isNativePlatform(); } catch { return false; }
+})();
+
+const API_BASE = IS_NATIVE
+  ? "https://api.hopscotch4all.com"
+  : (typeof window !== "undefined" && window.location.hostname === "hopscotch4all.com"
+      ? "https://api.hopscotch4all.com"
+      : "https://api.hopscotchai.us");
+
+// Save a downloaded file. On the web this triggers a normal browser download;
+// in the native iPad app (where <a download> doesn't work) it writes the file
+// and opens the iOS share sheet so the user can save/print/AirDrop it.
+function blobToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onloadend = () => resolve(String(r.result).split(",")[1] || "");
+    r.onerror = reject;
+    r.readAsDataURL(blob);
+  });
+}
+
+async function saveBlob(blob, filename) {
+  if (IS_NATIVE) {
+    const data = await blobToBase64(blob);
+    const written = await Filesystem.writeFile({ path: filename, data, directory: Directory.Cache });
+    try {
+      await Share.share({ title: filename, url: written.uri });
+    } catch { /* user dismissed the share sheet — file is still saved */ }
+    return;
+  }
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  window.URL.revokeObjectURL(url);
+}
 
 function authHeaders() {
   const stored = localStorage.getItem("hopscotch_user");
@@ -329,15 +372,7 @@ export const API = {
       headers: authHeaders(),
     });
     if (!res.ok) throw new Error("Failed to download research design");
-    const blob = await res.blob();
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "Research_Design.pdf";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    window.URL.revokeObjectURL(url);
+    await saveBlob(await res.blob(), "Research_Design.pdf");
   },
 
   async getConceptualFrameworkData(session_id) {
@@ -353,15 +388,7 @@ export const API = {
       headers: authHeaders(),
     });
     if (!res.ok) throw new Error("Failed to download conceptual framework");
-    const blob = await res.blob();
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "Conceptual_Framework.pptx";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    window.URL.revokeObjectURL(url);
+    await saveBlob(await res.blob(), "Conceptual_Framework.pptx");
   },
 
   // ---------- Admin ----------
@@ -533,15 +560,7 @@ export const API = {
   async adminExportCSV(type) {
     const res = await fetch(`${API_BASE}/admin/export/${type}.csv`, { headers: authHeaders() });
     if (!res.ok) throw new Error(`Failed to export ${type}: ${res.status}`);
-    const blob = await res.blob();
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `hopscotch_${type}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    window.URL.revokeObjectURL(url);
+    await saveBlob(await res.blob(), `hopscotch_${type}.csv`);
   },
 
   // ---------- Admin: User Detail ----------
@@ -671,14 +690,12 @@ export const API = {
     });
     if (!res.ok) throw new Error(`Failed to open ${name}: ${res.status}`);
     const blob = await res.blob();
-    const url = window.URL.createObjectURL(blob);
-    if (download) {
-      const a = document.createElement("a");
-      a.href = url; a.download = name;
-      document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    } else {
-      window.open(url, "_blank", "noopener");
+    if (download || IS_NATIVE) {
+      await saveBlob(blob, name);
+      return;
     }
+    const url = window.URL.createObjectURL(blob);
+    window.open(url, "_blank", "noopener");
     setTimeout(() => window.URL.revokeObjectURL(url), 60000);
   },
 

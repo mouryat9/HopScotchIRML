@@ -218,7 +218,12 @@ class ChatHistoryResp(BaseModel):
 app = FastAPI(title="Hopscotch IRML Chat API", version="0.2.0")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:9581", "http://127.0.0.1:9581", "https://hopscotchai.us", "https://hopscotch4all.com"],
+    allow_origins=[
+        "http://localhost:9581", "http://127.0.0.1:9581",
+        "https://hopscotchai.us", "https://hopscotch4all.com",
+        # Native iPad/iOS app (Capacitor) origins
+        "capacitor://localhost", "https://localhost", "ionic://localhost",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -1,0 +1,13 @@
+{
+  "appId": "com.hopscotch4all.app",
+  "appName": "Hopscotch 4 All",
+  "webDir": "dist",
+  "ios": {
+    "backgroundColor": "#ffffff",
+    "contentInset": "always",
+    "limitsNavigationsToAppBoundDomains": false
+  },
+  "server": {
+    "iosScheme": "https"
+  }
+}
