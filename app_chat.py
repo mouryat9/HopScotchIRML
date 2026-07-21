@@ -2143,12 +2143,26 @@ def _source_redirect_message(active_step) -> str:
 # their work. This deterministic filter removes those blocks from the output (both
 # streaming and non-streaming) so the answer keeps the coaching but not the answer.
 
+# Words the model uses to head a block where it hands the student a finished
+# deliverable (their own design content). Matched only when the term is the WHOLE
+# heading line (ends in ':' or end-of-line) — so it fires on "#### Personal Goals:"
+# but not on the term used inside a normal feedback sentence.
+_HANDED_ADJ = (
+    r'(?:revised|refined|suggested|improved|reworded|polished|reformulated|'
+    r'proposed|updated|example|draft|possible|recommended|stronger|better)'
+)
+_HANDED_DELIVERABLE = (
+    r'(?:personal|practical|intellectual|research)\s+goals?'
+    r'|research\s+topic|research\s+questions?|research\s+design|research\s+aims?'
+    r'|problem\s+statement|topical\s+research|literature\s+review'
+    r'|(?:theoretical|conceptual)\s+frameworks?'
+    r'|data\s+(?:collection|gathering|analysis)|analysis\s+plan|hypothesis'
+)
 _HANDED_LABEL_RE = re.compile(
-    r'^[#>*_\s\d.\-]*'
-    r'(revised|refined|suggested|improved|reworded|polished|reformulated|proposed|example)\s+'
-    r'(research\s+)?'
-    r'(topic|research\s+question|question|problem\s+statement|hypothesis|aim|objective)\b'
-    r'[^A-Za-z]*(:|$)',
+    r'^[#>*_\s\d.\-]*(?:'
+    r'(?:' + _HANDED_ADJ + r'\s+)?(?:' + _HANDED_DELIVERABLE + r')'
+    r'|' + _HANDED_ADJ + r'\s+(?:research\s+)?(?:topic|question|aim|objective)'
+    r')\b[^A-Za-z]*(:|$)',
     re.I,
 )
 _HANDED_NUDGE = (
