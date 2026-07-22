@@ -2247,14 +2247,11 @@ def _sanitize_stream(raw_iter):
     st = {"suppress": False, "seen_content": False, "nudges": 0}
 
     def start_block():
+        # Drop held-back blocks SILENTLY — the student shouldn't see an internal
+        # "I've held back the wording" note; they just get clean feedback.
         st["suppress"] = True
         st["seen_content"] = False
-        # Show the coaching nudge only ONCE per response — repeating it for every
-        # stripped block reads as broken. Later stripped blocks are dropped silently.
-        if st["nudges"] > 0:
-            return ""
-        st["nudges"] += 1
-        return _HANDED_NUDGE + "\n"
+        return ""
 
     def process_line(line):
         s = line.strip()
@@ -3081,6 +3078,283 @@ def export_conceptual_framework(
     buf.seek(0)
 
     filename = f"Conceptual_Framework_{d['name'].replace(' ', '_')}.pptx"
+    return Response(
+        content=buf.getvalue(),
+        media_type="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+    )
+
+
+# ---------------- PPTX Visual Design Export (qualitative) ----------------
+
+# Which slide (0-based) of visual_design_qualitative.pptx belongs to each
+# Step-4 qualitative design. Slide 0 is the generic legend slide.
+# school_ethnography reuses the ethnography layout; design_based_research
+# reuses the action-research layout (both are cycle-based improvement designs).
+VD_SLIDE_BY_DESIGN = {
+    "case_study": 1,
+    "action_research": 2,
+    "design_based_research": 2,
+    "ethnography": 3,
+    "school_ethnography": 3,
+    "narrative": 4,
+    "phenomenology": 5,
+    "phenomenography": 6,
+    "grounded_theory": 7,
+}
+
+VD_CENTRAL_LABEL = {
+    "case_study": "the case being studied",
+    "action_research": "the aspect to reflect upon and improve",
+    "design_based_research": "the aspect to reflect upon and improve",
+    "ethnography": "the culture/group under study",
+    "school_ethnography": "the culture/group under study",
+    "narrative": "the narrative portraits",
+    "phenomenology": "the phenomenon under study",
+    "phenomenography": "the phenomenon under study",
+    "grounded_theory": "the phenomenon under study (substantive area of interest)",
+}
+
+
+def _structure_vd_via_llm(design_label: str, central_label: str, raw_fields: dict) -> dict:
+    """
+    Ask the LLM to condense the student's step data into the short,
+    diagram-friendly snippets the visual-design slide needs. Only fields the
+    student actually filled in are sent; the LLM must not invent content.
+    """
+    import json as _json
+
+    filled = {k: v for k, v in raw_fields.items() if v and str(v).strip()}
+    if not filled:
+        return {}
+
+    data_lines = [f"  {k}: {str(v)[:600]}" for k, v in filled.items()]
+    data_block = "\n".join(data_lines)
+
+    prompt = (
+        f"You are filling in a one-slide visual diagram of a student's {design_label} "
+        "research design. Condense ONLY the student data below into short, "
+        "diagram-friendly text (each value at most 25 words; fragments are fine).\n\n"
+        "CRITICAL RULE: only use information present in the data below. If nothing in "
+        "the data answers a field, return an empty string for it. Do NOT invent content.\n\n"
+        "Fields to produce:\n"
+        f"- 'central_item': {central_label}, taken from their topic/question.\n"
+        "- 'context': the setting/context where the study takes place.\n"
+        "- 'informants': who the participants/informants are.\n"
+        "- 'other_documents': documents/artifacts to be analyzed besides direct data collection.\n"
+        "- 'data_gathering': the data gathering methods.\n"
+        "- 'strategies': design/analysis strategies (sampling, cycles, analysis approach).\n"
+        "- 'process_support': supports for rigor (trustworthiness strategies, ethics safeguards, tools).\n"
+        "- 'question': the central research question or issue, lightly condensed.\n"
+        "- 'topics': up to 4 short topic titles from their topical research, joined with newlines.\n"
+        "- 'minicases': mini-cases or sub-units of analysis, if any.\n\n"
+        f"STUDENT'S DATA:\n{data_block}\n\n"
+        "Respond with ONLY valid JSON, no markdown:\n"
+        "{\n"
+        '  "central_item": "", "context": "", "informants": "", "other_documents": "",\n'
+        '  "data_gathering": "", "strategies": "", "process_support": "", "question": "",\n'
+        '  "topics": "", "minicases": ""\n'
+        "}\n"
+    )
+
+    vd_messages = [{"role": "user", "content": prompt}]
+    raw = None
+    if LLM_BACKEND == "vllm":
+        raw = _call_vllm(vd_messages, temperature=0.3, max_tokens=1200, timeout=90)
+    if raw is None:
+        raw = _call_ollama({
+            "model": LLM_MODEL,
+            "messages": vd_messages,
+            "stream": False,
+            "options": {"temperature": 0.3, "num_predict": 1200},
+        }, timeout=90)
+
+    if not raw:
+        logger.warning("Both LLM backends failed for visual design structuring")
+        return {}
+    try:
+        json_match = re.search(r'\{[\s\S]*\}', raw)
+        if not json_match:
+            logger.warning("LLM did not return valid JSON for visual design: %s", raw[:200])
+            return {}
+        parsed = _json.loads(json_match.group())
+        return parsed if isinstance(parsed, dict) else {}
+    except Exception as e:
+        logger.warning("LLM visual design structuring failed: %s", e)
+        return {}
+
+
+@app.get("/session/{session_id}/export/visual-design")
+def export_visual_design(
+    session_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Generate the one-slide visual design diagram (.pptx) for a qualitative
+    study, using the slide matching the student's Step-4 design choice.
+    """
+    from datetime import datetime
+    from pptx import Presentation as PptxPresentation
+    import copy as _copy
+    import io
+
+    sess = _require_session(session_id)
+    steps_data = sess.step_notes
+
+    # Only qualitative paths have a visual design template (for now)
+    resolved = sess.resolved_path or "qualitative"
+    effective = resolved
+    if resolved == "mixed":
+        effective = sess.chosen_methodology or ""
+    elif sess.chosen_methodology:
+        effective = sess.chosen_methodology
+    if effective != "qualitative":
+        raise HTTPException(
+            status_code=400,
+            detail="The visual design export is currently available for qualitative studies only."
+        )
+
+    design_id = (steps_data.get("4") or {}).get("design")
+    if design_id not in VD_SLIDE_BY_DESIGN:
+        raise HTTPException(
+            status_code=400,
+            detail="Complete Step 4 (choose your qualitative design) to generate the visual design."
+        )
+
+    # Session owner info (teachers downloading a student's design get the student's name)
+    raw_doc = find_session(session_id)
+    owner = find_user_by_id(raw_doc.get("user_id")) if raw_doc and raw_doc.get("user_id") else None
+    vd_user = owner or current_user
+    name = vd_user.get("username") or vd_user.get("name", "Student")
+    email = vd_user.get("email") or vd_user.get("username") or ""
+
+    def get_field(step_num: int, *keys) -> str:
+        d = steps_data.get(str(step_num))
+        if not isinstance(d, dict):
+            return ""
+        for k in keys:
+            v = d.get(k)
+            if v not in (None, "", []):
+                return _resolve_option_labels(None, v) if isinstance(v, list) else str(v)
+        return ""
+
+    def get_labeled(step_num: int, field_key: str) -> str:
+        """Field value with option ids resolved to labels via the step config."""
+        d = steps_data.get(str(step_num))
+        if not isinstance(d, dict):
+            return ""
+        val = d.get(field_key)
+        if val in (None, "", []):
+            return ""
+        _, cfg = _effective_step_config(sess, step_num)
+        if cfg.get("field_type") in ("single_select", "multi_select") and cfg.get("field_key") == field_key:
+            return _resolve_option_labels(cfg.get("options"), val)
+        for f in cfg.get("fields", []):
+            if f.get("field_key") == field_key and f.get("type") in ("select", "multi_select"):
+                return _resolve_option_labels(f.get("options"), val)
+        return ", ".join(str(v) for v in val) if isinstance(val, list) else str(val)
+
+    design_label = _resolve_option_labels(
+        _effective_step_config(sess, 4)[1].get("options"), design_id) or design_id
+
+    raw_fields = {
+        "Topic": get_field(2, "topic"),
+        "Topical Research": get_field(3, "topicalResearch", "topical_research"),
+        "Research Question / Central Issue": get_labeled(5, "research_question"),
+        "Collection Method": get_labeled(6, "collection_method"),
+        "Participants": get_labeled(6, "participants"),
+        "Sampling Method": get_labeled(6, "sampling_method"),
+        "Analysis Method": get_labeled(7, "analysis_method"),
+        "Analysis Plan": get_labeled(7, "analysis_notes"),
+        "Trustworthiness Strategies": get_labeled(8, "trustworthiness_methods"),
+        "Ethics Plan": get_labeled(9, "ethics_approach") or get_labeled(9, "ethics_notes"),
+    }
+
+    structured = _structure_vd_via_llm(design_label, VD_CENTRAL_LABEL[design_id], raw_fields)
+
+    def pick(key: str, *fallbacks: str) -> str:
+        v = (structured.get(key) or "").strip() if isinstance(structured.get(key), str) else ""
+        if v:
+            return v
+        for fb in fallbacks:
+            if fb and fb.strip():
+                return fb.strip()
+        return "Not yet defined"
+
+    topics_fallback = "\n".join(
+        l.strip(" -•·\t") for l in raw_fields["Topical Research"].split("\n") if l.strip(" -•·\t")
+    )[:300]
+
+    values = {
+        "central_item": pick("central_item", raw_fields["Topic"]),
+        "context": pick("context", raw_fields["Topic"]),
+        "informants": pick("informants", raw_fields["Participants"]),
+        "other_documents": pick("other_documents"),
+        "data_gathering": pick("data_gathering", raw_fields["Collection Method"]),
+        "strategies": pick("strategies", raw_fields["Analysis Method"], raw_fields["Sampling Method"]),
+        "process_support": pick("process_support", raw_fields["Trustworthiness Strategies"]),
+        "question": pick("question", raw_fields["Research Question / Central Issue"]),
+        "topics": pick("topics", topics_fallback),
+        "minicases": pick("minicases"),
+    }
+
+    replacements = {
+        "<<Name>>": name,
+        "<<email>>": email,
+        "<<Informants>>": values["informants"],
+        "<<Stories of the Informants>>": values["informants"],
+        "<<Name of your case>>": values["central_item"],
+        "<<Aspect to reflect upon and improve>>": values["central_item"],
+        "<<Culture to be studied>>": values["central_item"],
+        "<<Narrative Portraits>>": values["central_item"],
+        "<<Phenomenon Under Study>>": values["central_item"],
+        "<<Phenomenon under study that has not been covered in the literature (substantive area of interest)>>": values["central_item"],
+        "<<Other documents to be analyzed>>": values["other_documents"],
+        "<<Data Gathering Methods>>": values["data_gathering"],
+        "<<Case Study Strategies>>": values["strategies"],
+        "<<Action Research Strategies>>": values["strategies"],
+        "<<Ethnographic Research Strategies>>": values["strategies"],
+        "<<Narrative Research Strategies>>": values["strategies"],
+        "<<Phenomenological Strategies>>": values["strategies"],
+        "<<Phenomenographic Strategies>>": values["strategies"],
+        "<<Grounded Theory Strategies>>": values["strategies"],
+        "<<Process Support>>": values["process_support"],
+        "<<Issue>>": values["question"],
+        "<<Practical Question >>": values["question"],
+        "<<Ethnographic Question >>": values["question"],
+        "<<Narrative Question >>": values["question"],
+        "<<Phenomenological Questions>>": values["question"],
+        "<<Phenomenographic Questions>>": values["question"],
+        "<<Grounded Theory Questions>>": values["question"],
+        "<<Topics>>": values["topics"],
+        "<<Context>>": values["context"],
+        "<<Minicases>>": values["minicases"],
+    }
+
+    template_path = TEMPLATE_DIR / "visual_design_qualitative.pptx"
+    if not template_path.exists():
+        raise HTTPException(status_code=500, detail="Visual design template not found")
+
+    prs = PptxPresentation(str(template_path))
+    keep_idx = VD_SLIDE_BY_DESIGN[design_id]
+
+    # Drop every slide except the one for the student's design
+    from pptx.oxml.ns import qn
+    xml_slides = prs.slides._sldIdLst
+    for i, slide_id in reversed(list(enumerate(list(xml_slides)))):
+        if i != keep_idx:
+            prs.part.drop_rel(slide_id.get(qn('r:id')))
+            xml_slides.remove(slide_id)
+
+    for slide in prs.slides:
+        for shape in slide.shapes:
+            _replace_pptx_text(shape, replacements)
+
+    buf = io.BytesIO()
+    prs.save(buf)
+    buf.seek(0)
+
+    filename = f"Visual_Design_{design_label.replace(' ', '_')}_{name.replace(' ', '_')}.pptx"
     return Response(
         content=buf.getvalue(),
         media_type="application/vnd.openxmlformats-officedocument.presentationml.presentation",
