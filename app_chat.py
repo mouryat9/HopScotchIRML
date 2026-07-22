@@ -863,6 +863,9 @@ def build_ollama_payload(worldview_profile, step_context, user_msg, passages,
         "- Reference specific methodologies, frameworks, and scholars when relevant "
         "(only in response to what the student has already written, not as suggestions).\n"
         "- Use a warm, encouraging tone — the student may be new to research.\n"
+        "- This is a chat, so a letter-style sign-off usually isn't needed. If you do "
+        "close with one, sign ONLY as 'Hopscotch' — never a placeholder like '[Your "
+        "Tutor]' or '[Your Name]'.\n"
         "- Keep responses focused but thorough (2-4 paragraphs typically).\n"
         "- Do NOT include article citations, source lists, or reference sections in your responses.\n"
         "- For Steps 1, 2, and 3: the student must find their own sources — do not suggest any.\n"
@@ -2204,6 +2207,24 @@ _HANDED_NUDGE = (
     "the 'My Research Design' panel and I'll give you feedback on what you come up with.)_"
 )
 
+# The model sometimes closes a message with a letter-style sign-off using a placeholder
+# ("Warm regards, [Your Tutor]"). Normalize any tutor/name sign-off to "Hopscotch".
+_SIGNOFF_PLACEHOLDER_RE = re.compile(
+    r'\[[^\]\n]*?(?:tutor|your name|your ai|assistant)[^\]\n]*?\]', re.I)
+_SIGNOFF_LINE_RE = re.compile(
+    r'(?im)^(\s*(?:warm(?:est)?\s+regards|best(?:\s+regards|\s+wishes)?|kind\s+regards|'
+    r'sincerely|warmly|cheers|regards|thanks|thank\s+you)\s*[,\-–—:]?\s*)'
+    r'(?:your\s+)?(?:ai\s+)?(?:research\s+)?tutor\b\.?\s*$')
+
+
+def _fix_signoff(s: str) -> str:
+    """Replace placeholder / generic-tutor sign-offs with 'Hopscotch'."""
+    if not s:
+        return s
+    s = _SIGNOFF_PLACEHOLDER_RE.sub("Hopscotch", s)
+    s = _SIGNOFF_LINE_RE.sub(lambda m: m.group(1) + "Hopscotch", s)
+    return s
+
 
 def _sanitize_stream(raw_iter):
     """Line-buffer a token stream and drop 'handed-over deliverable' blocks, emitting a
@@ -2238,7 +2259,7 @@ def _sanitize_stream(raw_iter):
         if is_label:
             return start_block()
         st["just_nudged"] = False
-        return line + "\n"
+        return _fix_signoff(line) + "\n"
 
     for delta in raw_iter:
         pending += delta
