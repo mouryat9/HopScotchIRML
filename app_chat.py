@@ -2186,19 +2186,33 @@ def _source_redirect_message(active_step) -> str:
 # but not on the term used inside a normal feedback sentence.
 _HANDED_ADJ = (
     r'(?:revised|refined|suggested|improved|reworded|polished|reformulated|'
-    r'proposed|updated|example|draft|possible|recommended|stronger|better)'
+    r'proposed|updated|possible|recommended|stronger|better|alternative|rewritten)'
 )
+# Deliverable field names (incl. short forms). Only ever matched WITH an adjective in
+# front or a "suggestion/version" word after — never bare, so the model restating the
+# student's own goals/topic for feedback is NOT stripped (that would fragment feedback).
 _HANDED_DELIVERABLE = (
     r'(?:personal|practical|intellectual|research)\s+goals?'
     r'|research\s+topic|research\s+questions?|research\s+design|research\s+aims?'
     r'|problem\s+statement|topical\s+research|literature\s+review'
     r'|(?:theoretical|conceptual)\s+frameworks?'
     r'|data\s+(?:collection|gathering|analysis)|analysis\s+plan|hypothesis'
+    r'|topic|questions?|goals?|aims?|objectives?'
+)
+_HANDED_SUGG = r'(?:suggestions?|rewrites?|revisions?|versions?|drafts?|examples?|rewrite)'
+# Forward-preview headings ("Next Steps", "Moving Forward") — previewing later steps.
+_HANDED_FWD = (
+    r'(?:next\s+steps?|moving\s+forward|what\'?s\s+next|going\s+forward|'
+    r'recommended\s+next\s+steps?|where\s+to\s+go\s+from\s+here|looking\s+ahead)'
 )
 _HANDED_LABEL_RE = re.compile(
     r'^[#>*_\s\d.\-]*(?:'
-    r'(?:' + _HANDED_ADJ + r'\s+)?(?:' + _HANDED_DELIVERABLE + r')'
-    r'|' + _HANDED_ADJ + r'\s+(?:research\s+)?(?:topic|question|aim|objective)'
+    # A: adjective + deliverable  ("Refined Topic", "Suggested Goals", "Refined Topic Suggestion")
+    r'(?:' + _HANDED_ADJ + r')\s+(?:research\s+)?(?:' + _HANDED_DELIVERABLE + r')(?:\s+' + _HANDED_SUGG + r')?'
+    # B: deliverable + suggestion word  ("Topic Suggestion", "Goals Suggestion")
+    r'|(?:' + _HANDED_DELIVERABLE + r')\s+' + _HANDED_SUGG +
+    # C: forward-preview section headings
+    r'|' + _HANDED_FWD +
     r')\b[^A-Za-z]*(:|$)',
     re.I,
 )
@@ -2230,14 +2244,16 @@ def _sanitize_stream(raw_iter):
     """Line-buffer a token stream and drop 'handed-over deliverable' blocks, emitting a
     single coaching nudge in their place. Yields sanitized text pieces."""
     pending = ""
-    st = {"suppress": False, "seen_content": False, "just_nudged": False}
+    st = {"suppress": False, "seen_content": False, "nudges": 0}
 
     def start_block():
         st["suppress"] = True
         st["seen_content"] = False
-        if st["just_nudged"]:
+        # Show the coaching nudge only ONCE per response — repeating it for every
+        # stripped block reads as broken. Later stripped blocks are dropped silently.
+        if st["nudges"] > 0:
             return ""
-        st["just_nudged"] = True
+        st["nudges"] += 1
         return _HANDED_NUDGE + "\n"
 
     def process_line(line):
@@ -2251,14 +2267,12 @@ def _sanitize_stream(raw_iter):
                 if not st["seen_content"]:
                     return ""  # blank sitting between the label and its value → drop
                 st["suppress"] = False
-                st["just_nudged"] = False
                 return "\n"       # blank after the value → block ends here
             else:
                 st["seen_content"] = True
                 return ""         # the handed-over value itself → drop
         if is_label:
             return start_block()
-        st["just_nudged"] = False
         return _fix_signoff(line) + "\n"
 
     for delta in raw_iter:
