@@ -2221,6 +2221,35 @@ _HANDED_NUDGE = (
     "the 'My Research Design' panel and I'll give you feedback on what you come up with.)_"
 )
 
+# On the EARLY steps (1-3: worldview, topic/goals, literature) the AI must not lay out
+# research procedures — those belong to Steps 4-9. This matches heading lines that begin
+# a "how to do the study" section (methods, data collection, analysis, recommendations,
+# action plans). Only applied when the student is on Step <= 3, and only on heading-like
+# lines (markdown/bold/numbered), so ordinary feedback sentences are left alone.
+_EARLY_METHOD_NUDGE = (
+    "_(Let's stay on this step for now — you'll work out the methods, data, and next "
+    "actions in the later steps. Focus here on getting this step solid first.)_"
+)
+_EM_P = (
+    r'(?:steps?\s+to|how\s+to|ways?\s+to|conduct\w*|observ\w*|analyz\w*|interpret\w*'
+    r'|collect\w*\s+data|data\s+(?:collection|gathering|analysis)|coding|thematic\w*'
+    r'|narrative\s+analysis|content\s+analysis|interviews?|surveys?|questionnaires?'
+    r'|focus\s+groups?|observations?|sampling|participants?|recruit\w*'
+    r'|research\s+design|methodolog\w*|research\s+methods?|recommendations?'
+    r'|action\s+plan|implementation|engage\s+stakeholders?|develop\s+recommendations?'
+    r'|specific\s+recommendations?|create\s+an?\s+action)\b'
+)
+_EARLY_METHOD_RE = re.compile(
+    r'^(?:'
+    r'[#>]{1,6}\s+' + _EM_P +           # markdown heading
+    r'|\*\*\s*' + _EM_P +               # bold heading
+    r'|\d+[.)]\s+\**\s*' + _EM_P +      # numbered item
+    r'|-\s+\**\s*' + _EM_P +            # bullet item
+    r'|' + _EM_P + r'[^.\n]{0,60}:\s*$' # plain line that is a heading (ends in colon)
+    r')',
+    re.I,
+)
+
 # The model sometimes closes a message with a letter-style sign-off using a placeholder
 # ("Warm regards, [Your Tutor]"). Normalize any tutor/name sign-off to "Hopscotch".
 _SIGNOFF_PLACEHOLDER_RE = re.compile(
@@ -2240,13 +2269,15 @@ def _fix_signoff(s: str) -> str:
     return s
 
 
-def _sanitize_stream(raw_iter):
-    """Line-buffer a token stream and drop 'handed-over deliverable' blocks, emitting a
-    single coaching nudge in their place. Yields sanitized text pieces."""
+def _sanitize_stream(raw_iter, active_step=None):
+    """Line-buffer a token stream and drop 'handed-over deliverable' blocks (and, on the
+    early steps, 'how to do the study' procedure blocks), emitting a single coaching nudge
+    in their place. Yields sanitized text pieces."""
     pending = ""
+    early = active_step is not None and int(active_step) <= 3
     st = {"suppress": False, "seen_content": False, "nudges": 0}
 
-    def start_block():
+    def start_block(nudge):
         st["suppress"] = True
         st["seen_content"] = False
         # Show the coaching nudge only ONCE per response — repeating it for every
@@ -2254,11 +2285,13 @@ def _sanitize_stream(raw_iter):
         if st["nudges"] > 0:
             return ""
         st["nudges"] += 1
-        return _HANDED_NUDGE + "\n"
+        return nudge + "\n"
 
     def process_line(line):
         s = line.strip()
-        is_label = bool(_HANDED_LABEL_RE.match(s))
+        is_handed = bool(_HANDED_LABEL_RE.match(s))
+        is_early = bool(early and _EARLY_METHOD_RE.match(s))
+        is_label = is_handed or is_early
         if st["suppress"]:
             if is_label or s.startswith("#"):
                 # A new label/heading ends the current block; handle this line fresh.
@@ -2272,7 +2305,7 @@ def _sanitize_stream(raw_iter):
                 st["seen_content"] = True
                 return ""         # the handed-over value itself → drop
         if is_label:
-            return start_block()
+            return start_block(_EARLY_METHOD_NUDGE if (is_early and not is_handed) else _HANDED_NUDGE)
         return _fix_signoff(line) + "\n"
 
     for delta in raw_iter:
@@ -2288,11 +2321,11 @@ def _sanitize_stream(raw_iter):
             yield out.rstrip("\n") if not pending.endswith("\n") else out
 
 
-def _strip_handed_answers(text: str) -> str:
+def _strip_handed_answers(text: str, active_step=None) -> str:
     """Non-streaming version of the output guard."""
     if not text:
         return text
-    return "".join(_sanitize_stream(iter([text]))).rstrip("\n")
+    return "".join(_sanitize_stream(iter([text]), active_step)).rstrip("\n")
 
 
 def _coach_redirect_message(active_step) -> str:
@@ -2409,7 +2442,7 @@ def chat_send(req: ChatSendReq = Body(...), user: dict = Depends(get_current_use
         chat_history=history,
     )
     # Output guard: strip any handed-over deliverable blocks the model slipped in.
-    answer = _strip_handed_answers(answer)
+    answer = _strip_handed_answers(answer, req.active_step)
 
     history.append(ChatTurn(role="assistant", content=answer, step=req.active_step))
     _persist_session(sess)
@@ -2562,7 +2595,7 @@ def chat_send_stream(req: ChatSendReq = Body(...), user: dict = Depends(get_curr
         assistant_text_parts: List[str] = []
         try:
             # Output guard: sanitized, line-buffered stream (drops handed-over answers).
-            for piece in _sanitize_stream(_raw_deltas()):
+            for piece in _sanitize_stream(_raw_deltas(), req.active_step):
                 assistant_text_parts.append(piece)
                 yield piece
         except GeneratorExit:
