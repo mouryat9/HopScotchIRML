@@ -715,6 +715,19 @@ def _get_step_llm_guidance(sess: SessionData, active_step: Optional[int]) -> Opt
     return step_cfg.get("llm_guidance")
 
 
+STEP_NAMES = {
+    1: "Worldview / Paradigm",
+    2: "Topic & Goals",
+    3: "Literature & Conceptual Framework",
+    4: "Methodology / Research Design",
+    5: "Research Question(s)",
+    6: "Data Collection",
+    7: "Data Analysis",
+    8: "Trustworthiness / Validity",
+    9: "Ethics",
+}
+
+
 def build_ollama_payload(worldview_profile, step_context, user_msg, passages,
                          stream=False, active_step=None, step_llm_guidance=None,
                          chat_history=None):
@@ -855,11 +868,32 @@ def build_ollama_payload(worldview_profile, step_context, user_msg, passages,
         "- For Steps 1, 2, and 3: the student must find their own sources — do not suggest any.\n"
     )
 
-    # Inject step-specific guidance
+    # Inject step-specific guidance + a hard "current-step lock" so the model
+    # coaches only on the current step and never works ahead into later steps.
     if active_step:
-        system_msg += f"\nThe student is currently working on Step {active_step}.\n"
+        cur = int(active_step)
+        cur_name = STEP_NAMES.get(cur, "")
+        future = ", ".join(f"Step {n} ({STEP_NAMES[n]})" for n in range(cur + 1, 10))
+        system_msg += (
+            "\n==================================================================\n"
+            f"CURRENT-STEP LOCK — the student is on STEP {cur}: {cur_name}\n"
+            "==================================================================\n"
+            f"Coach ONLY on Step {cur}. You may use everything the student has already "
+            f"written in Steps 1-{cur} as context to give feedback on Step {cur}.\n"
+            f"Steps {cur+1}-9 have NOT been reached yet and are OFF LIMITS:\n"
+            f"- Do NOT write, draft, suggest, outline, give examples of, or work out ANY "
+            f"content for later steps ({future or 'none — this is the last step'}). No "
+            f"research questions, methodology, data-collection plans, analysis plans, "
+            f"trustworthiness or ethics content — none of it — until the student is actually "
+            f"on that step.\n"
+            f"- Do NOT preview 'what comes next' with specifics. At most, a single line like "
+            f"'you'll work that out in Step X', then bring them back to Step {cur}.\n"
+            f"- If the student asks you to help with or answer a later step, warmly decline and "
+            f"refocus them on Step {cur} — the point is for them to think each step through "
+            f"themselves, in order.\n"
+        )
         if step_llm_guidance:
-            system_msg += f"\nStep-specific instructions:\n{step_llm_guidance}\n"
+            system_msg += f"\nStep-specific instructions for Step {cur}:\n{step_llm_guidance}\n"
 
     # Steps 1-3: no resource snippets — student must find their own sources
     if active_step and active_step <= 3:
@@ -2257,10 +2291,15 @@ def _asks_ai_to_author(user_msg: str, active_step) -> bool:
         "me', 'rewrite/reword/rephrase my question into a better version', 'give me a "
         "revised/improved version of my topic', 'give me citations/references/articles/"
         "sources', 'what are some studies on X'.\n"
-        "COACH = they want a concept explained, a definition, feedback/critique on "
-        "something they ALREADY wrote (pointing out strengths and weaknesses without "
-        "rewriting it for them), an example that teaches an idea, guidance on HOW to find "
-        "sources, or general guidance.\n\n"
+        "AUTHOR also includes asking you to produce, draft, decide, or work out THEIR "
+        f"content for a step LATER than Step {active_step or '?'} — e.g. (while on an "
+        "earlier step) 'what methodology should I use', 'give me my research question', "
+        "'how should I collect/analyze my data', 'what should my hypothesis be'. Producing "
+        "their answers for steps they haven't reached counts as AUTHOR.\n"
+        "COACH = they want a concept explained in general, a definition, feedback/critique "
+        "on something they ALREADY wrote for the CURRENT step (strengths/weaknesses without "
+        "rewriting it), an example that teaches an idea, guidance on HOW to find sources, or "
+        "general guidance about the current step.\n\n"
         f"Student message: \"{(user_msg or '')[:500]}\"\n\n"
         "One word (AUTHOR or COACH):"
     )
