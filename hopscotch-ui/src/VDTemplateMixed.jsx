@@ -278,38 +278,23 @@ export default function VDTemplateMixed({ layout, name, email, fields, upd, E, a
         <span className="vd-seq__flow-arrow vd-seq__flow-arrow--top" aria-hidden="true" />
         <span className="vd-seq__flow-arrow vd-seq__flow-arrow--bottom" aria-hidden="true" />
 
-        {/* Explanatory: the quantitative results nest in the flower's right
-            notch, fed by a dashed arrow from the Phenomenon center */}
-        {isExplanatory && (
-          <>
-            <span className="vd-seq__phen-arrow" aria-hidden="true" />
-            <span className={`vd-mixed__chip ${resultsFirstClass} vd-seq__chip-flower`}>{resultsFirst}</span>
-          </>
-        )}
+        {/* Phase I results at the container border, fed by a dashed diagonal
+            arrow from the phenomenon shape (teal from the pentagon in
+            explanatory, plum from the hexagon in exploratory) */}
+        <span className="vd-seq__phen-arrow" aria-hidden="true"><span className="vd-seq__phen-arrow-head" /></span>
+        <span className={`vd-mixed__chip ${resultsFirstClass} vd-seq__chip-flower`}>{resultsFirst}</span>
 
-        {/* Inform flow between the phases */}
-        {isExplanatory ? (
-          <>
-            {/* results chip -> down -> Inform -> curve into Phase II */}
-            <span className="vd-seq__inform-drop" aria-hidden="true" />
-            <span className="vd-mixed__seq-inform vd-seq__inform-below" aria-hidden="true">Inform</span>
-            <svg className="vd-seq__inform-curve" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-              <defs>
-                <marker id="vdInformArrow" markerWidth="5.5" markerHeight="5.5" refX="4" refY="2.75" orient="auto">
-                  <path d="M0,0 L5.5,2.75 L0,5.5 Z" fill="#222222" />
-                </marker>
-              </defs>
-              <path d="M20,6 Q28,74 86,88" stroke="#222222" strokeWidth="1.8" fill="none" vectorEffect="non-scaling-stroke" markerEnd="url(#vdInformArrow)" />
-            </svg>
-          </>
-        ) : (
-          <div className="vd-mixed__seq" aria-hidden="true">
-            <span className={`vd-mixed__chip ${resultsFirstClass}`}>{resultsFirst}</span>
-            <span className="vd-mixed__seq-arrow">&#8595;</span>
-            <span className="vd-mixed__seq-inform">Inform</span>
-            <span className="vd-mixed__seq-arrow">&#10549;</span>
-          </div>
-        )}
+        {/* results chip -> down -> Inform -> curve into Phase II */}
+        <span className="vd-seq__inform-drop" aria-hidden="true" />
+        <span className="vd-mixed__seq-inform vd-seq__inform-below" aria-hidden="true">Inform</span>
+        <svg className="vd-seq__inform-curve" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+          <defs>
+            <marker id="vdInformArrow" markerWidth="5.5" markerHeight="5.5" refX="4" refY="2.75" orient="auto">
+              <path d="M0,0 L5.5,2.75 L0,5.5 Z" fill="#222222" />
+            </marker>
+          </defs>
+          <path d="M20,6 Q28,74 86,88" stroke="#222222" strokeWidth="1.8" fill="none" vectorEffect="non-scaling-stroke" markerEnd="url(#vdInformArrow)" />
+        </svg>
 
         {/* Phase II container */}
         <div className="vd-seq__box vd-seq__box--right">
@@ -317,7 +302,7 @@ export default function VDTemplateMixed({ layout, name, email, fields, upd, E, a
         </div>
 
         {/* The second phase's results close the sequence */}
-        {isExplanatory && <span className="vd-seq__final-arrow" aria-hidden="true" />}
+        <span className="vd-seq__final-arrow" aria-hidden="true" />
         <span className={`vd-mixed__chip ${resultsFinalClass} vd-mixed__chip--final`}>{resultsFinal}</span>
 
         {/* INTERPRETATION rail on the far right, fed by a solid arrow from Phase II */}

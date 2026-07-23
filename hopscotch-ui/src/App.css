@@ -12697,8 +12697,7 @@ body.wl-dragging, body.wl-dragging * { cursor: grabbing !important; user-select:
   transform: rotate(11deg);
   z-index: 2;
 }
-.vd-seq__phen-arrow::after {
-  content: "";
+.vd-seq__phen-arrow-head {
   position: absolute;
   right: -2px;
   top: 50%;
@@ -12755,4 +12754,68 @@ body.wl-dragging, body.wl-dragging * { cursor: grabbing !important; user-select:
   height: 8%;
   overflow: visible;
   z-index: 2;
+}
+
+/* ---- Exploratory sequential: mirrored positions ---- */
+/* dashed plum arrow from the Phenomenon hexagon's right vertex */
+.vd-diagram--exploratory .vd-seq__phen-arrow {
+  left: 35.9%;
+  top: 50.1%;
+  width: 6.2%;
+  height: 6.6%;
+  background: none;
+  transform: none;
+}
+/* top leg of the 7 */
+.vd-diagram--exploratory .vd-seq__phen-arrow::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 2.5px;
+  background: repeating-linear-gradient(to right, #A64D79 0 5px, transparent 5px 13px);
+}
+/* down leg of the 7 */
+.vd-diagram--exploratory .vd-seq__phen-arrow::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 2.5px;
+  background: repeating-linear-gradient(to bottom, #A64D79 0 5px, transparent 5px 13px);
+}
+.vd-diagram--exploratory .vd-seq__phen-arrow-head {
+  right: -4.5px;
+  top: auto;
+  bottom: -8px;
+  transform: none;
+  border-left: 5.5px solid transparent;
+  border-right: 5.5px solid transparent;
+  border-top: 9px solid #A64D79;
+}
+/* final quantitative results outside the flower notch in Phase II */
+.vd-diagram--exploratory .vd-mixed__chip--final {
+  right: auto;
+  left: 90.2%;
+  transform: translateX(-50%);
+  bottom: auto;
+  top: 58.8%;
+  width: 6.4%;
+  text-align: center;
+}
+.vd-diagram--exploratory .vd-seq__final-arrow {
+  left: 79%;
+  top: 56.4%;
+  width: 8%;
+  background: repeating-linear-gradient(to right, #0097A7 0 5px, transparent 5px 13px);
+  transform: rotate(19deg);
+  transform-origin: left center;
+}
+.vd-diagram--exploratory .vd-seq__final-arrow::after {
+  border-left-color: #0097A7;
+  border-left-width: 9px;
+  border-top-width: 6px;
+  border-bottom-width: 6px;
 }
