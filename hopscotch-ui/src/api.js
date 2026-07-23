@@ -7,7 +7,7 @@ import { Filesystem, Directory } from "@capacitor/filesystem";
 import { Share } from "@capacitor/share";
 
 // In the native iOS/iPad app the page is served from localhost, so the domain
-// check below can't identify the environment — native builds always talk to
+// check below can't identify the environment - native builds always talk to
 // the production API. On the web we auto-detect the domain so both
 // hopscotchai.us and hopscotch4all.com work.
 const IS_NATIVE = (() => {
@@ -38,7 +38,7 @@ async function saveBlob(blob, filename) {
     const written = await Filesystem.writeFile({ path: filename, data, directory: Directory.Cache });
     try {
       await Share.share({ title: filename, url: written.uri });
-    } catch { /* user dismissed the share sheet — file is still saved */ }
+    } catch { /* user dismissed the share sheet - file is still saved */ }
     return;
   }
   const url = window.URL.createObjectURL(blob);
@@ -383,6 +383,40 @@ export const API = {
     return res.json();
   },
 
+  async getVisualDesignData(session_id) {
+    const res = await fetch(`${API_BASE}/session/${session_id}/visual-design/data`, {
+      headers: authHeaders(),
+    });
+    if (!res.ok) {
+      let detail = "Failed to load visual design data";
+      try { detail = (await res.json()).detail || detail; } catch { /* keep default */ }
+      throw new Error(detail);
+    }
+    return res.json();
+  },
+
+  async saveVisualDesignData(session_id, fields) {
+    const res = await fetch(`${API_BASE}/session/${session_id}/visual-design/data`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify({ fields }),
+    });
+    if (!res.ok) throw new Error("Failed to save visual design");
+    return res.json();
+  },
+
+  async downloadVisualDesign(session_id) {
+    const res = await fetch(`${API_BASE}/session/${session_id}/export/visual-design`, {
+      headers: authHeaders(),
+    });
+    if (!res.ok) {
+      let detail = "Failed to download visual design";
+      try { detail = (await res.json()).detail || detail; } catch { /* keep default */ }
+      throw new Error(detail);
+    }
+    await saveBlob(await res.blob(), "Visual_Design.pptx");
+  },
+
   async downloadConceptualFramework(session_id) {
     const res = await fetch(`${API_BASE}/session/${session_id}/export/conceptual-framework`, {
       headers: authHeaders(),
@@ -681,7 +715,7 @@ export const API = {
     return res.json();
   },
 
-  // View (open in a new tab) or download a KB file — both need the auth header,
+  // View (open in a new tab) or download a KB file - both need the auth header,
   // so fetch as a blob rather than linking to the URL directly.
   async adminResourceOpen(name, { download = false } = {}) {
     const q = download ? "?download=1" : "";

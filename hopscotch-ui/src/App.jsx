@@ -9,6 +9,7 @@ import LoginPage from "./LoginPage";
 import TeacherDashboard from "./TeacherDashboard";
 import SessionHistoryPanel from "./SessionHistoryPanel";
 import ConceptualFrameworkEditor from "./ConceptualFrameworkEditor";
+import VisualDesignEditor, { vdEditorSupports } from "./VisualDesignEditor";
 import FeedbackPanel from "./FeedbackPanel";
 import AdminDashboard from "./AdminDashboard";
 import ProfileMenu from "./ProfileMenu";
@@ -284,7 +285,7 @@ function StepStrip({ activeStep, completedSteps = [], onStepChange, lockedSteps 
               role="tab"
               aria-selected={isActive}
               aria-label={`Step ${num}: ${card.label}${isCompleted ? " (completed)" : ""}${isLocked ? " (locked by your teacher)" : ""}`}
-              title={isLocked ? `${card.label} — locked by your teacher` : isCompleted ? `${card.label} — done` : card.label}
+              title={isLocked ? `${card.label} - locked by your teacher` : isCompleted ? `${card.label} - done` : card.label}
             >
               {isCompleted && !isLocked && (
                 <span className="step-chip__medal" aria-hidden="true">
@@ -301,7 +302,7 @@ function StepStrip({ activeStep, completedSteps = [], onStepChange, lockedSteps 
         className={`step-strip__map${mapOpen ? " step-strip__map--open" : ""}`}
         onClick={onOpenMap}
         aria-expanded={mapOpen}
-        title={mapOpen ? "Collapse the Hopscotch board" : "Open the Hopscotch board — see your whole research journey"}
+        title={mapOpen ? "Collapse the Hopscotch board" : "Open the Hopscotch board - see your whole research journey"}
       >
         <svg width="16" height="16" viewBox="0 0 128 46" fill="none" aria-hidden="true">
           <rect x="0" y="0" width="34" height="20" rx="5" fill="#2B5EA7"/>
@@ -321,7 +322,7 @@ function StepStrip({ activeStep, completedSteps = [], onStepChange, lockedSteps 
 function MiniBoard({ activeStep, completedSteps = [], onStepChange, lockedSteps = [], onOpenMap }) {
   const doneCount = completedSteps.length;
   return (
-    <div className="mini-board" aria-label="Hopscotch board — research steps">
+    <div className="mini-board" aria-label="Hopscotch board - research steps">
       <div className="mini-board__track">
         {HOPSCOTCH_COLUMNS.map((col, ci) => (
           <div className={`mini-col mini-col--${col.type}`} key={ci}>
@@ -339,7 +340,7 @@ function MiniBoard({ activeStep, completedSteps = [], onStepChange, lockedSteps 
                   disabled={isLocked}
                   aria-label={`Step ${num}: ${card.label}${isCompleted ? " (done)" : ""}${isLocked ? " (locked)" : ""}`}
                   aria-current={isActive ? "step" : undefined}
-                  title={isLocked ? `${card.label} — locked by your teacher` : card.label}
+                  title={isLocked ? `${card.label} - locked by your teacher` : card.label}
                 >
                   <span className="mini-sq__mark">{isLocked ? "🔒" : isCompleted ? "✓" : num}</span>
                 </button>
@@ -440,7 +441,7 @@ function StudentApp({ onBackToDashboard }) {
     prevCompletedRef.current = n;
   }, [completedSteps]);
 
-  // Workspace layout — locked to the Hero concept
+  // Workspace layout - locked to the Hero concept
   const layoutMode = "hero";
 
   // Reading mode: expand the Assistant (Resources tucks away) for long exchanges
@@ -490,7 +491,7 @@ function StudentApp({ onBackToDashboard }) {
           setActiveStep(resumed.active_step || 1);
           setCompletedSteps(resumed.completed_steps || []);
         } else {
-          // No existing session — create a fresh one
+          // No existing session - create a fresh one
           const { session_id } = await API.createSession();
           if (cancelled) return;
           setSessionId(session_id);
@@ -508,7 +509,7 @@ function StudentApp({ onBackToDashboard }) {
   }, []);
 
   // Auto-start the guided tour only once per account (on first login).
-  // Marked "seen" the moment it opens, so a hard refresh won't re-trigger it —
+  // Marked "seen" the moment it opens, so a hard refresh won't re-trigger it -
   // students can always re-open it from the profile menu's "Take a guided tour".
   const tourSeenKey = `hop_tour_seen_${user?.email || user?.username || "anon"}`;
   useEffect(() => {
@@ -628,7 +629,7 @@ function StudentApp({ onBackToDashboard }) {
 
   return (
     <div className={`hop-wrap${tourActive ? " hop-wrap--touring" : ""}`}>
-      {/* Header — edge-to-edge, matching login page style */}
+      {/* Header - edge-to-edge, matching login page style */}
       <header className="hop-header">
         <div className="hop-header__left">
           <img
@@ -647,7 +648,7 @@ function StudentApp({ onBackToDashboard }) {
           <button
             className="hop-header__designs"
             onClick={() => setHistoryOpen(true)}
-            aria-label="My designs — view, switch, or start a new research design"
+            aria-label="My designs - view, switch, or start a new research design"
             title="View your designs or start a new one"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -656,7 +657,7 @@ function StudentApp({ onBackToDashboard }) {
             My Designs
           </button>
         </div>
-        {/* Center: Layout personalization — toggle side panels */}
+        {/* Center: Layout personalization - toggle side panels */}
         <div className="hop-header__center">
           <div className="cmd-bar cmd-bar--header" role="group" aria-label="Show or hide the side panels">
             <button
@@ -742,9 +743,9 @@ function StudentApp({ onBackToDashboard }) {
         </div>
       </header>
 
-      {/* Content area — full-height app shell */}
+      {/* Content area - full-height app shell */}
       <div className="hop-content">
-        {/* Step navigator — user-selectable style (Settings) */}
+        {/* Step navigator - user-selectable style (Settings) */}
         {navStyle === "strip" ? (
           <StepStrip
             activeStep={activeStep}
@@ -802,7 +803,7 @@ function StudentApp({ onBackToDashboard }) {
         />
       </div>
 
-      {/* Settings modal — shared chrome + universal Appearance section */}
+      {/* Settings modal - shared chrome + universal Appearance section */}
       <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} theme={theme} toggleTheme={toggleTheme}>
 
               {/* ── Step navigation ── */}
@@ -819,7 +820,7 @@ function StudentApp({ onBackToDashboard }) {
                 <div className="hop-settings__section-body">
                   <div className="hop-settings__choices">
                     {[
-                      { id: "board", title: "Hopscotch Board", desc: "The classic board — squares light up as you progress." },
+                      { id: "board", title: "Hopscotch Board", desc: "The classic board - squares light up as you progress." },
                       { id: "strip", title: "Step Strip", desc: "A compact single row of labelled step chips." },
                     ].map((opt) => (
                       <button key={opt.id} className={`hop-settings__choice${navStyle === opt.id ? " hop-settings__choice--active" : ""}`} onClick={() => chooseNavStyle(opt.id)}>
@@ -917,6 +918,84 @@ function StudentApp({ onBackToDashboard }) {
 
 /* ----- App router (default export) ----- */
 
+/* ----- Standalone Visual Design page (opened in its own tab) ----- */
+function VisualDesignPage({ sessionId }) {
+  const { user } = useAuth();
+  const [data, setData] = useState(null);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const d = await API.getVisualDesignData(sessionId);
+        if (!cancelled) setData(d);
+      } catch (e) {
+        console.error("Visual design data load failed:", e);
+        if (!cancelled) setError(e.message || "Failed to load your visual design. Please return to your design and try again.");
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [sessionId]);
+
+  const handleClose = () => {
+    window.close();
+    window.location.href = window.location.pathname;
+  };
+
+  if (error) {
+    return (
+      <div className="cf-loading-overlay">
+        <div className="cf-loading-card">
+          <p className="cf-loading-text">Couldn’t open the Visual Design</p>
+          <p className="cf-loading-sub">{error}</p>
+          <button className="hop-header__back-btn" style={{ marginTop: 12 }} onClick={handleClose}>Close tab</button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!data) {
+    return (
+      <div className="cf-loading-overlay">
+        <div className="cf-loading-card">
+          <div className="cf-loading-spinner" />
+          <p className="cf-loading-text">Loading your Visual Design...</p>
+          <p className="cf-loading-sub">Fetching your research design data.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!vdEditorSupports(data.design)) {
+    return (
+      <div className="cf-loading-overlay">
+        <div className="cf-loading-card">
+          <p className="cf-loading-text">Visual Design editor not available yet</p>
+          <p className="cf-loading-sub">
+            The interactive editor currently supports Narrative studies. Support for {data.design_label} is
+            coming soon - meanwhile you can download your {data.design_label} visual design as a PowerPoint.
+          </p>
+          <div style={{ display: "flex", gap: 10, justifyContent: "center", marginTop: 12 }}>
+            <button
+              className="cf-toolbar__btn cf-toolbar__btn--primary"
+              onClick={async () => {
+                try { await API.downloadVisualDesign(sessionId); }
+                catch (e) { alert(e.message || "Couldn't generate the visual design."); }
+              }}
+            >
+              Download PPTX
+            </button>
+            <button className="hop-header__back-btn" onClick={handleClose}>Close tab</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return <VisualDesignEditor sessionId={sessionId} data={data} onClose={handleClose} aiEnabled={user?.ai_enabled ?? true} />;
+}
+
 /* ----- Standalone Conceptual Framework page (opened in its own tab) ----- */
 function ConceptualFrameworkPage({ sessionId }) {
   const [data, setData] = useState(null);
@@ -975,8 +1054,10 @@ export default function App() {
   const [teacherView, setTeacherView] = useState("dashboard");
 
   // Detect the standalone Conceptual Framework tab (?view=cf&session=<id>)
+  // and the Visual Design tab (?view=vd&session=<id>)
   const cfParams = new URLSearchParams(window.location.search);
   const cfSessionId = cfParams.get("view") === "cf" ? cfParams.get("session") : null;
+  const vdSessionId = cfParams.get("view") === "vd" ? cfParams.get("session") : null;
 
   if (loading) {
     return (
@@ -989,8 +1070,10 @@ export default function App() {
   }
 
   if (!user) return <LoginPage />;
-  // Standalone Conceptual Framework tab — render the editor directly regardless of role
+  // Standalone Conceptual Framework tab - render the editor directly regardless of role
   if (cfSessionId) return <ConceptualFrameworkPage sessionId={cfSessionId} />;
+  // Standalone Visual Design tab
+  if (vdSessionId) return <VisualDesignPage sessionId={vdSessionId} />;
   if (user.role === "admin") return <AdminDashboard />;
   // All teachers/faculty get dashboard + ability to create research designs
   if (user.role === "teacher") {

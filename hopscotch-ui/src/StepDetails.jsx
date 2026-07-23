@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { API } from "./api";
+import { vdEditorSupports } from "./VisualDesignEditor";
 
 /**
  * Titles for the step headers
@@ -142,7 +143,7 @@ export default function StepDetails({ step, sessionId, onChatRefresh, onAutoSend
 
   // Step 1: when worldview changes, tell backend to set worldview
   const onWorldviewChange = async (newValue) => {
-    // Update local state only — do NOT call updateField() here because
+    // Update local state only - do NOT call updateField() here because
     // /step/save replaces the entire step_notes dict and would race with
     // /worldview/set, potentially overwriting the worldview_id key that
     // _compute_completed_steps needs.
@@ -167,7 +168,7 @@ export default function StepDetails({ step, sessionId, onChatRefresh, onAutoSend
     }
   };
 
-  // Step 1: "Ask AI to Clarify" button — sends worldview (+ optional justification) to AI
+  // Step 1: "Ask AI to Clarify" button - sends worldview (+ optional justification) to AI
   const onAskAIClarify = () => {
     const wv = data.worldview || "";
     const justification = (data.worldview_justification || "").trim();
@@ -551,6 +552,19 @@ export default function StepDetails({ step, sessionId, onChatRefresh, onAutoSend
             >
               Get AI Guidance
             </button>
+            {step === 4 && data.design && vdEditorSupports(data.design) && (
+              <button
+                className="btn btn--vd"
+                disabled={!sessionId}
+                onClick={() => {
+                  const url = `${window.location.origin}${window.location.pathname}?view=vd&session=${encodeURIComponent(sessionId)}`;
+                  window.open(url, "_blank", "noopener");
+                }}
+                title="Build the one-page visual design of your study (opens in a new tab)"
+              >
+                Create Visual Design ↗
+              </button>
+            )}
             {saving && <span className="badge">Saving...</span>}
           </div>
           {saveError && (
@@ -898,7 +912,7 @@ function MethodologyDecision({ config, data, updateField, sessionId, disabled })
   const recommended = config.recommended_methodology; // "quantitative", "qualitative", or null
 
   const introText = recommended
-    ? `Based on your worldview, we recommend a ${recommended} approach — but you're free to choose either. Explore the options below and chat with the AI assistant to help decide which fits your study.`
+    ? `Based on your worldview, we recommend a ${recommended} approach - but you're free to choose either. Explore the options below and chat with the AI assistant to help decide which fits your study.`
     : "As a pragmatist, you can draw from both quantitative and qualitative approaches. Explore the options below and chat with the AI assistant to help decide which fits your study. Then confirm your choice.";
 
   return (

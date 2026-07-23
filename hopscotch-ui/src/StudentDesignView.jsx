@@ -1,4 +1,4 @@
-// src/StudentDesignView.jsx — Read-only view of a student's research design (teacher overlay)
+// src/StudentDesignView.jsx - Read-only view of a student's research design (teacher overlay)
 import React, { useEffect, useState } from "react";
 import { API } from "./api";
 
@@ -42,7 +42,7 @@ export default function StudentDesignView({ sessionId, studentName, className: c
   const [stepConfig, setStepConfig] = useState(null);
   const [configLoading, setConfigLoading] = useState(false);
 
-  // Feedback state — one feedback for the whole design
+  // Feedback state - one feedback for the whole design
   const [feedbackText, setFeedbackText] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [feedbackList, setFeedbackList] = useState([]);
@@ -128,6 +128,12 @@ export default function StudentDesignView({ sessionId, studentName, className: c
     }
   }
 
+  function handleOpenVD() {
+    if (!sessionId) return;
+    const url = `${window.location.origin}${window.location.pathname}?view=vd&session=${encodeURIComponent(sessionId)}`;
+    window.open(url, "_blank", "noopener");
+  }
+
   const completed = sessionData?.completed_steps || [];
   const stepNotes = sessionData?.step_notes || {};
 
@@ -148,6 +154,10 @@ export default function StudentDesignView({ sessionId, studentName, className: c
         </div>
         <div className="sdv-header__right">
           {downloadError && <span className="sdv-dl-error">{downloadError}</span>}
+          <button className="sdv-dl-btn" onClick={handleOpenVD} disabled={!!downloading} title="View the student's visual design diagram (opens in a new tab)">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+            Visual Design
+          </button>
           <button className="sdv-dl-btn" onClick={handleDownloadCF} disabled={!!downloading} title="Generate & download the conceptual framework (.pptx)">
             {downloading === "cf" ? (
               <><span className="sdv-dl-spinner" />Generating…</>
@@ -176,7 +186,7 @@ export default function StudentDesignView({ sessionId, studentName, className: c
 
       {!loading && !error && sessionData && (
         <div className="sdv-body sdv-body--v">
-          {/* Left sidebar — step navigator */}
+          {/* Left sidebar - step navigator */}
           <div className="sdv-strip" role="tablist" aria-label="Research steps">
             {STEP_LABELS.map((label, i) => {
               const num = i + 1;
@@ -199,7 +209,7 @@ export default function StudentDesignView({ sessionId, studentName, className: c
             })}
           </div>
 
-          {/* Right side — step content + feedback */}
+          {/* Right side - step content + feedback */}
           <div className="sdv-right">
             {/* Step content (scrollable) */}
             <div className="sdv-content">
@@ -223,7 +233,7 @@ export default function StudentDesignView({ sessionId, studentName, className: c
               </div>
             </div>
 
-            {/* Feedback panel — redesigned as a threaded conversation */}
+            {/* Feedback panel - redesigned as a threaded conversation */}
             <div className="sdv-fb">
               <div className="sdv-fb__head">
                 <span className="sdv-fb__head-icon">
@@ -374,7 +384,7 @@ function ReadOnlyConfigFields({ config, data, sessionData }) {
     return (
       <ReadOnlyField
         label="Selected"
-        value={opt ? `${opt.label}${opt.description ? ` — ${opt.description}` : ""}` : data[field_key] || "Not selected"}
+        value={opt ? `${opt.label}${opt.description ? ` - ${opt.description}` : ""}` : data[field_key] || "Not selected"}
       />
     );
   }

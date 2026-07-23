@@ -2241,6 +2241,13 @@ def _fix_signoff(s: str) -> str:
 
 
 def _sanitize_stream(raw_iter):
+    """Output guard: drops handed-over deliverable blocks and normalizes
+    AI-looking punctuation (em/en dashes) in everything the student sees."""
+    for piece in _sanitize_stream_blocks(raw_iter):
+        yield piece.replace("—", "-").replace("–", "-")
+
+
+def _sanitize_stream_blocks(raw_iter):
     """Line-buffer a token stream and drop 'handed-over deliverable' blocks, emitting a
     single coaching nudge in their place. Yields sanitized text pieces."""
     pending = ""
@@ -2298,7 +2305,7 @@ def _coach_redirect_message(active_step) -> str:
     nudge = _COACH_NUDGES.get(active_step or 0,
         "Jot down your initial thoughts in the 'My Research Design' panel first.")
     return (
-        "I'm here to coach you through this — not to write it for you, because doing it "
+        "I'm here to coach you through this, not to write it for you, because doing it "
         "yourself is how you truly learn to design research. Let's build it together.\n\n"
         f"To get you started: {nudge}\n\n"
         "Write your first attempt in the 'My Research Design' panel and I'll give you "
@@ -3184,49 +3191,73 @@ def _structure_vd_via_llm(design_label: str, central_label: str, raw_fields: dic
         return {}
 
 
-@app.get("/session/{session_id}/export/visual-design")
-def export_visual_design(
-    session_id: str,
-    current_user: dict = Depends(get_current_user)
-):
-    """
-    Generate the one-slide visual design diagram (.pptx) for a qualitative
-    study, using the slide matching the student's Step-4 design choice.
-    """
-    from datetime import datetime
-    from pptx import Presentation as PptxPresentation
-    import copy as _copy
-    import io
+VD_FIELD_KEYS = [
+    # shared / qualitative
+    "central_item", "context", "question", "topics", "informants",
+    "data_gathering", "other_documents", "strategies", "process_support", "minicases",
+    # quantitative
+    "variables", "sample", "groups", "data_analysis", "study_type",
+    # quantitative continuum sliders (0-100, stored as strings; empty = design default)
+    "slider_variance", "slider_causality", "slider_iv_control",
+]
 
+# Quantitative designs supported by the visual design editor/export.
+# The quantitative template's fill-in slide is slide 2 (index 1).
+VD_QUANT_DESIGNS = {"descriptive", "correlational", "quasi_experimental", "experimental"}
+
+
+def _vd_context(session_id: str, current_user: dict):
+    """Shared validation + owner lookup for the visual design endpoints.
+    Returns (sess, raw_doc, design_id, design_label, name, email)."""
     sess = _require_session(session_id)
     steps_data = sess.step_notes
 
-    # Only qualitative paths have a visual design template (for now)
     resolved = sess.resolved_path or "qualitative"
     effective = resolved
     if resolved == "mixed":
         effective = sess.chosen_methodology or ""
     elif sess.chosen_methodology:
         effective = sess.chosen_methodology
-    if effective != "qualitative":
-        raise HTTPException(
-            status_code=400,
-            detail="The visual design export is currently available for qualitative studies only."
-        )
 
     design_id = (steps_data.get("4") or {}).get("design")
-    if design_id not in VD_SLIDE_BY_DESIGN:
+    if effective == "qualitative":
+        if design_id not in VD_SLIDE_BY_DESIGN:
+            raise HTTPException(
+                status_code=400,
+                detail="Complete Step 4 (choose your qualitative design) to work on the visual design."
+            )
+    elif effective == "quantitative":
+        if not design_id:
+            raise HTTPException(
+                status_code=400,
+                detail="Complete Step 4 (choose your quantitative design) to work on the visual design."
+            )
+        if design_id not in VD_QUANT_DESIGNS:
+            raise HTTPException(
+                status_code=400,
+                detail="The visual design is not available for this quantitative design yet."
+            )
+    else:
         raise HTTPException(
             status_code=400,
-            detail="Complete Step 4 (choose your qualitative design) to generate the visual design."
+            detail="Choose your methodology in Step 4 to work on the visual design."
         )
 
-    # Session owner info (teachers downloading a student's design get the student's name)
+    # Session owner info (teachers get the student's name, not their own)
     raw_doc = find_session(session_id)
     owner = find_user_by_id(raw_doc.get("user_id")) if raw_doc and raw_doc.get("user_id") else None
     vd_user = owner or current_user
     name = vd_user.get("username") or vd_user.get("name", "Student")
     email = vd_user.get("email") or vd_user.get("username") or ""
+
+    design_label = _resolve_option_labels(
+        _effective_step_config(sess, 4)[1].get("options"), design_id) or design_id
+    return sess, raw_doc, design_id, design_label, name, email, effective
+
+
+def _vd_raw_fields(sess: SessionData) -> dict:
+    """The student's step data relevant to the visual design, labels resolved."""
+    steps_data = sess.step_notes
 
     def get_field(step_num: int, *keys) -> str:
         d = steps_data.get(str(step_num))
@@ -3239,7 +3270,6 @@ def export_visual_design(
         return ""
 
     def get_labeled(step_num: int, field_key: str) -> str:
-        """Field value with option ids resolved to labels via the step config."""
         d = steps_data.get(str(step_num))
         if not isinstance(d, dict):
             return ""
@@ -3254,13 +3284,12 @@ def export_visual_design(
                 return _resolve_option_labels(f.get("options"), val)
         return ", ".join(str(v) for v in val) if isinstance(val, list) else str(val)
 
-    design_label = _resolve_option_labels(
-        _effective_step_config(sess, 4)[1].get("options"), design_id) or design_id
-
-    raw_fields = {
+    return {
         "Topic": get_field(2, "topic"),
         "Topical Research": get_field(3, "topicalResearch", "topical_research"),
         "Research Question / Central Issue": get_labeled(5, "research_question"),
+        "Research Aim": get_labeled(5, "research_aim"),
+        "Hypothesis": get_labeled(5, "hypothesis"),
         "Collection Method": get_labeled(6, "collection_method"),
         "Participants": get_labeled(6, "participants"),
         "Sampling Method": get_labeled(6, "sampling_method"),
@@ -3270,35 +3299,135 @@ def export_visual_design(
         "Ethics Plan": get_labeled(9, "ethics_approach") or get_labeled(9, "ethics_notes"),
     }
 
-    structured = _structure_vd_via_llm(design_label, VD_CENTRAL_LABEL[design_id], raw_fields)
 
-    def pick(key: str, *fallbacks: str) -> str:
-        v = (structured.get(key) or "").strip() if isinstance(structured.get(key), str) else ""
-        if v:
-            return v
-        for fb in fallbacks:
-            if fb and fb.strip():
-                return fb.strip()
-        return "Not yet defined"
-
+def _vd_prefill(raw_fields: dict) -> dict:
+    """Direct (no-LLM) prefill of the visual design fields from step data."""
     topics_fallback = "\n".join(
         l.strip(" -•·\t") for l in raw_fields["Topical Research"].split("\n") if l.strip(" -•·\t")
     )[:300]
-
-    values = {
-        "central_item": pick("central_item", raw_fields["Topic"]),
-        "context": pick("context", raw_fields["Topic"]),
-        "informants": pick("informants", raw_fields["Participants"]),
-        "other_documents": pick("other_documents"),
-        "data_gathering": pick("data_gathering", raw_fields["Collection Method"]),
-        "strategies": pick("strategies", raw_fields["Analysis Method"], raw_fields["Sampling Method"]),
-        "process_support": pick("process_support", raw_fields["Trustworthiness Strategies"]),
-        "question": pick("question", raw_fields["Research Question / Central Issue"]),
-        "topics": pick("topics", topics_fallback),
-        "minicases": pick("minicases"),
+    sample_parts = [p for p in (raw_fields["Participants"].strip(), raw_fields["Sampling Method"].strip()) if p]
+    return {
+        "central_item": raw_fields["Topic"].strip(),
+        "context": "",
+        "question": (raw_fields["Research Question / Central Issue"] or raw_fields["Research Aim"]).strip(),
+        "topics": topics_fallback,
+        "informants": raw_fields["Participants"].strip(),
+        "data_gathering": raw_fields["Collection Method"].strip(),
+        "other_documents": "",
+        "strategies": (raw_fields["Analysis Method"] or raw_fields["Sampling Method"]).strip(),
+        "process_support": raw_fields["Trustworthiness Strategies"].strip(),
+        "minicases": "",
+        # quantitative
+        "variables": raw_fields["Hypothesis"].strip(),
+        "sample": ". ".join(sample_parts),
+        "groups": "",
+        "data_analysis": raw_fields["Analysis Method"].strip(),
+        "study_type": "",
+        "slider_variance": "",
+        "slider_causality": "",
+        "slider_iv_control": "",
     }
 
-    replacements = {
+
+class VisualDesignSaveRequest(BaseModel):
+    fields: Dict[str, str]
+
+
+@app.get("/session/{session_id}/visual-design/data")
+def get_visual_design_data(
+    session_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Data for the visual design editor page: the student's saved fields,
+    prefilled from their step data where nothing was saved yet."""
+    sess, raw_doc, design_id, design_label, name, email, effective = _vd_context(session_id, current_user)
+
+    stored = (raw_doc or {}).get("visual_design_fields") or {}
+    prefill = _vd_prefill(_vd_raw_fields(sess))
+    fields = {}
+    for key in VD_FIELD_KEYS:
+        saved_val = stored.get(key)
+        fields[key] = str(saved_val).strip() if saved_val not in (None, "") else prefill.get(key, "")
+
+    return {
+        "design": design_id,
+        "design_label": design_label,
+        "path": effective,
+        "name": name,
+        "email": email,
+        "fields": fields,
+        "has_saved": bool(stored),
+    }
+
+
+@app.put("/session/{session_id}/visual-design/data")
+def save_visual_design_data(
+    session_id: str,
+    payload: VisualDesignSaveRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """Persist the student's visual design fields (from the editor page)."""
+    _vd_context(session_id, current_user)
+    fields = {
+        k: str(payload.fields.get(k, ""))[:2000]
+        for k in VD_FIELD_KEYS if k in payload.fields
+    }
+    update_session(session_id, {"visual_design_fields": fields})
+    return {"ok": True}
+
+
+@app.get("/session/{session_id}/export/visual-design")
+def export_visual_design(
+    session_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Generate the one-slide visual design diagram (.pptx) for a qualitative
+    study, using the slide matching the student's Step-4 design choice.
+    Fields the student saved in the visual design editor are used as-is;
+    otherwise the step data is condensed via the LLM.
+    """
+    from pptx import Presentation as PptxPresentation
+    import io
+
+    sess, raw_doc, design_id, design_label, name, email, effective = _vd_context(session_id, current_user)
+    raw_fields = _vd_raw_fields(sess)
+    prefill = _vd_prefill(raw_fields)
+
+    stored = (raw_doc or {}).get("visual_design_fields") or {}
+    stored = {k: str(v).strip() for k, v in stored.items() if str(v).strip()}
+
+    # Only fall back to the LLM when the student hasn't edited the design
+    # (qualitative only - quantitative fields map directly from step data)
+    structured = {}
+    if not stored and design_id in VD_CENTRAL_LABEL:
+        structured = _structure_vd_via_llm(design_label, VD_CENTRAL_LABEL[design_id], raw_fields)
+
+    def pick(key: str) -> str:
+        for source in (stored, structured, prefill):
+            v = source.get(key)
+            if isinstance(v, str) and v.strip():
+                return v.strip()
+        return "Not yet defined"
+
+    values = {key: pick(key) for key in VD_FIELD_KEYS}
+
+    if effective == "quantitative":
+        replacements = {
+            "<<Name>>": name,
+            "<<email>>": email,
+            "<<Variables>>": values["variables"],
+            "<<Research Question>>": values["question"],
+            "<<Data Gathering>>": values["data_gathering"],
+            "<<Process Support>>": values["process_support"],
+            "<<Phenomenon under study>>": values["central_item"],
+            "<<# of groups>>": values["groups"],
+            "<<Sample>>": values["sample"],
+            "<<Data Analysis>>": values["data_analysis"],
+            "<<Type of correlational study>>": values["study_type"] if values["study_type"] != "Not yet defined" else "",
+        }
+    else:
+        replacements = {
         "<<Name>>": name,
         "<<email>>": email,
         "<<Informants>>": values["informants"],
@@ -3329,14 +3458,18 @@ def export_visual_design(
         "<<Topics>>": values["topics"],
         "<<Context>>": values["context"],
         "<<Minicases>>": values["minicases"],
-    }
+        }
 
-    template_path = TEMPLATE_DIR / "visual_design_qualitative.pptx"
+    if effective == "quantitative":
+        template_path = TEMPLATE_DIR / "visual_design_quantitative.pptx"
+        keep_idx = 1  # slide 2 is the fill-in slide
+    else:
+        template_path = TEMPLATE_DIR / "visual_design_qualitative.pptx"
+        keep_idx = VD_SLIDE_BY_DESIGN[design_id]
     if not template_path.exists():
         raise HTTPException(status_code=500, detail="Visual design template not found")
 
     prs = PptxPresentation(str(template_path))
-    keep_idx = VD_SLIDE_BY_DESIGN[design_id]
 
     # Drop every slide except the one for the student's design
     from pptx.oxml.ns import qn
