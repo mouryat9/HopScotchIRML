@@ -3199,11 +3199,25 @@ VD_FIELD_KEYS = [
     "variables", "sample", "groups", "data_analysis", "study_type",
     # quantitative continuum sliders (0-100, stored as strings; empty = design default)
     "slider_variance", "slider_causality", "slider_iv_control",
+    # mixed methods (second-strand keys; the qualitative strand reuses the
+    # qualitative keys and the quantitative strand reuses the quantitative ones)
+    "research_topic", "mm_question", "mm_data_gathering", "mm_process_support",
+    "qual_tradition", "hypothesis", "qual_question",
 ]
 
 # Quantitative designs supported by the visual design editor/export.
 # The quantitative template's fill-in slide is slide 2 (index 1).
 VD_QUANT_DESIGNS = {"descriptive", "correlational", "quasi_experimental", "experimental"}
+
+# Mixed methods designs supported by the visual design editor (print-only;
+# stored in step_notes["4"]["mixed_design"] for pragmatist/mixed sessions)
+VD_MIXED_DESIGNS = {
+    "convergent_parallel": "Convergent Parallel Mixed Methods",
+    "explanatory_sequential": "Explanatory Sequential Mixed Methods",
+    "exploratory_sequential": "Exploratory Sequential Mixed Methods",
+    "embedded": "Embedded Mixed Methods",
+}
+VD_MIXED_EDITOR_READY = {"convergent_parallel", "explanatory_sequential", "exploratory_sequential", "embedded"}
 
 
 def _vd_context(session_id: str, current_user: dict):
@@ -3220,7 +3234,20 @@ def _vd_context(session_id: str, current_user: dict):
         effective = sess.chosen_methodology
 
     design_id = (steps_data.get("4") or {}).get("design")
-    if effective == "qualitative":
+    mixed_design = (steps_data.get("4") or {}).get("mixed_design")
+    if resolved == "mixed" and mixed_design:
+        # Pragmatist student who chose a mixed methods design: the visual
+        # design combines both strands regardless of the primary methodology.
+        if mixed_design not in VD_MIXED_DESIGNS:
+            raise HTTPException(status_code=400, detail="Unknown mixed methods design.")
+        if mixed_design not in VD_MIXED_EDITOR_READY:
+            raise HTTPException(
+                status_code=400,
+                detail="The visual design is not available for this mixed methods design yet."
+            )
+        effective = "mixed"
+        design_id = mixed_design
+    elif effective == "qualitative":
         if design_id not in VD_SLIDE_BY_DESIGN:
             raise HTTPException(
                 status_code=400,
@@ -3250,8 +3277,11 @@ def _vd_context(session_id: str, current_user: dict):
     name = vd_user.get("username") or vd_user.get("name", "Student")
     email = vd_user.get("email") or vd_user.get("username") or ""
 
-    design_label = _resolve_option_labels(
-        _effective_step_config(sess, 4)[1].get("options"), design_id) or design_id
+    if effective == "mixed":
+        design_label = VD_MIXED_DESIGNS[design_id]
+    else:
+        design_label = _resolve_option_labels(
+            _effective_step_config(sess, 4)[1].get("options"), design_id) or design_id
     return sess, raw_doc, design_id, design_label, name, email, effective
 
 
@@ -3326,6 +3356,13 @@ def _vd_prefill(raw_fields: dict) -> dict:
         "slider_variance": "",
         "slider_causality": "",
         "slider_iv_control": "",
+        "research_topic": raw_fields["Topic"].strip(),
+        "mm_question": raw_fields["Research Aim"].strip(),
+        "mm_data_gathering": "",
+        "mm_process_support": "",
+        "qual_tradition": "",
+        "hypothesis": raw_fields["Hypothesis"].strip(),
+        "qual_question": raw_fields["Research Question / Central Issue"].strip(),
     }
 
 
@@ -3353,6 +3390,7 @@ def get_visual_design_data(
         "design": design_id,
         "design_label": design_label,
         "path": effective,
+        "primary": sess.chosen_methodology or "qualitative",
         "name": name,
         "email": email,
         "fields": fields,
@@ -3391,6 +3429,11 @@ def export_visual_design(
     import io
 
     sess, raw_doc, design_id, design_label, name, email, effective = _vd_context(session_id, current_user)
+    if effective == "mixed":
+        raise HTTPException(
+            status_code=400,
+            detail="Mixed methods visual designs are printed from the editor page."
+        )
     raw_fields = _vd_raw_fields(sess)
     prefill = _vd_prefill(raw_fields)
 

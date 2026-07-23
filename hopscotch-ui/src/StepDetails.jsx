@@ -2,6 +2,14 @@ import React, { useEffect, useMemo, useState } from "react";
 import { API } from "./api";
 import { vdEditorSupports } from "./VisualDesignEditor";
 
+/* Mixed methods designs (pragmatist / mixed path, Step 4) */
+const MIXED_DESIGN_OPTIONS = [
+  { id: "convergent_parallel", label: "Convergent Parallel", description: "Run the qualitative and quantitative strands at the same time, then merge the results in interpretation." },
+  { id: "explanatory_sequential", label: "Explanatory Sequential", description: "Quantitative first: the numbers show what is happening, then a qualitative phase explains why." },
+  { id: "exploratory_sequential", label: "Exploratory Sequential", description: "Qualitative first: explore the phenomenon, then a quantitative phase tests the findings at scale." },
+  { id: "embedded", label: "Embedded", description: "One strand is the main study; a smaller strand of the other type is embedded inside it." },
+];
+
 /**
  * Titles for the step headers
  */
@@ -552,7 +560,7 @@ export default function StepDetails({ step, sessionId, onChatRefresh, onAutoSend
             >
               Get AI Guidance
             </button>
-            {step === 4 && data.design && vdEditorSupports(data.design) && (
+            {step === 4 && (vdEditorSupports(data.mixed_design) || vdEditorSupports(data.design)) && (
               <button
                 className="btn btn--vd"
                 disabled={!sessionId}
@@ -904,6 +912,29 @@ function MethodologyDecision({ config, data, updateField, sessionId, disabled })
               }
             </p>
           )}
+        {config.path === "mixed" && (
+          <div style={{ marginTop: 16 }}>
+            <label className="hop-desc" style={{ display: "block", marginBottom: 6 }}>
+              Now select your mixed methods design - how will the two strands combine?
+            </label>
+            <select
+              className="input"
+              value={data.mixed_design || ""}
+              onChange={(e) => updateField("mixed_design", e.target.value)}
+              disabled={disabled}
+            >
+              <option value="">-- Choose a mixed methods design --</option>
+              {MIXED_DESIGN_OPTIONS.map((opt) => (
+                <option key={opt.id} value={opt.id}>{opt.label}</option>
+              ))}
+            </select>
+            {data.mixed_design && MIXED_DESIGN_OPTIONS.find((o) => o.id === data.mixed_design)?.description && (
+              <p className="hop-desc" style={{ marginTop: 8, fontStyle: "italic", fontSize: 13 }}>
+                {MIXED_DESIGN_OPTIONS.find((o) => o.id === data.mixed_design).description}
+              </p>
+            )}
+          </div>
+        )}
       </div>
     );
   }

@@ -7,6 +7,7 @@ import html2canvas from "html2canvas";
 import { API } from "./api";
 import VDTemplateHoneycomb from "./VDTemplateHoneycomb";
 import VDTemplatePentagonFlower from "./VDTemplatePentagonFlower";
+import VDTemplateMixed from "./VDTemplateMixed";
 import ChatBox from "./ChatBox";
 
 /* Form definitions per design. Field keys are shared with the backend
@@ -858,6 +859,624 @@ const VD_FORMS = {
       },
     },
   },
+  convergent_parallel: {
+    designName: "Convergent Parallel Mixed Methods",
+    intro: "In a convergent parallel design you run a qualitative and a quantitative study of the same phenomenon at the same time, and merge the results in interpretation. Fill in both strands below - each appears in its side of the diagram.",
+    fields: [
+      {
+        key: "research_topic",
+        section: "Your Study",
+        label: "Research topic",
+        hint: "The topic of your whole mixed methods study",
+        help: "State the topic of your mixed methods study - the shared focus that both the qualitative and quantitative strands will illuminate from their own angles.",
+      },
+      {
+        key: "central_item",
+        label: "Phenomenon under study",
+        hint: "Shared by both strands",
+        help: "Describe briefly the phenomenon you will study. In a convergent parallel design BOTH strands study the same phenomenon at the same time: the quantitative strand measures it, and the qualitative strand explores how people experience it. The results are then compared and combined in interpretation.",
+      },
+      {
+        key: "qual_tradition",
+        section: "Qualitative Strand",
+        label: "Type of qualitative research tradition",
+        hint: "Narrative, case study, phenomenology…",
+        help: "Which qualitative tradition will this strand follow? i.e. Narrative, Case Study, Phenomenology, Ethnography, Grounded Theory.",
+        placeholder: "Narrative / Case Study / Phenomenology / Ethnography / Grounded Theory",
+      },
+      {
+        key: "context",
+        label: "Context of the Study",
+        hint: "Where the qualitative strand will be conducted",
+        help: "Which is the context in which the qualitative strand of your study will be conducted? i.e. The study will be conducted at my school which has the following characteristics: (description of the setting).",
+      },
+      {
+        key: "qual_question",
+        label: "Qualitative Research Question",
+        hint: "The question driving the qualitative strand",
+        help: "Which is the qualitative research question driving this strand of your study? It should focus on understanding how the people involved experience the phenomenon.",
+      },
+      {
+        key: "question",
+        label: "Issues",
+        hint: "The particular tensions under scrutiny",
+        help: "Which are the issues - the particular matters of contention - that the qualitative strand will pay attention to?",
+      },
+      {
+        key: "topics",
+        label: "Topics",
+        hint: "Areas that narrow down the qualitative question",
+        help: "Which are the particular areas of interest in which you will narrow down the complexity of the issue driving the qualitative strand?",
+        placeholder: "One topic per line",
+      },
+      {
+        key: "informants",
+        label: "Informants",
+        hint: "Who will you learn from?",
+        help: "Which are the informants from which you will get a better understanding of the phenomenon under analysis?",
+      },
+      {
+        key: "data_gathering",
+        label: "Data Gathering Methods (qualitative)",
+        hint: "Interviews, observations, journals…",
+        help: "Which qualitative data gathering methods are you going to use? i.e. interviews, observations, journals, focus groups.",
+      },
+      {
+        key: "other_documents",
+        label: "Other Documents to be analyzed",
+        hint: "Photos, videos, journals, artifacts…",
+        help: "In addition to the data gathering methods you will implement, which other documents could help you to better understand the phenomenon under study? i.e. Photos, videos, journals, artifacts created by the informants, etc.",
+      },
+      {
+        key: "strategies",
+        label: "Strategies (qualitative)",
+        hint: "Strategies of your qualitative tradition",
+        help: "Which are the strategies you will follow in the qualitative strand? These depend on the tradition you draw from - i.e. thick descriptions, prolonged engagement, restorying, constant comparison.",
+      },
+      {
+        key: "process_support",
+        label: "Process Support (qualitative)",
+        hint: "People, tools or resources for this strand",
+        help: "Are you using any individual, tool, or resource to help you conduct the qualitative strand? i.e. Qualitative data analysis software.",
+      },
+      {
+        key: "variables",
+        section: "Quantitative Strand",
+        label: "Variables",
+        hint: "The variables the quantitative strand will measure",
+        help: "Describe the variables that will be measured in the quantitative strand of your study.",
+      },
+      {
+        key: "hypothesis",
+        label: "Hypothesis",
+        hint: "What you predict the quantitative strand will find",
+        help: "State the hypothesis of the quantitative strand - what you predict the data will show about the relationship between your variables.",
+      },
+      {
+        key: "mm_question",
+        label: "Quantitative Research Question",
+        hint: "The question driving the quantitative strand",
+        help: "Include the research question driving the quantitative strand - usually about the distribution of the variables or the relationships between them.",
+      },
+      {
+        key: "sample",
+        label: "Sample",
+        hint: "Who participates in the quantitative strand?",
+        help: "Describe the sample that will be used in the quantitative strand, as well as the sampling method to be used. A representative sample lets you generalize the quantitative results.",
+      },
+      {
+        key: "groups",
+        label: "# of Groups",
+        hint: "How many groups?",
+        help: "How many groups will the quantitative strand involve?",
+        placeholder: "1 group / 2 groups",
+      },
+      {
+        key: "mm_data_gathering",
+        label: "Data Gathering (quantitative)",
+        hint: "Questionnaires, scales, tests…",
+        help: "Which quantitative data gathering instruments will you use? i.e. Questionnaires, Likert scales, structured observation, tests.",
+      },
+      {
+        key: "data_analysis",
+        label: "Data Analysis",
+        hint: "Statistics for the quantitative strand",
+        help: "How will you analyze the quantitative data? i.e. Descriptive statistics, correlations, group comparisons.",
+      },
+      {
+        key: "mm_process_support",
+        label: "Process Support (quantitative)",
+        hint: "SPSS, survey tools…",
+        help: "Are you using any strategy, tool or technology to support the quantitative strand? i.e. Statistical packages such as SPSS, or tools for the generation of questionnaires.",
+      },
+    ],
+    layout: {
+      kind: "mixed",
+      designName: "Convergent Parallel Mixed Methods",
+      titleText: "Convergent / Parallel Mixed Methods Research Design on:",
+    },
+  },
+  explanatory_sequential: {
+    designName: "Explanatory Sequential Mixed Methods",
+    intro: "In an explanatory sequential design you run the quantitative study FIRST (Phase I) - the numbers show what is happening - and then a qualitative study (Phase II) explains why. The quantitative results inform who you talk to and what you ask about in the qualitative phase.",
+    fields: [
+      {
+        key: "research_topic",
+        section: "Your Study",
+        label: "Research topic",
+        hint: "The topic of your whole mixed methods study",
+        help: "State the topic of your mixed methods study - the shared focus that Phase I will measure and Phase II will explain.",
+      },
+      {
+        key: "central_item",
+        label: "Phenomenon under study",
+        hint: "Shared by both phases",
+        help: "Describe briefly the phenomenon you will study. In an explanatory sequential design the quantitative phase measures the phenomenon first, and the qualitative phase then explains the results in depth.",
+      },
+      {
+        key: "study_type",
+        section: "Phase I - Quantitative Strand",
+        label: "Type of quantitative research design",
+        hint: "Descriptive, correlational, quasi-experimental…",
+        help: "Which quantitative design will Phase I follow? i.e. Descriptive non-experimental, correlational, quasi-experimental or experimental.",
+        placeholder: "Descriptive / Correlational / Quasi-experimental / Experimental",
+      },
+      {
+        key: "variables",
+        label: "Hypothesis: Variables",
+        hint: "The variables Phase I will measure",
+        help: "Describe the variables that will be measured in the quantitative phase, and the hypothesis relating them if you have one.",
+      },
+      {
+        key: "hypothesis",
+        label: "Hypothesis",
+        hint: "What you predict Phase I will find",
+        help: "State the hypothesis of the quantitative phase - what you predict the data will show about the relationship between your variables.",
+      },
+      {
+        key: "mm_question",
+        label: "Quantitative Research Question",
+        hint: "The question driving Phase I",
+        help: "Include the research question driving the quantitative phase - usually about the distribution of the variables or the relationships between them.",
+      },
+      {
+        key: "sample",
+        label: "Sample",
+        hint: "Who participates in Phase I?",
+        help: "Describe the sample that will be used in the quantitative phase, as well as the sampling method to be used.",
+      },
+      {
+        key: "groups",
+        label: "# of Groups",
+        hint: "How many groups?",
+        help: "How many groups will the quantitative phase involve?",
+        placeholder: "1 group / 2 groups",
+      },
+      {
+        key: "mm_data_gathering",
+        label: "Data Gathering (quantitative)",
+        hint: "Questionnaires, scales, tests…",
+        help: "Which quantitative data gathering instruments will you use in Phase I? i.e. Questionnaires, Likert scales, structured observation, tests.",
+      },
+      {
+        key: "data_analysis",
+        label: "Data Analysis",
+        hint: "Statistics for Phase I",
+        help: "How will you analyze the quantitative data? i.e. Descriptive statistics, correlations, group comparisons. The results of this analysis decide what Phase II needs to explain.",
+      },
+      {
+        key: "mm_process_support",
+        label: "Process Support (quantitative)",
+        hint: "SPSS, survey tools…",
+        help: "Are you using any strategy, tool or technology to support the quantitative phase? i.e. Statistical packages such as SPSS, or tools for the generation of questionnaires.",
+      },
+      {
+        key: "qual_tradition",
+        section: "Phase II - Qualitative Strand",
+        label: "Type of qualitative research tradition",
+        hint: "Narrative, case study, phenomenology…",
+        help: "Which qualitative tradition will Phase II follow? i.e. Narrative, Case Study, Phenomenology, Ethnography, Grounded Theory.",
+        placeholder: "Narrative / Case Study / Phenomenology / Ethnography / Grounded Theory",
+      },
+      {
+        key: "context",
+        label: "Context of the Study",
+        hint: "Where the qualitative phase will be conducted",
+        help: "Which is the context in which the qualitative phase of your study will be conducted?",
+      },
+      {
+        key: "qual_question",
+        label: "Qualitative Research Question",
+        hint: "What do the quantitative results need explained?",
+        help: "Which is the qualitative research question driving Phase II? In an explanatory sequential design it should focus on EXPLAINING the quantitative results - i.e. why did the groups differ? What is behind the pattern the numbers showed?",
+      },
+      {
+        key: "question",
+        label: "Issues",
+        hint: "The particular tensions under scrutiny",
+        help: "Which are the issues - the particular matters of contention - that the qualitative phase will pay attention to while explaining the quantitative results?",
+      },
+      {
+        key: "topics",
+        label: "Topics",
+        hint: "Areas that narrow down the qualitative question",
+        help: "Which are the particular areas of interest in which you will narrow down the complexity of the issue driving the qualitative phase? These often come directly from the most surprising or important quantitative results.",
+        placeholder: "One topic per line",
+      },
+      {
+        key: "informants",
+        label: "Informants",
+        hint: "Often selected FROM the Phase I participants",
+        help: "Which are the informants from which you will get a better understanding of the quantitative results? In explanatory sequential designs informants are usually selected from the Phase I participants - i.e. people whose answers were typical, extreme, or surprising.",
+      },
+      {
+        key: "data_gathering",
+        label: "Data Gathering Methods (qualitative)",
+        hint: "Interviews, focus groups…",
+        help: "Which qualitative data gathering methods are you going to use in Phase II? i.e. interviews, focus groups, observations.",
+      },
+      {
+        key: "other_documents",
+        label: "Other Documents to be analyzed",
+        hint: "Photos, videos, journals, artifacts…",
+        help: "In addition to the data gathering methods you will implement, which other documents could help you to better understand the phenomenon under study?",
+      },
+      {
+        key: "strategies",
+        label: "Strategies (qualitative)",
+        hint: "Strategies of your qualitative tradition",
+        help: "Which are the strategies you will follow in the qualitative phase? i.e. thick descriptions, member checking, constant comparison.",
+      },
+      {
+        key: "process_support",
+        label: "Process Support (qualitative)",
+        hint: "People, tools or resources for this phase",
+        help: "Are you using any individual, tool, or resource to help you conduct the qualitative phase? i.e. Qualitative data analysis software.",
+      },
+    ],
+    layout: {
+      kind: "mixed",
+      variant: "explanatory",
+      designName: "Explanatory Sequential Mixed Methods",
+      titleText: "Explanatory Sequential Mixed Methods Research Design on:",
+    },
+  },
+  exploratory_sequential: {
+    designName: "Exploratory Sequential Mixed Methods",
+    intro: "In an exploratory sequential design you run the qualitative study FIRST (Phase I) to explore the phenomenon, and then a quantitative study (Phase II) tests what you found at scale. The qualitative findings inform the variables and instruments of the quantitative phase.",
+    fields: [
+      {
+        key: "research_topic",
+        section: "Your Study",
+        label: "Research topic",
+        hint: "The topic of your whole mixed methods study",
+        help: "State the topic of your mixed methods study - the shared focus that Phase I will explore and Phase II will measure.",
+      },
+      {
+        key: "central_item",
+        label: "Phenomenon under study",
+        hint: "Shared by both phases",
+        help: "Describe briefly the phenomenon you will study. In an exploratory sequential design the qualitative phase explores the phenomenon first, and the quantitative phase then tests the findings with a larger sample.",
+      },
+      {
+        key: "qual_tradition",
+        section: "Phase I - Qualitative Strand",
+        label: "Type of qualitative research tradition",
+        hint: "Narrative, case study, phenomenology…",
+        help: "Which qualitative tradition will Phase I follow? i.e. Narrative, Case Study, Phenomenology, Ethnography, Grounded Theory.",
+        placeholder: "Narrative / Case Study / Phenomenology / Ethnography / Grounded Theory",
+      },
+      {
+        key: "context",
+        label: "Context of the Study",
+        hint: "Where the qualitative phase will be conducted",
+        help: "Which is the context in which the qualitative phase of your study will be conducted?",
+      },
+      {
+        key: "qual_question",
+        label: "Qualitative Research Question",
+        hint: "The open question that starts the exploration",
+        help: "Which is the qualitative research question driving Phase I? It should be open enough to let the important themes emerge - these themes will become the variables of Phase II.",
+      },
+      {
+        key: "question",
+        label: "Issues",
+        hint: "The particular tensions under scrutiny",
+        help: "Which are the issues - the particular matters of contention - that the qualitative exploration will pay attention to?",
+      },
+      {
+        key: "topics",
+        label: "Topics",
+        hint: "Areas that narrow down the qualitative question",
+        help: "Which are the particular areas of interest in which you will narrow down the complexity of the issue driving the qualitative phase?",
+        placeholder: "One topic per line",
+      },
+      {
+        key: "informants",
+        label: "Informants",
+        hint: "Who will you learn from first?",
+        help: "Which are the informants from which you will get a better understanding of the phenomenon under analysis in Phase I?",
+      },
+      {
+        key: "data_gathering",
+        label: "Data Gathering Methods (qualitative)",
+        hint: "Interviews, observations, focus groups…",
+        help: "Which qualitative data gathering methods are you going to use in Phase I? i.e. interviews, observations, focus groups.",
+      },
+      {
+        key: "other_documents",
+        label: "Other Documents to be analyzed",
+        hint: "Photos, videos, journals, artifacts…",
+        help: "In addition to the data gathering methods you will implement, which other documents could help you to better understand the phenomenon under study?",
+      },
+      {
+        key: "strategies",
+        label: "Strategies (qualitative)",
+        hint: "Strategies of your qualitative tradition",
+        help: "Which are the strategies you will follow in the qualitative phase? i.e. thick descriptions, constant comparison, member checking.",
+      },
+      {
+        key: "process_support",
+        label: "Process Support (qualitative)",
+        hint: "People, tools or resources for this phase",
+        help: "Are you using any individual, tool, or resource to help you conduct the qualitative phase? i.e. Qualitative data analysis software.",
+      },
+      {
+        key: "study_type",
+        section: "Phase II - Quantitative Strand",
+        label: "Type of quantitative research design",
+        hint: "Descriptive, correlational, quasi-experimental…",
+        help: "Which quantitative design will Phase II follow? i.e. Descriptive non-experimental, correlational, quasi-experimental or experimental.",
+        placeholder: "Descriptive / Correlational / Quasi-experimental / Experimental",
+      },
+      {
+        key: "variables",
+        label: "Hypothesis: Variables",
+        hint: "Variables that emerged from Phase I",
+        help: "Describe the variables that will be measured in the quantitative phase. In an exploratory sequential design these usually come from the themes discovered in Phase I - the qualitative findings become measurable variables.",
+      },
+      {
+        key: "hypothesis",
+        label: "Hypothesis",
+        hint: "What you predict, based on the Phase I findings",
+        help: "State the hypothesis of the quantitative phase - what you predict the data will show, usually derived from the themes discovered in Phase I.",
+      },
+      {
+        key: "mm_question",
+        label: "Quantitative Research Question",
+        hint: "Testing the Phase I findings at scale",
+        help: "Include the research question driving the quantitative phase - usually testing whether the patterns found in Phase I hold for a larger population.",
+      },
+      {
+        key: "sample",
+        label: "Sample",
+        hint: "A larger sample to generalize the findings",
+        help: "Describe the sample that will be used in the quantitative phase, as well as the sampling method to be used. A representative sample lets you generalize what Phase I discovered.",
+      },
+      {
+        key: "groups",
+        label: "# of Groups",
+        hint: "How many groups?",
+        help: "How many groups will the quantitative phase involve?",
+        placeholder: "1 group / 2 groups",
+      },
+      {
+        key: "mm_data_gathering",
+        label: "Data Gathering (quantitative)",
+        hint: "Often an instrument built from the Phase I findings",
+        help: "Which quantitative data gathering instruments will you use in Phase II? In exploratory sequential designs the questionnaire or scale is often BUILT from the qualitative findings of Phase I.",
+      },
+      {
+        key: "data_analysis",
+        label: "Data Analysis",
+        hint: "Statistics for Phase II",
+        help: "How will you analyze the quantitative data? i.e. Descriptive statistics, correlations, group comparisons.",
+      },
+      {
+        key: "mm_process_support",
+        label: "Process Support (quantitative)",
+        hint: "SPSS, survey tools…",
+        help: "Are you using any strategy, tool or technology to support the quantitative phase? i.e. Statistical packages such as SPSS, or tools for the generation of questionnaires.",
+      },
+    ],
+    layout: {
+      kind: "mixed",
+      variant: "exploratory",
+      designName: "Exploratory Sequential Mixed Methods",
+      titleText: "Exploratory Sequential Mixed Methods Research Design on:",
+    },
+  },
+
+  embedded: {
+    designName: "Embedded Mixed Methods",
+    intro: "In an embedded design one strand is your main study, and a smaller strand of the other type is embedded inside it to answer a secondary question. Your primary methodology (chosen above the design dropdown) decides which strand hosts the study.",
+    fields: [
+      {
+        key: "research_topic",
+        section: "Your Study",
+        label: "Research topic",
+        hint: "The topic of your whole mixed methods study",
+        help: "State the topic of your mixed methods study.",
+      },
+      {
+        key: "central_item",
+        label: "Phenomenon under study",
+        hint: "The focus of your main study",
+        help: "Describe briefly the phenomenon you will study in your main strand.",
+      },
+      {
+        key: "context",
+        section: "Primary Qualitative Study",
+        label: "Context of the Study",
+        hint: "Where your main study will be conducted",
+        help: "Which is the context in which your main qualitative study will be conducted?",
+      },
+      {
+        key: "question",
+        label: "Qualitative Research Question",
+        hint: "The question driving your main study",
+        help: "Which is the qualitative research question driving your main study?",
+      },
+      {
+        key: "topics",
+        label: "Topics",
+        hint: "Areas that narrow down your question",
+        help: "Which are the particular areas of interest in which you will narrow down the complexity of the question driving the study?",
+        placeholder: "One topic per line",
+      },
+      {
+        key: "informants",
+        label: "Informants",
+        hint: "Who will you learn from?",
+        help: "Which are the informants from which you will get a better understanding of the phenomenon under analysis?",
+      },
+      {
+        key: "data_gathering",
+        label: "Data Gathering Methods (qualitative)",
+        hint: "Interviews, observations, journals…",
+        help: "Which qualitative data gathering methods are you going to use in your main study?",
+      },
+      {
+        key: "other_documents",
+        label: "Other Documents to be analyzed",
+        hint: "Photos, videos, journals, artifacts…",
+        help: "In addition to the data gathering methods you will implement, which other documents could help you to better understand the phenomenon under study?",
+      },
+      {
+        key: "strategies",
+        label: "Strategies (qualitative)",
+        hint: "Strategies of your qualitative tradition",
+        help: "Which are the strategies you will follow in your main qualitative study?",
+      },
+      {
+        key: "process_support",
+        label: "Process Support",
+        hint: "People, tools or resources for your study",
+        help: "Are you using any individual, tool, or resource to help you conduct your study?",
+      },
+      {
+        key: "mm_question",
+        section: "Embedded Quantitative Study",
+        label: "Research Question (embedded)",
+        hint: "The secondary question the embedded study answers",
+        help: "Which research question will the embedded quantitative study answer? It is usually a secondary question that numbers answer better than words - i.e. how often something happens, or how attitudes are distributed.",
+      },
+      {
+        key: "mm_data_gathering",
+        label: "Data Gathering (embedded)",
+        hint: "Questionnaires, scales…",
+        help: "Which quantitative instruments will the embedded study use? i.e. a short questionnaire or scale administered to the participants of your main study.",
+      },
+      {
+        key: "data_analysis",
+        label: "Data Analysis (embedded)",
+        hint: "Descriptive statistics…",
+        help: "How will you analyze the embedded quantitative data? i.e. Descriptive statistics, frequencies, simple comparisons.",
+      },
+    ],
+    layout: {
+      kind: "mixed",
+      variant: "embedded",
+      designName: "Embedded Mixed Methods",
+      titleText: "Embedded Mixed Methods Research Design on:",
+    },
+  },
+
+  embedded_quant: {
+    designName: "Embedded Mixed Methods",
+    intro: "In an embedded design one strand is your main study, and a smaller strand of the other type is embedded inside it to answer a secondary question. Your primary methodology (chosen above the design dropdown) decides which strand hosts the study.",
+    fields: [
+      {
+        key: "research_topic",
+        section: "Your Study",
+        label: "Research topic",
+        hint: "The topic of your whole mixed methods study",
+        help: "State the topic of your mixed methods study.",
+      },
+      {
+        key: "central_item",
+        label: "Phenomenon under study",
+        hint: "The focus of your main study",
+        help: "Describe briefly the phenomenon you will study in your main strand.",
+      },
+      {
+        key: "study_type",
+        section: "Primary Quantitative Study",
+        label: "Type of quantitative research design",
+        hint: "Descriptive, correlational, quasi-experimental…",
+        help: "Which quantitative design will your main study follow? i.e. Descriptive non-experimental, correlational, quasi-experimental or experimental.",
+        placeholder: "Descriptive / Correlational / Quasi-experimental / Experimental",
+      },
+      {
+        key: "variables",
+        label: "Hypothesis: Variables",
+        hint: "The variables your main study will measure",
+        help: "Describe the variables that will be measured in your main quantitative study, and the hypothesis relating them if you have one.",
+      },
+      {
+        key: "mm_question",
+        label: "Quantitative Research Question",
+        hint: "The question driving your main study",
+        help: "Include the research question driving your main quantitative study.",
+      },
+      {
+        key: "sample",
+        label: "Sample",
+        hint: "Who participates in your main study?",
+        help: "Describe the sample that will be used in your main study, as well as the sampling method to be used.",
+      },
+      {
+        key: "groups",
+        label: "# of Groups",
+        hint: "How many groups?",
+        help: "How many groups will your main study involve?",
+        placeholder: "1 group / 2 groups",
+      },
+      {
+        key: "mm_data_gathering",
+        label: "Data Gathering (quantitative)",
+        hint: "Questionnaires, scales, tests…",
+        help: "Which quantitative data gathering instruments will your main study use?",
+      },
+      {
+        key: "data_analysis",
+        label: "Data Analysis",
+        hint: "Statistics for your main study",
+        help: "How will you analyze the quantitative data of your main study?",
+      },
+      {
+        key: "mm_process_support",
+        label: "Process Support",
+        hint: "SPSS, survey tools…",
+        help: "Are you using any strategy, tool or technology to support your main study?",
+      },
+      {
+        key: "question",
+        section: "Embedded Qualitative Study",
+        label: "Qualitative Research Question (embedded)",
+        hint: "The secondary question the embedded study answers",
+        help: "Which qualitative research question will the embedded study answer? It is usually a secondary question that words answer better than numbers - i.e. how participants experienced the intervention, or why they responded the way they did.",
+      },
+      {
+        key: "data_gathering",
+        label: "Data Gathering Methods (embedded)",
+        hint: "A few interviews, open questions…",
+        help: "Which qualitative methods will the embedded study use? i.e. a small number of interviews, focus groups, or open-ended questions inside your instrument.",
+      },
+      {
+        key: "strategies",
+        label: "Strategies (embedded)",
+        hint: "How will you analyze the words?",
+        help: "Which qualitative strategies will you use for the embedded study? i.e. thematic analysis of the interview transcripts or open answers.",
+      },
+    ],
+    layout: {
+      kind: "mixed",
+      variant: "embedded",
+      designName: "Embedded Mixed Methods",
+      titleText: "Embedded Mixed Methods Research Design on:",
+    },
+  },
 };
 
 // School Ethnography uses the same form and diagram as Ethnography
@@ -868,7 +1487,8 @@ export function vdEditorSupports(designId) {
 }
 
 export default function VisualDesignEditor({ sessionId, data, onClose, aiEnabled = true }) {
-  const form = VD_FORMS[data.design];
+  const formKey = data.design === "embedded" && data.primary === "quantitative" ? "embedded_quant" : data.design;
+  const form = VD_FORMS[formKey];
   const [fields, setFields] = useState(() => ({ ...data.fields }));
   const [saveState, setSaveState] = useState("saved"); // saved | dirty | saving | error
   const [printing, setPrinting] = useState(false);
@@ -1002,7 +1622,10 @@ export default function VisualDesignEditor({ sessionId, data, onClose, aiEnabled
     );
   };
 
-  const TemplateComp = form.layout.kind === "pentagon" ? VDTemplatePentagonFlower : VDTemplateHoneycomb;
+  const TemplateComp =
+    form.layout.kind === "pentagon" ? VDTemplatePentagonFlower :
+    form.layout.kind === "mixed" ? VDTemplateMixed :
+    VDTemplateHoneycomb;
   const filledCount = form.fields.filter((f) => (fields[f.key] || "").trim()).length;
   const progressPct = Math.round((filledCount / form.fields.length) * 100);
 
@@ -1059,8 +1682,9 @@ export default function VisualDesignEditor({ sessionId, data, onClose, aiEnabled
           {form.fields.map((f, i) => {
             const filled = (fields[f.key] || "").trim();
             return (
+              <React.Fragment key={f.key}>
+              {f.section && <h3 className="vd-form__section">{f.section}</h3>}
               <div
-                key={f.key}
                 className={`vd-field${activeKey === f.key ? " vd-field--active" : ""}${filled ? " vd-field--filled" : ""}`}
               >
                 <div className="vd-field__head">
@@ -1088,6 +1712,7 @@ export default function VisualDesignEditor({ sessionId, data, onClose, aiEnabled
                   onBlur={() => setActiveKey(null)}
                 />
               </div>
+              </React.Fragment>
             );
           })}
         </div>
@@ -1096,6 +1721,7 @@ export default function VisualDesignEditor({ sessionId, data, onClose, aiEnabled
           <div className="vd-stage__inner">
             <TemplateComp
               layout={form.layout}
+              primary={data.primary}
               name={data.name}
               email={data.email}
               fields={fields}

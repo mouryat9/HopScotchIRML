@@ -49,7 +49,7 @@ function ContextFootball({ x, y, rot }) {
   );
 }
 
-export default function VDTemplateHoneycomb({ layout, name, email, fields, upd, E, activeKey, onJumpToField }) {
+export default function VDTemplateHoneycomb({ layout, name, email, fields, upd, E, activeKey, onJumpToField, embedded = false }) {
   const jump = (key) => onJumpToField && onJumpToField(key);
 
   const hexes = ["informants", "other_documents", "data_gathering", "central_item", "strategies", "process_support", "question"];
@@ -61,16 +61,18 @@ export default function VDTemplateHoneycomb({ layout, name, email, fields, upd, 
   }
 
   return (
-    <div className="vd-diagram">
-      {/* Student identity */}
-      <div className="vd-identity">
-        <div className="vd-identity__caption">Designed by</div>
-        <div className="vd-identity__name">{name}</div>
-        <div className="vd-identity__email">{email}</div>
-      </div>
+    <div className={embedded ? "vd-subdiagram" : "vd-diagram"}>
+      {/* Student identity (hidden when embedded in a mixed methods canvas) */}
+      {!embedded && (
+        <div className="vd-identity">
+          <div className="vd-identity__caption">Designed by</div>
+          <div className="vd-identity__name">{name}</div>
+          <div className="vd-identity__email">{email}</div>
+        </div>
+      )}
 
-      {/* Context rail (left) */}
-      <div className={`vd-context${activeKey === "context" ? " vd-context--active" : ""}`}>
+      {/* Context rail (left, or bottom-left under Strategies in mixed strands) */}
+      <div className={`vd-context${layout.contextBottom ? " vd-context--bottom" : ""}${activeKey === "context" ? " vd-context--active" : ""}`}>
         <div className="vd-context__title" onClick={() => jump("context")} title="Edit in the form">
           {layout.contextTitle}
         </div>
@@ -155,7 +157,7 @@ export default function VDTemplateHoneycomb({ layout, name, email, fields, upd, 
       </div>
 
       {/* Footer: Hopscotch 4 All logo + animated hopscotch squares + design name */}
-      <div className="vd-logo-row">
+      {!embedded && <div className="vd-logo-row">
         <img className="vd-logo" src="/Hopscotch-4-all-logo-alpha.png" alt="Hopscotch 4 All" />
         <svg className="hop-grid-loader vd-logo-loader" viewBox="0 0 128 46" xmlns="http://www.w3.org/2000/svg" shapeRendering="geometricPrecision" fill="none" aria-hidden="true">
           <rect className="hop-sq sq-1" x="0" y="0" width="18" height="22" rx="6" fill="#2B5EA7" />
@@ -168,8 +170,8 @@ export default function VDTemplateHoneycomb({ layout, name, email, fields, upd, 
           <rect className="hop-sq sq-8" x="88" y="24" width="18" height="22" rx="6" fill="#F5922A" />
           <path className="hop-sq sq-9" d="M110,7 A16,16 0 0,1 110,39 Z" fill="#7B8794" />
         </svg>
-      </div>
-      <div className="vd-design-name">{layout.designName}</div>
+      </div>}
+      {!embedded && <div className="vd-design-name">{layout.designName}</div>}
     </div>
   );
 }

@@ -418,6 +418,21 @@ function StudentApp({ onBackToDashboard }) {
 
   // Hopscotch board shown as an on-demand overlay (opened from the step strip)
   const [mapOpen, setMapOpen] = useState(false);
+  const mapPeekTimer = useRef(null);
+
+  // Clicking a step on the strip pops the Hopscotch board out for a moment so
+  // the student sees where they hopped, then it tucks itself back in.
+  const peekBoard = useCallback(() => {
+    clearTimeout(mapPeekTimer.current);
+    setMapOpen(true);
+    mapPeekTimer.current = setTimeout(() => setMapOpen(false), 3000);
+  }, []);
+  // The Hopscotch button keeps its manual toggle (sticky - no auto-close)
+  const toggleMap = useCallback(() => {
+    clearTimeout(mapPeekTimer.current);
+    setMapOpen((o) => !o);
+  }, []);
+  useEffect(() => () => clearTimeout(mapPeekTimer.current), []);
 
   // Per-user preference: step navigator style ("strip" = chips [default], "board" = mini Hopscotch board)
   const prefKey = `hop_pref_nav_${user?.email || user?.username || "anon"}`;
@@ -750,18 +765,18 @@ function StudentApp({ onBackToDashboard }) {
           <StepStrip
             activeStep={activeStep}
             completedSteps={completedSteps}
-            onStepChange={handleStepChange}
+            onStepChange={(n) => { handleStepChange(n); peekBoard(); }}
             lockedSteps={lockedSteps}
             mapOpen={mapOpen}
-            onOpenMap={() => setMapOpen((o) => !o)}
+            onOpenMap={toggleMap}
           />
         ) : (
           <MiniBoard
             activeStep={activeStep}
             completedSteps={completedSteps}
-            onStepChange={handleStepChange}
+            onStepChange={(n) => { handleStepChange(n); peekBoard(); }}
             lockedSteps={lockedSteps}
-            onOpenMap={() => setMapOpen((o) => !o)}
+            onOpenMap={toggleMap}
           />
         )}
 
@@ -773,7 +788,7 @@ function StudentApp({ onBackToDashboard }) {
               activeStep={activeStep}
               completedSteps={completedSteps}
               lockedSteps={lockedSteps}
-              onStepChange={(n) => { handleStepChange(n); setMapOpen(false); }}
+              onStepChange={(n) => { clearTimeout(mapPeekTimer.current); handleStepChange(n); setMapOpen(false); }}
             />
           </div>
         </div>

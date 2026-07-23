@@ -74,7 +74,7 @@ function Slider({ label, value, onChange }) {
 // Module-level components: defining these inside the parent would give them a
 // new identity every render, forcing React to remount the subtree (which broke
 // slider dragging and wasted work).
-function Pent({ pos, focusKeys, activeKey, flip = false, children }) {
+function Pent({ pos, focusKeys, activeKey, flip = false, centerFill, children }) {
   const isActive = focusKeys.some((k) => activeKey === k);
   const p = PENT_POS[pos];
   return (
@@ -83,7 +83,7 @@ function Pent({ pos, focusKeys, activeKey, flip = false, children }) {
       style={{ left: `${p.x}%`, top: `${p.y}%`, width: `${PENT_W}%`, height: `${PENT_H}%` }}
     >
       <svg className="vdq-pent__shape" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-        <polygon className="vdq-pent__poly" points={flip ? PENT_POINTS_FLIPPED : PENT_POINTS} fill={flip ? CENTER_FILL : "#FFFFFF"} stroke={STROKE} strokeWidth="1.6" vectorEffect="non-scaling-stroke" />
+        <polygon className="vdq-pent__poly" points={flip ? PENT_POINTS_FLIPPED : PENT_POINTS} fill={flip ? (centerFill || CENTER_FILL) : "#FFFFFF"} stroke={STROKE} strokeWidth="1.6" vectorEffect="non-scaling-stroke" />
       </svg>
       <div className={`vdq-pent__content${flip ? " vdq-pent__content--flip" : ""}`}>{children}</div>
     </div>
@@ -96,7 +96,7 @@ function Label({ k, jump, children }) {
   );
 }
 
-export default function VDTemplatePentagonFlower({ layout, name, email, fields, upd, E, activeKey, onJumpToField }) {
+export default function VDTemplatePentagonFlower({ layout, name, email, fields, upd, E, activeKey, onJumpToField, embedded = false }) {
   const jump = (key) => onJumpToField && onJumpToField(key);
 
   // Slider values: the student's saved position (0-100 string), falling back
@@ -109,24 +109,26 @@ export default function VDTemplatePentagonFlower({ layout, name, email, fields, 
   const setSlider = (key) => (v) => upd(key, String(Math.round(v * 100)));
 
   return (
-    <div className="vd-diagram vd-diagram--pentagon">
-      {/* Identity */}
-      <div className="vd-identity">
-        <div className="vd-identity__caption">Designed by</div>
-        <div className="vd-identity__name">{name}</div>
-        <div className="vd-identity__email">{email}</div>
-      </div>
-
-      {/* Design title (independent of the identity box so it survives anonymized prints) */}
-      <div className="vdq-title">
-        <span className="vdq-title__name">{layout.titleName}</span>
-        <E
-          value={fields.study_type}
-          onChange={(v) => upd("study_type", v)}
-          className="vdq-title__type"
-          placeholder="Type of study…"
-        />
-      </div>
+    <div className={embedded ? "vd-subdiagram" : "vd-diagram vd-diagram--pentagon"}>
+      {/* Identity + title (hidden when embedded in a mixed methods canvas) */}
+      {!embedded && (
+        <div className="vd-identity">
+          <div className="vd-identity__caption">Designed by</div>
+          <div className="vd-identity__name">{name}</div>
+          <div className="vd-identity__email">{email}</div>
+        </div>
+      )}
+      {!embedded && (
+        <div className="vdq-title">
+          <span className="vdq-title__name">{layout.titleName}</span>
+          <E
+            value={fields.study_type}
+            onChange={(v) => upd("study_type", v)}
+            className="vdq-title__type"
+            placeholder="Type of study…"
+          />
+        </div>
+      )}
 
       {/* Top pentagon: Hypothesis / Variables + Research Question */}
       <Pent activeKey={activeKey} pos="top" focusKeys={["variables", "question"]}>
@@ -150,7 +152,7 @@ export default function VDTemplatePentagonFlower({ layout, name, email, fields, 
       </Pent>
 
       {/* Center pentagon (point-down): continuum sliders + phenomenon */}
-      <Pent activeKey={activeKey} pos="center" focusKeys={["central_item"]} flip>
+      <Pent activeKey={activeKey} pos="center" focusKeys={["central_item"]} flip centerFill={layout.centerColor}>
         <Slider label="Control of Variance" value={sliderVal("slider_variance", layout.sliders.variance)} onChange={setSlider("slider_variance")} />
         <Slider label="Causality" value={sliderVal("slider_causality", layout.sliders.causality)} onChange={setSlider("slider_causality")} />
         <div className="vdq-poles">
@@ -190,7 +192,7 @@ export default function VDTemplatePentagonFlower({ layout, name, email, fields, 
       </Pent>
 
       {/* Footer: Hopscotch 4 All logo + animated hopscotch squares */}
-      <div className="vd-logo-row">
+      {!embedded && <div className="vd-logo-row">
         <img className="vd-logo" src="/Hopscotch-4-all-logo-alpha.png" alt="Hopscotch 4 All" />
         <svg className="hop-grid-loader vd-logo-loader" viewBox="0 0 128 46" xmlns="http://www.w3.org/2000/svg" shapeRendering="geometricPrecision" fill="none" aria-hidden="true">
           <rect className="hop-sq sq-1" x="0" y="0" width="18" height="22" rx="6" fill="#2B5EA7" />
@@ -203,8 +205,8 @@ export default function VDTemplatePentagonFlower({ layout, name, email, fields, 
           <rect className="hop-sq sq-8" x="88" y="24" width="18" height="22" rx="6" fill="#F5922A" />
           <path className="hop-sq sq-9" d="M110,7 A16,16 0 0,1 110,39 Z" fill="#7B8794" />
         </svg>
-      </div>
-      <div className="vd-design-name">{layout.designName}</div>
+      </div>}
+      {!embedded && <div className="vd-design-name">{layout.designName}</div>}
     </div>
   );
 }

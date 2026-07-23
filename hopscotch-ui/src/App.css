@@ -11332,7 +11332,7 @@ body.wl-dragging, body.wl-dragging * { cursor: grabbing !important; user-select:
   background-size: 22px 22px;
 }
 .vd-stage__inner {
-  max-width: 1150px;
+  width: max-content;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
@@ -11349,12 +11349,15 @@ body.wl-dragging, body.wl-dragging * { cursor: grabbing !important; user-select:
    printed/PPTX design regardless of app theme. */
 .vd-diagram {
   position: relative;
-  width: 100%;
+  /* Fixed comfortable size for legible text; the stage scrolls when the
+     viewport is smaller (mixed canvases override with their own width) */
+  width: 1350px;
+  max-width: none;
   aspect-ratio: 4 / 3;
   background: #fff;
   box-shadow: 0 8px 30px rgba(20, 35, 60, 0.14), 0 2px 8px rgba(20, 35, 60, 0.08);
   border-radius: 10px;
-  font-family: "Segoe UI", ui-sans-serif, -apple-system, sans-serif;
+  font-family: "Geist Sans", "Geist", system-ui, -apple-system, "Segoe UI", sans-serif;
   color: #1a2332;
   flex-shrink: 0;
   container-type: inline-size;
@@ -11918,3 +11921,838 @@ body.wl-dragging, body.wl-dragging * { cursor: grabbing !important; user-select:
 .vdq-pent--flip .vdq-slider__marker { background: #FFFFFF; }
 .vdq-pent--flip .vdq-slider__line:hover .vdq-slider__marker { background: #D6F5C9; }
 .vdq-pent--flip .vdq-poles { color: #E6EEF7; }
+
+/* ================================================================
+   Visual Design: mixed methods composite canvas
+   ================================================================ */
+
+/* Sub-diagram wrapper used when a honeycomb/pentagon is embedded in a
+   composite canvas: fills its half and provides the cqw scaling context */
+.vd-subdiagram {
+  position: absolute;
+  inset: 0;
+}
+
+.vd-diagram--mixed {
+  aspect-ratio: 179 / 100; /* Julie's mixed templates are 19.7 x 11 in */
+  /* Render at full size and let the stage scroll horizontally - squeezing
+     both strands into the viewport compressed the shapes */
+  min-width: 2300px;
+}
+
+.vd-mixed__title {
+  position: absolute;
+  left: 50%;
+  top: 2%;
+  transform: translateX(-50%);
+  width: 56%;
+  text-align: center;
+}
+.vd-mixed__title-name {
+  display: block;
+  font-weight: 800;
+  font-size: clamp(11px, 1.15cqw, 19px);
+  color: #005493;
+}
+.vd-mixed__title-topic {
+  font-size: clamp(10px, 1.0cqw, 16px);
+  color: #1a2332;
+  font-style: italic;
+}
+
+.vd-mixed__half {
+  position: absolute;
+  top: 15%;
+  width: 46.5%;
+  height: 79%;
+}
+.vd-mixed__half--left { left: 1.2%; }
+.vd-mixed__half--right { right: 1.2%; }
+.vd-mixed__strand-label {
+  position: absolute;
+  top: -1.5%;
+  left: 50%;
+  transform: translateX(-50%);
+  font-weight: 800;
+  font-size: clamp(8px, 0.85cqw, 13px);
+  letter-spacing: 0.08em;
+  color: #7a8595;
+  z-index: 2;
+}
+.vd-mixed__strand-canvas {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 5%;
+  /* Hold the 4:3 shape the honeycomb/pentagon layouts were designed for,
+     so the shapes render uncompressed */
+  aspect-ratio: 4 / 3;
+  container-type: inline-size;
+}
+
+.vd-mixed__converge {
+  position: absolute;
+  left: 50.8%;
+  top: 44%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 8%;
+  text-align: center;
+  z-index: 2;
+}
+.vd-mixed__converge-plus {
+  font-size: clamp(18px, 2.2cqw, 40px);
+  font-weight: 800;
+  color: #005493;
+  line-height: 1;
+}
+.vd-mixed__converge-note {
+  font-size: clamp(7px, 0.7cqw, 11px);
+  color: #7a8595;
+  font-weight: 600;
+}
+
+/* Form section headers (mixed methods strands) */
+.vd-form__section {
+  margin: 20px 0 10px;
+  padding-bottom: 4px;
+  border-bottom: 2px solid var(--hop-border);
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--hop-ink-secondary);
+}
+
+/* (mixed canvas sizing handled by .vd-diagram--mixed min-width) */
+
+/* The mixed canvas is twice as wide, so the logo row scales down to match
+   the physical size it has on the single-method diagrams */
+.vd-diagram--mixed .vd-logo-row { width: 15%; }
+
+/* Explanatory sequential: Phase I -> results -> inform -> Phase II */
+.vd-mixed__seq {
+  position: absolute;
+  left: 50.8%;
+  top: 44%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  width: 9%;
+  text-align: center;
+  z-index: 2;
+}
+.vd-mixed__chip {
+  display: inline-block;
+  color: #fff;
+  font-weight: 700;
+  font-size: clamp(8px, 0.72cqw, 13px);
+  line-height: 1.25;
+  padding: 6px 10px;
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(20, 35, 60, 0.2);
+}
+.vd-mixed__chip--quant { background: #0097A7; }
+.vd-mixed__chip--qual { background: #A64D79; }
+.vd-mixed__chip--final {
+  position: absolute;
+  right: 2%;
+  bottom: 8%;
+  z-index: 2;
+}
+.vd-mixed__seq-arrow {
+  font-size: clamp(14px, 1.3cqw, 24px);
+  font-weight: 800;
+  color: #005493;
+  line-height: 1;
+}
+.vd-mixed__seq-inform {
+  font-weight: 800;
+  font-size: clamp(9px, 0.85cqw, 15px);
+  color: #005493;
+  letter-spacing: 0.04em;
+}
+
+/* Editable quantitative design type above the Phase I flower */
+.vd-mixed__quant-type {
+  position: absolute;
+  left: 50%;
+  top: -3.5%;
+  transform: translateX(-50%);
+  width: 80%;
+  text-align: center;
+  z-index: 2;
+}
+.vd-mixed__quant-type-text {
+  font-size: clamp(9px, 1.1cqw, 15px);
+  font-weight: 600;
+  color: #005493;
+}
+
+/* ---- Embedded mixed methods (portrait: host strand + embedded panel) ---- */
+.vd-diagram--embedded {
+  width: 1350px;
+  aspect-ratio: auto;
+  height: auto;
+  padding-bottom: 24px;
+}
+.vd-embedded__host-label {
+  margin: 110px auto 0;
+  text-align: center;
+  font-weight: 800;
+  font-size: 14px;
+  letter-spacing: 0.08em;
+  color: #7a8595;
+}
+.vd-embedded__host {
+  position: relative;
+  width: 92%;
+  margin: 8px auto 0;
+  aspect-ratio: 4 / 3;
+  container-type: inline-size;
+}
+.vd-embedded__host .vd-mixed__strand-canvas {
+  position: absolute;
+  inset: 0;
+  aspect-ratio: auto;
+  top: 0;
+  container-type: inline-size;
+}
+.vd-embedded__panel {
+  width: 86%;
+  margin: 18px auto 0;
+  border-radius: 14px;
+  padding: 16px 22px 18px;
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(20, 35, 60, 0.18);
+}
+.vd-embedded__panel--quant { background: #0097A7; }
+.vd-embedded__panel--qual { background: #A64D79; }
+.vd-embedded__panel-title {
+  font-weight: 800;
+  font-size: 17px;
+  margin-bottom: 10px;
+  text-align: center;
+  letter-spacing: 0.02em;
+}
+.vd-embedded__panel-fields {
+  display: flex;
+  gap: 18px;
+}
+.vd-embedded__panel-field {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  padding: 10px 12px;
+  min-height: 90px;
+  transition: box-shadow 0.2s;
+}
+.vd-embedded__panel-field--active { box-shadow: 0 0 0 2px rgba(109, 179, 63, 0.9); }
+.vd-embedded__panel-label {
+  font-weight: 700;
+  font-size: 13px;
+  margin-bottom: 4px;
+  cursor: pointer;
+}
+.vd-embedded__panel-label:hover { text-decoration: underline; }
+.vd-embedded__panel-text { font-size: 12.5px; line-height: 1.4; color: #F4FAFB; }
+.vd-embedded__panel .vd-editable--placeholder { color: rgba(255, 255, 255, 0.65); }
+.vd-embedded__panel .vd-editable:hover { background: rgba(255, 255, 255, 0.15); }
+.vd-embedded__panel .vd-editable:focus { color: #1a2332; }
+.vd-embedded__footer {
+  position: relative;
+  height: 70px;
+  margin-top: 14px;
+}
+.vd-embedded__footer .vd-logo-row { width: 24%; bottom: 8px; }
+.vd-embedded__footer .vd-design-name { bottom: 8px; }
+
+/* Exploratory: INTERPRETATION closes the sequence */
+.vd-mixed__interpretation {
+  display: block;
+  margin-top: 6px;
+  font-weight: 800;
+  font-size: clamp(8px, 0.8cqw, 13px);
+  letter-spacing: 0.12em;
+  color: #E6EEF7;
+}
+
+/* ================================================================
+   Sequential mixed methods: phase containers, arrows, interpretation
+   ================================================================ */
+
+/* Phase header: PHASE I ----> PHASE II, each centered over its box */
+.vd-seq__phases {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 8.5%;
+  height: 3%;
+  z-index: 2;
+}
+.vd-seq__phase {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-weight: 800;
+  font-size: clamp(11px, 1.05cqw, 19px);
+  letter-spacing: 0.06em;
+  color: #005493;
+  white-space: nowrap;
+}
+.vd-seq__phase--one { left: 22.95%; }
+.vd-seq__phase--two { left: 71.75%; }
+.vd-seq__dash {
+  position: absolute;
+  left: 28%;
+  right: 34.5%;
+  top: 50%;
+  border-top: 2.5px dashed #4A7FB3;
+}
+.vd-seq__dash::after {
+  content: "\27A4";
+  position: absolute;
+  right: -4px;
+  top: 50%;
+  transform: translateY(-52%);
+  color: #4A7FB3;
+  font-size: clamp(10px, 0.9cqw, 16px);
+  line-height: 1;
+}
+
+/* Rounded phase containers */
+.vd-seq__box {
+  position: absolute;
+  top: 12.5%;
+  height: 80%;
+  width: 44.6%;
+  border: 2px solid #9AA4AF;
+  border-radius: 44px;
+  background: #fff;
+}
+.vd-seq__box--left { left: 0.8%; }
+.vd-seq__box--right { left: 49.4%; }
+
+.vd-seq__type {
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  top: 2.5%;
+  text-align: center;
+  z-index: 2;
+}
+.vd-seq__type-text {
+  font-weight: 700;
+  font-size: clamp(11px, 1.0cqw, 18px);
+  color: #005493;
+}
+.vd-seq__canvas {
+  position: absolute;
+  left: 0.5%;
+  right: 0.5%;
+  top: 9.5%;
+  container-type: inline-size;
+}
+/* pull each strand left to compensate for its reserved empty zones */
+.vd-seq__canvas--qual .vd-mixed__strand-canvas { transform: translateX(-10%); }
+.vd-seq__canvas--quant .vd-mixed__strand-canvas { transform: translateX(-8%); }
+.vd-seq__canvas .vd-mixed__strand-canvas {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  top: 0;
+  container-type: inline-size;
+}
+.vd-seq__footline {
+  position: absolute;
+  left: 10%;
+  right: 10%;
+  bottom: 3%;
+  text-align: center;
+  z-index: 2;
+}
+/* Inside the sequential phase boxes: dead-center under the diagram, a
+   finger width below it (matches the convergent spacing) */
+.vd-seq__box .vd-seq__footline {
+  left: 51%;
+  right: auto;
+  bottom: auto;
+  top: 88%;
+  width: 60%;
+  transform: translateX(-50%);
+}
+.vd-seq__footline-label {
+  display: block;
+  font-weight: 700;
+  font-size: clamp(10px, 0.85cqw, 15px);
+  color: #44505e;
+}
+.vd-seq__footline-text {
+  font-size: clamp(9px, 0.8cqw, 14px);
+  color: #44505e;
+}
+
+/* Solid arrows (shaft + head) between the phase boxes */
+.vd-seq__flow-arrow {
+  position: absolute;
+  left: 45.7%;
+  width: 3.3%;
+  height: 4px;
+  background: #005493;
+  border-radius: 2px;
+  z-index: 2;
+}
+.vd-seq__flow-arrow::after {
+  content: "";
+  position: absolute;
+  right: -2px;
+  top: 50%;
+  transform: translateY(-50%);
+  border-left: 14px solid #005493;
+  border-top: 9px solid transparent;
+  border-bottom: 9px solid transparent;
+}
+.vd-seq__flow-arrow--top { top: 23%; }
+.vd-seq__flow-arrow--bottom { top: 78%; }
+
+/* Results/Inform column centered on the gap between the boxes */
+.vd-diagram--seq .vd-mixed__seq {
+  left: 47.35%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 8%;
+}
+
+/* Final results chip inside the Phase II box's lower-right */
+.vd-diagram--seq .vd-mixed__chip--final {
+  right: 7.5%;
+  bottom: 9%;
+}
+
+/* INTERPRETATION rail (far right) */
+.vd-seq__interp {
+  position: absolute;
+  right: 0.3%;
+  top: 34%;
+  height: 32%;
+  width: 2.2%;
+  z-index: 2;
+}
+.vd-seq__interp-label {
+  /* horizontal text rotated via transform - html2canvas cannot render
+     writing-mode vertical text, which garbled the print */
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%) rotate(-90deg);
+  white-space: nowrap;
+  font-weight: 800;
+  font-size: clamp(12px, 1.1cqw, 21px);
+  letter-spacing: 0.14em;
+  color: #005493;
+}
+.vd-seq__interp-arrow {
+  font-size: clamp(16px, 1.5cqw, 28px);
+  color: #005493;
+  line-height: 1;
+}
+
+/* The strand label row is replaced by the phase header on sequential canvases */
+.vd-diagram--seq .vd-mixed__quant-type { display: none; }
+
+/* ---- Convergent parallel: container, comparison column, results chips ---- */
+.vd-conv__box {
+  position: absolute;
+  left: 0.8%;
+  right: 0.8%;
+  top: 11.5%;
+  bottom: 3.5%;
+  border: 2px solid #9AA4AF;
+  border-radius: 44px;
+  background: #fff;
+}
+.vd-conv__type { top: 13%; }
+.vd-conv__type--left { left: 12%; right: auto; width: 25%; }
+.vd-conv__type--right { left: 64%; right: auto; width: 25%; }
+
+/* The strand canvases reserve space for the old left context rail - pull
+   them left so the diagram sits balanced on the page */
+.vd-diagram--conv .vd-mixed__half--left .vd-mixed__strand-canvas { transform: translateX(-11%); }
+.vd-diagram--conv .vd-mixed__half--right .vd-mixed__strand-canvas { transform: translateX(-8%); }
+.vd-diagram--conv .vd-mixed__half { top: 17.5%; height: 72%; }
+.vd-conv__compare {
+  position: absolute;
+  left: 50%;
+  top: 15%;
+  transform: translateX(-50%);
+  width: 12%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+  z-index: 2;
+}
+.vd-conv__compare-arrows {
+  font-size: clamp(14px, 1.2cqw, 22px);
+  color: #005493;
+  letter-spacing: 0.4em;
+  line-height: 1;
+}
+.vd-conv__compare-label,
+.vd-conv__interp-label {
+  font-weight: 800;
+  font-size: clamp(10px, 0.9cqw, 16px);
+  color: #005493;
+}
+.vd-conv__results {
+  position: absolute;
+  left: 50%;
+  bottom: 5.5%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 14px;
+  z-index: 2;
+}
+/* Centered under the Issues hexagon (accounting for the canvas shift) */
+.vd-conv__footline--left { left: 12%; right: auto; width: 25%; bottom: auto; top: 84.5%; }
+.vd-conv__footline--right { left: 64%; right: auto; width: 25%; bottom: auto; top: 84.5%; }
+.vd-seq__footline.vd-conv__footline--left,
+.vd-seq__footline.vd-conv__footline--right { position: absolute; }
+
+/* Context block sits exactly below the Strategies hexagon (mixed strands) */
+.vd-context--bottom {
+  top: auto;
+  left: 23.5%;
+  bottom: 0.5%;
+  width: 23.5%;
+  height: 16.5%;
+}
+
+.vd-conv__compare-arrows { display: inline-flex; gap: 0.6em; }
+.vd-conv__compare-arrow-flip { display: inline-block; transform: scaleX(-1); }
+
+/* L-shaped dashed line (wide gaps): Qualitative Research Question -> Results Qualitative Study */
+.vd-conv__connector {
+  position: absolute;
+  left: 24.5%;
+  top: 90%;
+  width: 20%;
+  height: 3.4%;
+  z-index: 1;
+}
+/* vertical leg */
+.vd-conv__connector::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2.5px;
+  background: repeating-linear-gradient(to bottom, #A64D79 0 5px, transparent 5px 16px);
+}
+/* horizontal leg */
+.vd-conv__connector::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2.5px;
+  background: repeating-linear-gradient(to right, #A64D79 0 6px, transparent 6px 18px);
+}
+.vd-conv__connector-arrow {
+  position: absolute;
+  right: -6px;
+  bottom: -0.55em;
+  color: #A64D79;
+  font-size: clamp(10px, 0.8cqw, 15px);
+  line-height: 1;
+}
+
+/* Convergent results: plain colored text, stacked lines (no chip boxes) */
+.vd-conv__result-text {
+  font-weight: 800;
+  font-size: clamp(10px, 0.9cqw, 16px);
+  line-height: 1.25;
+  text-align: center;
+}
+.vd-conv__result-text--qual { color: #A64D79; }
+.vd-conv__result-text--quant { color: #0097A7; }
+.vd-conv__results { gap: 28px; align-items: center; }
+
+/* ---- Convergent center flow: rails -> Comparison -> Interpretation ---- */
+.vd-conv__compare-label {
+  position: absolute;
+  left: 50%;
+  top: 14.4%;
+  transform: translateX(-50%);
+  text-align: center;
+  font-weight: 800;
+  font-size: clamp(10px, 0.95cqw, 17px);
+  line-height: 1.2;
+  color: #005493;
+  z-index: 2;
+}
+/* dashed blue drop from the comparison to the interpretation */
+.vd-conv__interp-line {
+  position: absolute;
+  left: 50%;
+  top: 20.5%;
+  height: 23%;
+  width: 2.5px;
+  transform: translateX(-50%);
+  background: repeating-linear-gradient(to bottom, #005493 0 6px, transparent 6px 16px);
+  z-index: 2;
+}
+.vd-conv__interp-line-arrow {
+  position: absolute;
+  bottom: -0.75em;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #005493;
+  font-size: clamp(9px, 0.75cqw, 13px);
+  line-height: 1;
+}
+.vd-conv__interp-label {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  transform: translateX(-50%);
+  font-weight: 800;
+  font-size: clamp(10px, 0.95cqw, 17px);
+  color: #005493;
+  z-index: 2;
+}
+
+/* Colored dashed rails: from each Results text up and into the comparison */
+.vd-conv__rail {
+  position: absolute;
+  top: 15.8%;
+  height: 71.5%;
+  width: 2.2%;
+  z-index: 1;
+}
+.vd-conv__rail--qual { left: 45%; }
+.vd-conv__rail--quant { left: 52.8%; }
+/* vertical leg */
+.vd-conv__rail::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2.5px;
+}
+.vd-conv__rail--qual::before { left: 0; background: repeating-linear-gradient(to bottom, #A64D79 0 5px, transparent 5px 15px); }
+.vd-conv__rail--quant::before { right: 0; background: repeating-linear-gradient(to bottom, #0097A7 0 5px, transparent 5px 15px); }
+/* top leg bending toward the comparison */
+.vd-conv__rail::after {
+  content: "";
+  position: absolute;
+  top: -1px;
+  left: 0;
+  right: 0;
+  height: 2.5px;
+}
+.vd-conv__rail--qual::after { background: repeating-linear-gradient(to right, #A64D79 0 5px, transparent 5px 14px); }
+.vd-conv__rail--quant::after { background: repeating-linear-gradient(to right, #0097A7 0 5px, transparent 5px 14px); }
+.vd-conv__rail-arrow {
+  position: absolute;
+  top: -0.55em;
+  font-size: clamp(9px, 0.75cqw, 13px);
+  line-height: 1;
+}
+.vd-conv__rail--qual .vd-conv__rail-arrow { right: -5px; color: #A64D79; }
+.vd-conv__rail--quant .vd-conv__rail-arrow { left: -5px; color: #0097A7; }
+.vd-conv__rail-arrow--flip { transform: scaleX(-1); }
+
+
+/* Mirrored teal connector: Hypothesis -> Results Quantitative Study */
+.vd-conv__connector--quant {
+  left: 56.5%;
+  width: 20%;
+}
+.vd-conv__connector--quant::before {
+  left: auto;
+  right: 0;
+  background: repeating-linear-gradient(to bottom, #0097A7 0 5px, transparent 5px 16px);
+}
+.vd-conv__connector--quant::after {
+  background: repeating-linear-gradient(to right, #0097A7 0 6px, transparent 6px 18px);
+}
+.vd-conv__connector--quant .vd-conv__connector-arrow {
+  right: auto;
+  left: -6px;
+  color: #0097A7;
+}
+.vd-conv__connector-arrow--flip { display: inline-block; transform: scaleX(-1); }
+
+/* ================================================================
+   Diagram typography: lighter weights across all visual designs
+   ================================================================ */
+.vd-identity__caption { font-weight: 600; }
+.vd-identity__name { font-weight: 600; }
+.vd-context__title,
+.vd-hex__label,
+.vd-topics__label,
+.vd-minicases__label { font-weight: 600; }
+.vd-design-name { font-weight: 600; }
+.vdq-label,
+.vdq-slider__label,
+.vdq-row__key { font-weight: 600; }
+.vdq-fixed { font-weight: 500; }
+.vdq-poles { font-weight: 600; }
+.vdq-title__name { font-weight: 600; }
+.vd-mixed__title-name { font-weight: 650; }
+.vd-mixed__title-topic { font-weight: 400; }
+.vd-mixed__strand-label { font-weight: 650; }
+.vd-mixed__chip { font-weight: 600; }
+.vd-mixed__seq-inform { font-weight: 650; }
+.vd-seq__phase { font-weight: 650; }
+.vd-seq__type-text { font-weight: 600; }
+.vd-seq__footline-label { font-weight: 600; }
+.vd-seq__interp-label { font-weight: 650; }
+.vd-conv__compare-label,
+.vd-conv__interp-label { font-weight: 650; }
+.vd-conv__result-text { font-weight: 650; }
+.vd-embedded__host-label { font-weight: 650; }
+.vd-embedded__panel-title { font-weight: 650; }
+.vd-embedded__panel-label { font-weight: 600; }
+
+/* Calmer sizes for the flow/title labels on the big mixed canvases */
+.vd-conv__compare-label,
+.vd-conv__interp-label { font-size: clamp(10px, 0.78cqw, 14px); font-weight: 600; }
+.vd-conv__result-text { font-size: clamp(9px, 0.78cqw, 13.5px); font-weight: 600; }
+.vd-seq__type-text { font-size: clamp(10px, 0.82cqw, 14px); font-weight: 600; }
+.vd-mixed__title-name { font-size: clamp(11px, 1.0cqw, 16px); }
+.vd-mixed__title-topic { font-size: clamp(10px, 0.9cqw, 14px); }
+.vd-seq__phase { font-size: clamp(10px, 0.9cqw, 15px); }
+.vd-seq__footline-label { font-size: clamp(9px, 0.78cqw, 13px); }
+.vd-seq__footline-text { font-size: clamp(9px, 0.72cqw, 12px); }
+.vd-seq__interp-label { font-size: clamp(11px, 0.95cqw, 16px); }
+.vd-mixed__seq-inform { font-size: clamp(9px, 0.78cqw, 13px); }
+.vd-mixed__chip { font-size: clamp(8px, 0.68cqw, 12px); }
+
+/* Explanatory: the qualitative results sit right below Process Support,
+   joined by a solid black arrow (about two fingers of distance) */
+.vd-diagram--explanatory .vd-mixed__chip--final {
+  right: auto;
+  left: 84.6%;
+  transform: translateX(-50%);
+  bottom: auto;
+  top: 74.6%;
+  width: 6.4%;
+  text-align: center;
+}
+/* Diagonal arrow (like a right triangle's hypotenuse) from the hexagon
+   border down-right to the results chip outside the shapes */
+.vd-seq__final-arrow {
+  position: absolute;
+  left: 81.3%;
+  top: 68.9%;
+  width: 3.2%;
+  height: 3px;
+  background: #222222;
+  transform-origin: left center;
+  transform: rotate(40deg);
+  border-radius: 2px;
+  z-index: 2;
+}
+.vd-seq__final-arrow::after {
+  content: "";
+  position: absolute;
+  right: -2px;
+  top: 50%;
+  transform: translateY(-50%);
+  border-left: 10px solid #222222;
+  border-top: 6px solid transparent;
+  border-bottom: 6px solid transparent;
+}
+
+
+/* Explanatory: Results Quantitative Study inside the flower's right notch,
+   centered between Process Support and Control of Independent Variable */
+.vd-seq__chip-flower {
+  position: absolute;
+  left: 42%;
+  top: 59.2%;
+  transform: translate(-50%, -50%);
+  width: 6.2%;
+  text-align: center;
+  z-index: 3;
+}
+/* dashed teal arrow from the Phenomenon center to the results chip */
+.vd-seq__phen-arrow {
+  position: absolute;
+  left: 30.2%;
+  top: 56.4%;
+  width: 9%;
+  height: 2.5px;
+  background: repeating-linear-gradient(to right, #0097A7 0 5px, transparent 5px 13px);
+  transform-origin: left center;
+  transform: rotate(11deg);
+  z-index: 2;
+}
+.vd-seq__phen-arrow::after {
+  content: "";
+  position: absolute;
+  right: -2px;
+  top: 50%;
+  transform: translateY(-50%);
+  border-left: 9px solid #0097A7;
+  border-top: 6px solid transparent;
+  border-bottom: 6px solid transparent;
+}
+
+
+/* Solid arrow from the end of Phase II into INTERPRETATION */
+.vd-seq__flow-arrow--interp {
+  left: 94.3%;
+  width: 2%;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+/* Explanatory inform flow: chip -> down arrow -> Inform -> curve into Phase II */
+.vd-seq__inform-drop {
+  position: absolute;
+  left: 42.4%;
+  top: 62.4%;
+  width: 4.4%;
+  height: 1.8px;
+  background: #222222;
+  transform-origin: left center;
+  transform: rotate(28deg);
+  border-radius: 2px;
+  z-index: 2;
+}
+.vd-seq__inform-drop::after {
+  content: "";
+  position: absolute;
+  right: -2px;
+  top: 50%;
+  transform: translateY(-50%);
+  border-left: 7px solid #222222;
+  border-top: 4.5px solid transparent;
+  border-bottom: 4.5px solid transparent;
+}
+.vd-seq__inform-below {
+  position: absolute;
+  left: 47.4%;
+  top: 66%;
+  transform: translateX(-50%);
+  z-index: 2;
+}
+.vd-seq__inform-curve {
+  position: absolute;
+  left: 47%;
+  top: 68.6%;
+  width: 2.8%;
+  height: 8%;
+  overflow: visible;
+  z-index: 2;
+}
