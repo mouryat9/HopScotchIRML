@@ -1,4 +1,4 @@
-// src/AdminDashboard.jsx — Superuser admin dashboard
+// src/AdminDashboard.jsx - Superuser admin dashboard
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { API } from "./api";
 import { useAuth } from "./AuthContext";
@@ -289,7 +289,7 @@ export default function AdminDashboard() {
     setRebuildingIndex(true);
     try {
       const r = await API.adminResourcesRebuild();
-      setResourceMsg(`Knowledge base rebuilt — ${r.sources} document${r.sources === 1 ? "" : "s"}, ${r.chunks} chunks indexed.`);
+      setResourceMsg(`Knowledge base rebuilt - ${r.sources} document${r.sources === 1 ? "" : "s"}, ${r.chunks} chunks indexed.`);
       loadResources();
     } catch (err) { setResourceMsg(err.message); }
     finally { setRebuildingIndex(false); }
@@ -908,7 +908,7 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
-              {/* Region/city bar chart — all rows, scrollable */}
+              {/* Region/city bar chart - all rows, scrollable */}
               <div className="ad-chart-card ad-chart-card--wide" style={{ marginTop: 20 }}>
                 <h4>Cities / Regions <span className="ad-chart-count">{geoRegions.length}</span></h4>
                 {geoRegions.length > 0 ? (
@@ -1132,7 +1132,7 @@ export default function AdminDashboard() {
                   {!resourceIndex.rag_available ? (
                     <span>Retrieval engine unavailable on this server.</span>
                   ) : resourceIndex.stale ? (
-                    <span><strong>Changes pending.</strong> Files have changed since the last build — click “Rebuild knowledge base” to apply them to the AI.</span>
+                    <span><strong>Changes pending.</strong> Files have changed since the last build - click “Rebuild knowledge base” to apply them to the AI.</span>
                   ) : (
                     <span><strong>Up to date.</strong> {resourceIndex.sources} document{resourceIndex.sources === 1 ? "" : "s"} · {resourceIndex.total_chunks} chunks indexed.</span>
                   )}
@@ -1177,7 +1177,7 @@ export default function AdminDashboard() {
             <div className="ad-stepres">
               <p className="ad-res__lead">
                 The <strong>Video</strong> and <strong>Interactive</strong> resources shown to students in each
-                step's Resources panel. Edit them per education level — changes go live immediately (students
+                step's Resources panel. Edit them per education level - changes go live immediately (students
                 see them next time they open the panel). Leave a field blank to hide that resource.
               </p>
 

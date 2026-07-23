@@ -125,7 +125,7 @@ function Dictionary({ activeStep }) {
   );
 }
 
-// Bundled defaults — used until the live values load, and as an offline fallback.
+// Bundled defaults - used until the live values load, and as an offline fallback.
 const FALLBACK_STEP_RES = (() => {
   const out = { high_school: {}, higher_ed: {} };
   for (let s = 1; s <= 9; s++) {

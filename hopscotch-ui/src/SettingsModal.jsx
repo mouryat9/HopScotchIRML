@@ -15,7 +15,7 @@ export default function SettingsModal({ open, onClose, theme, toggleTheme, child
         </div>
         <div className="hop-settings__body">
 
-          {/* Appearance — universal */}
+          {/* Appearance - universal */}
           <section className="hop-settings__section">
             <div className="hop-settings__section-head">
               <span className="hop-settings__section-icon">

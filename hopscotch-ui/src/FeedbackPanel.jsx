@@ -1,4 +1,4 @@
-// src/FeedbackPanel.jsx — Student notification bell + feedback slide-out panel
+// src/FeedbackPanel.jsx - Student notification bell + feedback slide-out panel
 import React, { useEffect, useState, useRef } from "react";
 import { API } from "./api";
 
@@ -55,7 +55,7 @@ export default function FeedbackPanel() {
 
   return (
     <>
-      {/* Bell button — always visible when there's feedback or unread */}
+      {/* Bell button - always visible when there's feedback or unread */}
       <button className="fb-bell" onClick={handleToggle} title="Teacher Feedback">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />

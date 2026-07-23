@@ -7,8 +7,8 @@ export default function ProfileMenu({
   user,
   onSignOut,
   onOpenSettings,
-  onStartTour,   // optional — when provided, shows "Take a guided tour"
-  roleLabel,     // optional — shown under the name when the user has no email
+  onStartTour,   // optional - when provided, shows "Take a guided tour"
+  roleLabel,     // optional - shown under the name when the user has no email
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);

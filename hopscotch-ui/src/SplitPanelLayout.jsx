@@ -1,4 +1,4 @@
-// src/SplitPanelLayout.jsx — Workspace with switchable layout concepts.
+// src/SplitPanelLayout.jsx - Workspace with switchable layout concepts.
 // layoutMode: "columns" (classic) | "hero" | "tabbed" | "float"
 import { useState, useRef, useEffect } from "react";
 import StepResourcePanel from "./StepResourcePanel";

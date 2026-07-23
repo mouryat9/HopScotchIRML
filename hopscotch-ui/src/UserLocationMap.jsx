@@ -1,4 +1,4 @@
-// src/UserLocationMap.jsx — World map with gradient heatmap layer
+// src/UserLocationMap.jsx - World map with gradient heatmap layer
 import React, { useEffect } from "react";
 import { MapContainer, TileLayer, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
@@ -16,7 +16,7 @@ function HeatLayer({ locations }) {
     if (!locations.length) return;
 
     // Build heat data: [lat, lng, intensity]
-    // Intensity is the login count — leaflet.heat normalizes automatically
+    // Intensity is the login count - leaflet.heat normalizes automatically
     const points = locations.map((loc) => [loc.lat, loc.lng, loc.count]);
 
     const heat = L.heatLayer(points, {
@@ -46,7 +46,7 @@ function HeatLayer({ locations }) {
 }
 
 /**
- * Invisible markers for popups — so users can still click locations
+ * Invisible markers for popups - so users can still click locations
  * to see details, even with the heatmap overlay.
  */
 function ClickablePoints({ locations }) {

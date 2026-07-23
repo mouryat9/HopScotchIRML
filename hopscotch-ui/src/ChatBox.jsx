@@ -152,7 +152,7 @@ function StepGroup({ group, isActive, streaming }) {
   useEffect(() => { if (isActive) setOpen(true); }, [isActive]);
 
   if (!group.step) {
-    // Messages with no step — always show
+    // Messages with no step - always show
     return group.turns.map((t, i) => <ChatBubble key={i} turn={t} />);
   }
 
@@ -233,7 +233,7 @@ export default function ChatBox({ sessionId, activeStep, refreshKey, autoMessage
     if (!chatBody) return;
 
     if (sending && !scrolledToResponse.current) {
-      // Streaming just started — scroll to the START of the new assistant response
+      // Streaming just started - scroll to the START of the new assistant response
       // so the user can read from the beginning
       const rows = chatBody.querySelectorAll('.chat-row.assistant');
       const lastRow = rows[rows.length - 1];
@@ -267,7 +267,7 @@ export default function ChatBox({ sessionId, activeStep, refreshKey, autoMessage
   async function send(forcedText, opts = {}) {
     const msg = (forcedText ?? input).trim();
     if (!msg || !sessionId || sendingRef.current) return;
-    if (!aiEnabled) return;  // AI turned off by teacher — ignore sends (incl. auto-messages)
+    if (!aiEnabled) return;  // AI turned off by teacher - ignore sends (incl. auto-messages)
 
     sendingRef.current = true;
     scrolledToResponse.current = false;  // reset so we scroll to the new response start
@@ -318,16 +318,16 @@ export default function ChatBox({ sessionId, activeStep, refreshKey, autoMessage
       if (accumulated) {
         flush(accumulated);
       } else {
-        // Empty response — remove the placeholder
+        // Empty response - remove the placeholder
         setHistory((prev) => prev.slice(0, -1));
         setErr("AI returned an empty response. Please try again.");
       }
     } catch (e) {
       console.error(e);
       if (e.name === "AbortError") {
-        setErr("Response timed out. The AI model may be loading — please try again in a moment.");
+        setErr("Response timed out. The AI model may be loading - please try again in a moment.");
       } else {
-        setErr("Send failed — please try again. If the problem persists, reload the page.");
+        setErr("Send failed - please try again. If the problem persists, reload the page.");
       }
       // Put text back in box if it was typed manually
       if (!forcedText) setInput(msg);
@@ -387,20 +387,20 @@ export default function ChatBox({ sessionId, activeStep, refreshKey, autoMessage
       {sending && (
         <div className="typing-indicator">
           <svg className="hop-grid-loader" viewBox="0 0 128 46" width="64" height="23" xmlns="http://www.w3.org/2000/svg" shapeRendering="geometricPrecision" fill="none" style={{background:'transparent'}} aria-label="Loading">
-            {/* col 1 — pair (Steps 1,2) */}
+            {/* col 1 - pair (Steps 1,2) */}
             <rect className="hop-sq sq-1" x="0"  y="0"  width="18" height="22" rx="6" fill="#2B5EA7"/>
             <rect className="hop-sq sq-2" x="0"  y="24" width="18" height="22" rx="6" fill="#E8618C"/>
-            {/* col 2 — single (Step 3) */}
+            {/* col 2 - single (Step 3) */}
             <rect className="hop-sq sq-3" x="22" y="12" width="18" height="22" rx="6" fill="#D94040"/>
-            {/* col 3 — pair (Steps 4,5) */}
+            {/* col 3 - pair (Steps 4,5) */}
             <rect className="hop-sq sq-4" x="44" y="0"  width="18" height="22" rx="6" fill="#1A8A7D"/>
             <rect className="hop-sq sq-5" x="44" y="24" width="18" height="22" rx="6" fill="#B0A47A"/>
-            {/* col 4 — single (Step 6) */}
+            {/* col 4 - single (Step 6) */}
             <rect className="hop-sq sq-6" x="66" y="12" width="18" height="22" rx="6" fill="#00AEEF"/>
-            {/* col 5 — pair (Steps 7,8) */}
+            {/* col 5 - pair (Steps 7,8) */}
             <rect className="hop-sq sq-7" x="88" y="0"  width="18" height="22" rx="6" fill="#F0B429"/>
             <rect className="hop-sq sq-8" x="88" y="24" width="18" height="22" rx="6" fill="#F5922A"/>
-            {/* col 6 — single half-circle (Step 9) */}
+            {/* col 6 - single half-circle (Step 9) */}
             <path className="hop-sq sq-9" d="M110,7 A16,16 0 0,1 110,39 Z" fill="#7B8794"/>
           </svg>
         </div>

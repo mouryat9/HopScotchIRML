@@ -2,7 +2,7 @@
 import React from "react";
 
 /**
- * Template 2: Boxed/card layout — rectangular sections with a flowchart
+ * Template 2: Boxed/card layout - rectangular sections with a flowchart
  * arrangement. Matches the "Hopscotch Create your Research Design" PPTX slide.
  */
 export default function CFTemplateBoxed({ d, upd, updTopic, updFramework, E }) {

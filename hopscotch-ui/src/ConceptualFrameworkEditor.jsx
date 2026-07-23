@@ -82,7 +82,7 @@ export default function ConceptualFrameworkEditor({ data, onClose }) {
     }
   }
 
-  /* Editable span helper — shared across all templates */
+  /* Editable span helper - shared across all templates */
   const E = ({ value, onChange, className = "", placeholder = "" }) => {
     const hasValue = value && value.trim();
     const display = hasValue

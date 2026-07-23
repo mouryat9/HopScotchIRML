@@ -246,7 +246,7 @@ export default function LoginPage() {
 
   const { title, subtitle } = titles[view] || titles.login;
 
-  // ---------- Auth form — split screen ----------
+  // ---------- Auth form - split screen ----------
   return (
     <div className="login-split">
       {/* Left side: form */}
@@ -260,7 +260,7 @@ export default function LoginPage() {
           <p className="login-split__subtitle">{subtitle}</p>
 
           <form className="login-split__form" onSubmit={handleSubmit}>
-            {/* Account type selector — register only */}
+            {/* Account type selector - register only */}
             {view === "register" && (
               <div className="login-account-type">
                 <label className="login-field__label">I am a...</label>
@@ -287,7 +287,7 @@ export default function LoginPage() {
               </div>
             )}
 
-            {/* Classroom hint — friendly explainer */}
+            {/* Classroom hint - friendly explainer */}
             {view === "classroom" && (
               <div className="login-hint">
                 <span className="login-hint__emoji" aria-hidden="true">🏫</span>
@@ -298,7 +298,7 @@ export default function LoginPage() {
               </div>
             )}
 
-            {/* Name — register only */}
+            {/* Name - register only */}
             {view === "register" && (
               <div className="login-field">
                 <label className="login-field__label">Full Name</label>
@@ -316,7 +316,7 @@ export default function LoginPage() {
               </div>
             )}
 
-            {/* Username — classroom only */}
+            {/* Username - classroom only */}
             {view === "classroom" && (
               <div className="login-field">
                 <label className="login-field__label">Username</label>
@@ -334,7 +334,7 @@ export default function LoginPage() {
               </div>
             )}
 
-            {/* Email — login, register, forgot */}
+            {/* Email - login, register, forgot */}
             {(view === "login" || view === "register" || view === "forgot") && (
               <div className="login-field">
                 <label className="login-field__label">Email</label>
@@ -352,7 +352,7 @@ export default function LoginPage() {
               </div>
             )}
 
-            {/* Password — login, register, classroom */}
+            {/* Password - login, register, classroom */}
             {(view === "login" || view === "register" || view === "classroom") && (
               <div className="login-field">
                 <label className="login-field__label">Password</label>
@@ -372,7 +372,7 @@ export default function LoginPage() {
               </div>
             )}
 
-            {/* New password + confirm — reset only */}
+            {/* New password + confirm - reset only */}
             {view === "reset" && (
               <>
                 <div className="login-field">

@@ -1,4 +1,4 @@
-// src/glossary.js — Student-friendly research-methods glossary.
+// src/glossary.js - Student-friendly research-methods glossary.
 // Each entry: { term, def (plain-language), steps: [related step numbers] }.
 // Used by the Dictionary tab in the Resources panel so students can look up
 // difficult terms even when the AI assistant is turned off.
@@ -7,35 +7,35 @@ export const GLOSSARY = [
   // ---- Step 1: Worldview / paradigm ----
   { term: "Worldview (Paradigm)", def: "The set of beliefs you bring to research about what is real and how we come to know things. It shapes the whole way you design your study.", steps: [1] },
   { term: "Ontology", def: "Your beliefs about what reality is. For example, whether there is one objective reality or many realities shaped by people's experiences.", steps: [1] },
-  { term: "Epistemology", def: "Your beliefs about how we know what we know — whether knowledge is discovered by measuring the world, or built through people's interpretations.", steps: [1] },
-  { term: "Axiology", def: "The role your values and ethics play in the research — how much your beliefs influence what you study and how.", steps: [1] },
+  { term: "Epistemology", def: "Your beliefs about how we know what we know - whether knowledge is discovered by measuring the world, or built through people's interpretations.", steps: [1] },
+  { term: "Axiology", def: "The role your values and ethics play in the research - how much your beliefs influence what you study and how.", steps: [1] },
   { term: "Positivism", def: "A worldview that says there is one objective, measurable reality. Positivists use numbers and experiments to test ideas.", steps: [1] },
-  { term: "Post-positivism", def: "Like positivism, but accepts that we can never measure reality perfectly — only get close through careful, repeated research.", steps: [1] },
+  { term: "Post-positivism", def: "Like positivism, but accepts that we can never measure reality perfectly - only get close through careful, repeated research.", steps: [1] },
   { term: "Constructivism", def: "A worldview that says reality is built through people's experiences and social contexts. Constructivists explore meanings rather than measure them.", steps: [1] },
-  { term: "Transformative worldview", def: "A worldview focused on social justice — research aimed at understanding and improving the lives of marginalized or under-served groups.", steps: [1] },
+  { term: "Transformative worldview", def: "A worldview focused on social justice - research aimed at understanding and improving the lives of marginalized or under-served groups.", steps: [1] },
   { term: "Pragmatism", def: "A flexible worldview that chooses whatever methods (numbers, words, or both) best answer the research question.", steps: [1, 4] },
 
   // ---- Step 2: Topic & goals ----
   { term: "Research Topic", def: "The general subject or issue you want to study, narrowed enough to be manageable.", steps: [2] },
-  { term: "Research Problem", def: "The specific issue, gap, or difficulty your study will address — the 'why this matters'.", steps: [2, 3] },
-  { term: "Personal Goals", def: "Your own reasons for doing the study — curiosity, career, or personal experiences that motivate you.", steps: [2] },
+  { term: "Research Problem", def: "The specific issue, gap, or difficulty your study will address - the 'why this matters'.", steps: [2, 3] },
+  { term: "Personal Goals", def: "Your own reasons for doing the study - curiosity, career, or personal experiences that motivate you.", steps: [2] },
   { term: "Practical Goals", def: "Real-world outcomes you hope the research will achieve, such as improving a practice or informing a decision.", steps: [2] },
-  { term: "Intellectual Goals", def: "What you want to understand or learn — the knowledge or insight the study should produce.", steps: [2] },
+  { term: "Intellectual Goals", def: "What you want to understand or learn - the knowledge or insight the study should produce.", steps: [2] },
 
   // ---- Step 3: Literature & frameworks ----
   { term: "Literature Review", def: "A summary and analysis of what other researchers have already found about your topic. It shows what's known and where the gaps are.", steps: [3] },
   { term: "Topical Research", def: "Existing studies directly about your subject that help justify why your topic is worth researching.", steps: [3] },
   { term: "Theoretical Framework", def: "An established theory you use as a lens to guide and interpret your study.", steps: [3] },
   { term: "Conceptual Framework", def: "A map of the key concepts in your study and how you think they connect. It ties together your worldview, topic, literature, and questions.", steps: [3] },
-  { term: "Research Gap", def: "A question that existing research hasn't answered yet — the space your study will help fill.", steps: [3] },
+  { term: "Research Gap", def: "A question that existing research hasn't answered yet - the space your study will help fill.", steps: [3] },
   { term: "Empirical", def: "Based on observed or measured evidence (data) rather than only on opinion or theory.", steps: [3, 6] },
 
   // ---- Step 4: Methodology & design ----
-  { term: "Methodology", def: "Your overall plan and reasoning for how you will study your question — quantitative, qualitative, or mixed.", steps: [4] },
+  { term: "Methodology", def: "Your overall plan and reasoning for how you will study your question - quantitative, qualitative, or mixed.", steps: [4] },
   { term: "Quantitative Research", def: "Research that collects and analyzes numerical data to measure, compare, or test relationships.", steps: [4, 6, 7] },
-  { term: "Qualitative Research", def: "Research that explores experiences, meanings, and ideas using words — from interviews, observations, or texts.", steps: [4, 6, 7] },
+  { term: "Qualitative Research", def: "Research that explores experiences, meanings, and ideas using words - from interviews, observations, or texts.", steps: [4, 6, 7] },
   { term: "Mixed Methods", def: "Combining both quantitative (numbers) and qualitative (words) approaches in one study.", steps: [4] },
-  { term: "Research Design", def: "The specific structure of your study — for example experimental, correlational, case study, or ethnography.", steps: [4] },
+  { term: "Research Design", def: "The specific structure of your study - for example experimental, correlational, case study, or ethnography.", steps: [4] },
   { term: "Experimental Design", def: "A study where you change one thing (a variable) and measure the effect, often using control and comparison groups.", steps: [4] },
   { term: "Correlational Design", def: "A study that measures whether two or more things are related, without changing anything.", steps: [4] },
   { term: "Descriptive Design", def: "A study that describes the characteristics of a group or situation as it is.", steps: [4] },
@@ -48,18 +48,18 @@ export const GLOSSARY = [
   // ---- Step 5: Question & hypothesis ----
   { term: "Research Question", def: "The clear, focused question your study is designed to answer.", steps: [5] },
   { term: "Hypothesis", def: "A testable, specific prediction about what you expect to find, usually in quantitative studies.", steps: [5] },
-  { term: "Null Hypothesis", def: "The prediction that there is NO relationship or difference — what you test against.", steps: [5] },
+  { term: "Null Hypothesis", def: "The prediction that there is NO relationship or difference - what you test against.", steps: [5] },
   { term: "Variable", def: "Anything that can change or take different values in a study, such as age, score, or method.", steps: [5, 6] },
-  { term: "Independent Variable", def: "The factor you change or compare — the presumed cause.", steps: [5] },
-  { term: "Dependent Variable", def: "The outcome you measure — what may be affected by the independent variable.", steps: [5] },
+  { term: "Independent Variable", def: "The factor you change or compare - the presumed cause.", steps: [5] },
+  { term: "Dependent Variable", def: "The outcome you measure - what may be affected by the independent variable.", steps: [5] },
   { term: "Operationalization", def: "Defining exactly how you will measure a concept (e.g., measuring 'stress' with a specific questionnaire).", steps: [5, 6] },
 
   // ---- Step 6: Data collection ----
-  { term: "Data Collection", def: "The process of gathering the information you'll analyze — through surveys, interviews, observations, or records.", steps: [6] },
+  { term: "Data Collection", def: "The process of gathering the information you'll analyze - through surveys, interviews, observations, or records.", steps: [6] },
   { term: "Population", def: "The entire group you want your findings to apply to.", steps: [6] },
   { term: "Sample", def: "The smaller group you actually collect data from, chosen to represent the population.", steps: [6] },
   { term: "Sampling", def: "The method you use to select your sample from the population.", steps: [6] },
-  { term: "Random Sampling", def: "Choosing participants by chance so everyone has an equal shot — helps make the sample representative.", steps: [6] },
+  { term: "Random Sampling", def: "Choosing participants by chance so everyone has an equal shot - helps make the sample representative.", steps: [6] },
   { term: "Purposive Sampling", def: "Deliberately choosing participants who have the specific knowledge or experience you need.", steps: [6] },
   { term: "Convenience Sampling", def: "Selecting participants who are easiest to reach. Quick, but may be less representative.", steps: [6] },
   { term: "Survey", def: "A set of questions given to many people to gather data, often producing numbers.", steps: [6] },
@@ -82,7 +82,7 @@ export const GLOSSARY = [
   { term: "Internal Validity", def: "How confident you can be that the cause you claim really produced the effect, not something else.", steps: [8] },
   { term: "External Validity", def: "How well your findings can be generalized to other people, places, or times.", steps: [8] },
   { term: "Construct Validity", def: "Whether your measurement truly captures the abstract idea (construct) you intend, like 'motivation'.", steps: [8] },
-  { term: "Credibility", def: "The qualitative version of validity — how believable and well-supported your findings are.", steps: [8] },
+  { term: "Credibility", def: "The qualitative version of validity - how believable and well-supported your findings are.", steps: [8] },
   { term: "Transferability", def: "How well qualitative findings might apply to other settings, given enough detail for readers to judge.", steps: [8] },
   { term: "Dependability", def: "Whether the qualitative research process is consistent and could be followed by others.", steps: [8] },
   { term: "Confirmability", def: "The degree to which qualitative findings come from the data, not the researcher's bias.", steps: [8] },
@@ -92,7 +92,7 @@ export const GLOSSARY = [
   { term: "Research Ethics", def: "The principles that keep research honest, fair, and safe for everyone involved.", steps: [9] },
   { term: "Informed Consent", def: "Getting participants' clear agreement to take part after explaining what the study involves and any risks.", steps: [9] },
   { term: "Confidentiality", def: "Keeping participants' information private and protected.", steps: [9] },
-  { term: "Anonymity", def: "Collecting data so that no one — not even the researcher — can link responses to a specific person.", steps: [9] },
+  { term: "Anonymity", def: "Collecting data so that no one - not even the researcher - can link responses to a specific person.", steps: [9] },
   { term: "IRB (Ethics Board)", def: "An Institutional Review Board that reviews studies to make sure they protect participants.", steps: [9] },
   { term: "Beneficence", def: "The ethical duty to maximize benefits and minimize harm to participants.", steps: [9] },
 ];

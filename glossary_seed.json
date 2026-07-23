@@ -15,14 +15,14 @@
   },
   {
     "term": "Epistemology",
-    "def": "Your beliefs about how we know what we know — whether knowledge is discovered by measuring the world, or built through people's interpretations.",
+    "def": "Your beliefs about how we know what we know - whether knowledge is discovered by measuring the world, or built through people's interpretations.",
     "steps": [
       1
     ]
   },
   {
     "term": "Axiology",
-    "def": "The role your values and ethics play in the research — how much your beliefs influence what you study and how.",
+    "def": "The role your values and ethics play in the research - how much your beliefs influence what you study and how.",
     "steps": [
       1
     ]
@@ -36,7 +36,7 @@
   },
   {
     "term": "Post-positivism",
-    "def": "Like positivism, but accepts that we can never measure reality perfectly — only get close through careful, repeated research.",
+    "def": "Like positivism, but accepts that we can never measure reality perfectly - only get close through careful, repeated research.",
     "steps": [
       1
     ]
@@ -50,7 +50,7 @@
   },
   {
     "term": "Transformative worldview",
-    "def": "A worldview focused on social justice — research aimed at understanding and improving the lives of marginalized or under-served groups.",
+    "def": "A worldview focused on social justice - research aimed at understanding and improving the lives of marginalized or under-served groups.",
     "steps": [
       1
     ]
@@ -72,7 +72,7 @@
   },
   {
     "term": "Research Problem",
-    "def": "The specific issue, gap, or difficulty your study will address — the 'why this matters'.",
+    "def": "The specific issue, gap, or difficulty your study will address - the 'why this matters'.",
     "steps": [
       2,
       3
@@ -80,7 +80,7 @@
   },
   {
     "term": "Personal Goals",
-    "def": "Your own reasons for doing the study — curiosity, career, or personal experiences that motivate you.",
+    "def": "Your own reasons for doing the study - curiosity, career, or personal experiences that motivate you.",
     "steps": [
       2
     ]
@@ -94,7 +94,7 @@
   },
   {
     "term": "Intellectual Goals",
-    "def": "What you want to understand or learn — the knowledge or insight the study should produce.",
+    "def": "What you want to understand or learn - the knowledge or insight the study should produce.",
     "steps": [
       2
     ]
@@ -129,7 +129,7 @@
   },
   {
     "term": "Research Gap",
-    "def": "A question that existing research hasn't answered yet — the space your study will help fill.",
+    "def": "A question that existing research hasn't answered yet - the space your study will help fill.",
     "steps": [
       3
     ]
@@ -144,7 +144,7 @@
   },
   {
     "term": "Methodology",
-    "def": "Your overall plan and reasoning for how you will study your question — quantitative, qualitative, or mixed.",
+    "def": "Your overall plan and reasoning for how you will study your question - quantitative, qualitative, or mixed.",
     "steps": [
       4
     ]
@@ -160,7 +160,7 @@
   },
   {
     "term": "Qualitative Research",
-    "def": "Research that explores experiences, meanings, and ideas using words — from interviews, observations, or texts.",
+    "def": "Research that explores experiences, meanings, and ideas using words - from interviews, observations, or texts.",
     "steps": [
       4,
       6,
@@ -176,7 +176,7 @@
   },
   {
     "term": "Research Design",
-    "def": "The specific structure of your study — for example experimental, correlational, case study, or ethnography.",
+    "def": "The specific structure of your study - for example experimental, correlational, case study, or ethnography.",
     "steps": [
       4
     ]
@@ -253,7 +253,7 @@
   },
   {
     "term": "Null Hypothesis",
-    "def": "The prediction that there is NO relationship or difference — what you test against.",
+    "def": "The prediction that there is NO relationship or difference - what you test against.",
     "steps": [
       5
     ]
@@ -268,14 +268,14 @@
   },
   {
     "term": "Independent Variable",
-    "def": "The factor you change or compare — the presumed cause.",
+    "def": "The factor you change or compare - the presumed cause.",
     "steps": [
       5
     ]
   },
   {
     "term": "Dependent Variable",
-    "def": "The outcome you measure — what may be affected by the independent variable.",
+    "def": "The outcome you measure - what may be affected by the independent variable.",
     "steps": [
       5
     ]
@@ -290,7 +290,7 @@
   },
   {
     "term": "Data Collection",
-    "def": "The process of gathering the information you'll analyze — through surveys, interviews, observations, or records.",
+    "def": "The process of gathering the information you'll analyze - through surveys, interviews, observations, or records.",
     "steps": [
       6
     ]
@@ -318,7 +318,7 @@
   },
   {
     "term": "Random Sampling",
-    "def": "Choosing participants by chance so everyone has an equal shot — helps make the sample representative.",
+    "def": "Choosing participants by chance so everyone has an equal shot - helps make the sample representative.",
     "steps": [
       6
     ]
@@ -452,7 +452,7 @@
   },
   {
     "term": "Credibility",
-    "def": "The qualitative version of validity — how believable and well-supported your findings are.",
+    "def": "The qualitative version of validity - how believable and well-supported your findings are.",
     "steps": [
       8
     ]
@@ -508,7 +508,7 @@
   },
   {
     "term": "Anonymity",
-    "def": "Collecting data so that no one — not even the researcher — can link responses to a specific person.",
+    "def": "Collecting data so that no one - not even the researcher - can link responses to a specific person.",
     "steps": [
       9
     ]

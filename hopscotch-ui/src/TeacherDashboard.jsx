@@ -21,7 +21,7 @@ const STEP_COLORS = [
   "#00AEEF", "#F0B429", "#F5922A", "#7B8794",
 ];
 
-// Class avatar helpers — deterministic initials + color for a professional anchor
+// Class avatar helpers - deterministic initials + color for a professional anchor
 const CLASS_COLORS = [
   "#2B5EA7", "#1A8A7D", "#7A4FBF", "#C0562B", "#3D7A2E",
   "#B0842A", "#0E7490", "#B23A6E",
@@ -38,7 +38,7 @@ function classColor(name = "") {
   return CLASS_COLORS[h % CLASS_COLORS.length];
 }
 
-// Access/pacing (Phase 2) — 9 steps grouped into 3 phases (mirrors backend)
+// Access/pacing (Phase 2) - 9 steps grouped into 3 phases (mirrors backend)
 const ACCESS_MODES = [
   { id: "full", label: "Full access" },
   { id: "step", label: "Step-by-step" },
@@ -282,7 +282,7 @@ export default function TeacherDashboard({ onOpenDesigns }) {
   // Unique class codes from sessions for filter dropdown
   const sessionClassCodes = [...new Set(sessions.map((s) => s.class_code).filter(Boolean))];
 
-  // Chart data — computed from filtered sessions so charts respond to class filter
+  // Chart data - computed from filtered sessions so charts respond to class filter
   const chartData = useMemo(() => {
     if (filteredSessions.length === 0) return null;
 
@@ -308,7 +308,7 @@ export default function TeacherDashboard({ onOpenDesigns }) {
       name, value, color: PIE_COLORS[i],
     })).filter((d) => d.value > 0);
 
-    // 3. Class average progress — last 5 most recently active classes
+    // 3. Class average progress - last 5 most recently active classes
     const classGroups = {};
     sessions.forEach((s) => {
       const key = s.class_name || s.class_code || "Unknown";
@@ -348,7 +348,7 @@ export default function TeacherDashboard({ onOpenDesigns }) {
 
   return (
     <div className="td-wrap">
-      {/* Full-width top nav bar — matches the design page */}
+      {/* Full-width top nav bar - matches the design page */}
       <header className="hop-header">
         <div className="hop-header__left">
           <img
@@ -618,7 +618,7 @@ export default function TeacherDashboard({ onOpenDesigns }) {
                   </ResponsiveContainer>
                 </div>
 
-                {/* Class Average Progress — horizontal bars, scales to any number of classes */}
+                {/* Class Average Progress - horizontal bars, scales to any number of classes */}
                 {chartData.classAvg.length > 1 && (
                   <div className="td-chart-card td-chart-card--wide td-chart-card--amber">
                     <h3 className="td-chart-card__title">
@@ -855,7 +855,7 @@ export default function TeacherDashboard({ onOpenDesigns }) {
                     <span className="mcm-row__desc">
                       {aiOn
                         ? "Students can use the AI research assistant."
-                        : "AI is off — students work on their own. Turn it on when they're ready."}
+                        : "AI is off - students work on their own. Turn it on when they're ready."}
                     </span>
                   </div>
                   <button

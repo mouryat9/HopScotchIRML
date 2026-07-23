@@ -3,7 +3,7 @@ import React from "react";
 
 /**
  * Template 3: Extended 3-column layout with central circle infographic.
- * Matches the "Hopscotch — Components of a Conceptual Framework" PPTX slide.
+ * Matches the "Hopscotch - Components of a Conceptual Framework" PPTX slide.
  */
 export default function CFTemplateExtended({ d, upd, updTopic, updFramework, E }) {
   return (
@@ -77,7 +77,7 @@ export default function CFTemplateExtended({ d, upd, updTopic, updFramework, E }
               </div>
             </div>
 
-            {/* Components infographic (decorative, static text) — hexagon core
+            {/* Components infographic (decorative, static text) - hexagon core
                 with contained component cards so text never overflows shapes. */}
             <div className="cfe-infographic">
               <div className="cfe-infographic__title">Components of a Conceptual Framework</div>
@@ -90,12 +90,12 @@ export default function CFTemplateExtended({ d, upd, updTopic, updFramework, E }
                   </div>
                 </div>
 
-                {/* Five components — text lives inside cards, cannot spill out */}
+                {/* Five components - text lives inside cards, cannot spill out */}
                 <div className="cfe-cf__grid">
                   {[
-                    { c: "#1C4587", t: "Topical Research", d: "Empirical work in your area of interest — journals, books, and policy reports." },
+                    { c: "#1C4587", t: "Topical Research", d: "Empirical work in your area of interest - journals, books, and policy reports." },
                     { c: "#1A8A7D", t: "Theoretical Frameworks", d: "Formal theories and constructs that examine relationships and guide the study." },
-                    { c: "#BF9730", t: "Problem Statement", d: "Establishes the intent of the study — clear, specific, and informative." },
+                    { c: "#BF9730", t: "Problem Statement", d: "Establishes the intent of the study - clear, specific, and informative." },
                     { c: "#8B3A3A", t: "Research Design", d: "The methods and procedures used: quantitative, qualitative, or mixed." },
                     { c: "#6AA84F", t: "Personal Connection", d: "Your interests, goals, and the worldview you bring as a researcher." },
                   ].map((n) => (
@@ -109,7 +109,7 @@ export default function CFTemplateExtended({ d, upd, updTopic, updFramework, E }
 
               <div className="cfe-infographic__citation">
                 “A conceptual framework is an argument about why a topic matters and why the means proposed to
-                study it are appropriate and rigorous.” — Ravitch &amp; Riggan (2016)
+                study it are appropriate and rigorous.” - Ravitch &amp; Riggan (2016)
               </div>
             </div>
 

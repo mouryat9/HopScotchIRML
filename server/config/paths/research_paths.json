@@ -117,7 +117,7 @@
             ]},
             {"field_key": "ethics_notes", "label": "Describe your ethics plan", "type": "textarea", "placeholder": "How will you ensure your research is ethical and safe?"}
           ],
-          "llm_guidance": "First check the student's answer to whether their study involves human participants. If the student said YES: help them plan for ethical research with human subjects — cover IRB requirements, the Belmont principles (respect for persons, beneficence, justice), informed consent, confidentiality, and any special considerations for their population. If the student said NO: acknowledge that and help them consider other ethical dimensions relevant to their study (data ethics, environmental impact, academic integrity, responsible use of existing data, etc.)."
+          "llm_guidance": "First check the student's answer to whether their study involves human participants. If the student said YES: help them plan for ethical research with human subjects - cover IRB requirements, the Belmont principles (respect for persons, beneficence, justice), informed consent, confidentiality, and any special considerations for their population. If the student said NO: acknowledge that and help them consider other ethical dimensions relevant to their study (data ethics, environmental impact, academic integrity, responsible use of existing data, etc.)."
         }
       }
     },
@@ -142,7 +142,7 @@
             {"id": "action_research", "label": "Action Research", "description": "Cyclical inquiry aimed at improving practice through reflection."},
             {"id": "design_based_research", "label": "Design-Based Research", "description": "Iterative design and study of educational interventions."}
           ],
-          "llm_guidance": "Help the student choose a qualitative research design. Consider their topic, goals, and context. Explain what each approach entails — narrative, phenomenology, phenomenography, ethnography, school ethnography, grounded theory, case study, action research, and design-based research. Ask about who they want to study and what they want to understand."
+          "llm_guidance": "Help the student choose a qualitative research design. Consider their topic, goals, and context. Explain what each approach entails - narrative, phenomenology, phenomenography, ethnography, school ethnography, grounded theory, case study, action research, and design-based research. Ask about who they want to study and what they want to understand."
         },
         "5": {
           "title": "Step 5: What is my research question? (Qualitative Issue)",
@@ -237,7 +237,7 @@
             ]},
             {"field_key": "ethics_notes", "label": "Describe your ethics plan", "type": "textarea", "placeholder": "How will you ensure your research is ethical and safe?"}
           ],
-          "llm_guidance": "First check the student's answer to whether their study involves human participants. If the student said YES: help them plan for ethical research with human subjects — cover IRB requirements, the Belmont principles (respect for persons, beneficence, justice), informed consent, confidentiality, positionality, and any special considerations for qualitative research with human participants. If the student said NO: acknowledge that and help them consider other ethical dimensions relevant to their study (data ethics, environmental impact, academic integrity, responsible use of existing data, etc.)."
+          "llm_guidance": "First check the student's answer to whether their study involves human participants. If the student said YES: help them plan for ethical research with human subjects - cover IRB requirements, the Belmont principles (respect for persons, beneficence, justice), informed consent, confidentiality, positionality, and any special considerations for qualitative research with human participants. If the student said NO: acknowledge that and help them consider other ethical dimensions relevant to their study (data ethics, environmental impact, academic integrity, responsible use of existing data, etc.)."
         }
       }
     },
