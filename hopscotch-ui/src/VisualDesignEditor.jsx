@@ -394,7 +394,6 @@ const VD_FORMS = {
       centerColor: "#FF9900",
       centerLabelColor: "#5C3300",
       contextMarkers: true,
-      contextMarkerShape: "triangle",
       hasMinicases: true,
       labels: {
         informants: "Informants",
