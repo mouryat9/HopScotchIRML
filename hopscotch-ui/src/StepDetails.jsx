@@ -933,6 +933,31 @@ function MethodologyDecision({ config, data, updateField, sessionId, disabled })
                 {MIXED_DESIGN_OPTIONS.find((o) => o.id === data.mixed_design).description}
               </p>
             )}
+            {data.mixed_design === "embedded" && (
+              <div style={{ marginTop: 12 }}>
+                <label className="hop-desc" style={{ display: "block", marginBottom: 6 }}>
+                  Which strand is your main (host) study?
+                </label>
+                <span className="vd-host-switch">
+                  <button
+                    type="button"
+                    className={(data.embedded_host || data.chosen_methodology || "qualitative") === "qualitative" ? "is-active" : ""}
+                    onClick={() => updateField("embedded_host", "qualitative")}
+                    disabled={disabled}
+                  >
+                    Qualitative primary
+                  </button>
+                  <button
+                    type="button"
+                    className={(data.embedded_host || data.chosen_methodology || "qualitative") === "quantitative" ? "is-active" : ""}
+                    onClick={() => updateField("embedded_host", "quantitative")}
+                    disabled={disabled}
+                  >
+                    Quantitative primary
+                  </button>
+                </span>
+              </div>
+            )}
           </div>
         )}
       </div>

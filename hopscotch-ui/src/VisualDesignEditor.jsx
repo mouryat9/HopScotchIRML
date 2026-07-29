@@ -4,6 +4,7 @@
 // Both sides edit the same data; changes auto-save to the session.
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import html2canvas from "html2canvas";
+import { jsPDF } from "jspdf";
 import { API } from "./api";
 import VDTemplateHoneycomb from "./VDTemplateHoneycomb";
 import VDTemplatePentagonFlower from "./VDTemplatePentagonFlower";
@@ -308,7 +309,8 @@ const VD_FORMS = {
       designName: "Ethnography",
       contextTitle: "Context of your Ethnography",
       centerColor: "#E06666",
-      centerLabelColor: "#4A0F0F",
+      centerLabelColor: "#FFFFFF",
+      centerDark: true,
       labels: {
         informants: "Informants",
         other_documents: "Other Documents",
@@ -392,6 +394,7 @@ const VD_FORMS = {
       centerColor: "#FF9900",
       centerLabelColor: "#5C3300",
       contextMarkers: true,
+      contextMarkerShape: "triangle",
       hasMinicases: true,
       labels: {
         informants: "Informants",
@@ -632,7 +635,8 @@ const VD_FORMS = {
       kind: "pentagon",
       designName: "Descriptive Non-experimental",
       titleName: "Descriptive non-experimental",
-      sliders: { variance: 0.06, causality: 0.06, ivControl: 0.05 },
+      centerColor: "#DCBD24",
+      sliders: { variance: 0.15, causality: 0.05, ivControl: 0.05 },
       fixed: {
         type: "Exploratory/Descriptive",
         groups: "No control group",
@@ -705,7 +709,8 @@ const VD_FORMS = {
       kind: "pentagon",
       designName: "Correlational Non-experimental",
       titleName: "Correlational non-experimental",
-      sliders: { variance: 0.2, causality: 0.28, ivControl: 0.05 },
+      centerColor: "#F29018",
+      sliders: { variance: 0.3, causality: 0.15, ivControl: 0.05 },
       fixed: {
         type: "Correlational",
         groups: "No control group",
@@ -778,7 +783,8 @@ const VD_FORMS = {
       kind: "pentagon",
       designName: "Quasi-experimental",
       titleName: "Quasi-experimental",
-      sliders: { variance: 0.65, causality: 0.65, ivControl: 0.7 },
+      centerColor: "#51A7F9",
+      sliders: { variance: 0.7, causality: 0.7, ivControl: 0.7 },
       fixed: {
         type: "Explanatory",
         groups: "Treatment & control group",
@@ -851,7 +857,8 @@ const VD_FORMS = {
       kind: "pentagon",
       designName: "Experimental",
       titleName: "Experimental",
-      sliders: { variance: 0.93, causality: 0.93, ivControl: 0.93 },
+      centerColor: "#4351B0",
+      sliders: { variance: 0.95, causality: 0.95, ivControl: 0.93 },
       fixed: {
         type: "Explanatory",
         groups: "Treatment & control group",
@@ -1305,14 +1312,8 @@ const VD_FORMS = {
         help: "Describe briefly the phenomenon you will study in your main strand.",
       },
       {
-        key: "context",
-        section: "Primary Qualitative Study",
-        label: "Context of the Study",
-        hint: "Where your main study will be conducted",
-        help: "Which is the context in which your main qualitative study will be conducted?",
-      },
-      {
         key: "question",
+        section: "Primary Qualitative Study",
         label: "Qualitative Research Question",
         hint: "The question driving your main study",
         help: "Which is the qualitative research question driving your main study?",
@@ -1368,10 +1369,22 @@ const VD_FORMS = {
         help: "Which quantitative instruments will the embedded study use? i.e. a short questionnaire or scale administered to the participants of your main study.",
       },
       {
+        key: "mm_process_support",
+        label: "Process Support (embedded)",
+        hint: "SPSS, survey tools…",
+        help: "Are you using any strategy, tool or technology to support the embedded quantitative study? i.e. A statistical package or a tool for generating questionnaires.",
+      },
+      {
         key: "data_analysis",
-        label: "Data Analysis (embedded)",
+        label: "Analysis (embedded)",
         hint: "Descriptive statistics…",
         help: "How will you analyze the embedded quantitative data? i.e. Descriptive statistics, frequencies, simple comparisons.",
+      },
+      {
+        key: "sample",
+        label: "Sample (embedded)",
+        hint: "Who takes the embedded instrument?",
+        help: "Describe the sample of the embedded quantitative study - usually the same participants as your main study, or a subset of them.",
       },
     ],
     layout: {
@@ -1469,12 +1482,282 @@ const VD_FORMS = {
         hint: "How will you analyze the words?",
         help: "Which qualitative strategies will you use for the embedded study? i.e. thematic analysis of the interview transcripts or open answers.",
       },
+      {
+        key: "informants",
+        label: "Informants (embedded)",
+        hint: "Who will you talk to?",
+        help: "Which are the informants of the embedded qualitative study? Usually a small number of participants selected from your main study.",
+      },
+      {
+        key: "context",
+        label: "Context (embedded)",
+        hint: "Where the embedded study happens",
+        help: "In which context will the embedded qualitative study take place?",
+      },
     ],
     layout: {
       kind: "mixed",
       variant: "embedded",
       designName: "Embedded Mixed Methods",
       titleText: "Embedded Mixed Methods Research Design on:",
+    },
+  },
+  design_based_research: {
+    designName: "Design-Based Research Study",
+    intro: "This form will help you define the key components of a well-informed Design-Based Research (DBR) study. DBR addresses a consequential problem of practice through the collaborative design, implementation, study, and refinement of an intervention in a real-world setting. Use the prompts below as a planning tool; revisit them as evidence from each iteration reshapes the intervention, the inquiry, and the emerging design principles.",
+    fields: [
+      {
+        key: "research_topic",
+        label: "Name of your DBR study",
+        hint: "A concise working title that sets the boundaries",
+        help: "Give the study a concise working title that identifies the problem, intervention, participants, and setting without presuming success. Naming these elements helps establish the boundaries of the inquiry. For example: Co-designing and refining discussion routines to support equitable participation in Grade 8 science classrooms.",
+      },
+      {
+        key: "context",
+        label: "Context and boundaries",
+        hint: "The naturalistic setting and its conditions",
+        help: "In which naturalistic setting will the design be developed and studied, and what defines the boundaries of the inquiry? Describe the institutional, historical, cultural, social, political, technological, and material conditions that may shape implementation and outcomes. Identify the sites, participant groups, time period, organizational routines, policies, resources, and relevant prior research. Which contextual features may enable, constrain, or interact with the design?",
+      },
+      {
+        key: "central_item",
+        label: "Problem of practice",
+        hint: "The persistent, consequential problem",
+        help: "What persistent, consequential problem is experienced by practitioners and learners in this setting? What evidence shows that the problem exists, for whom it matters, and how it is currently addressed? Distinguish observable symptoms from plausible underlying causes. Explain why the problem is suitable for intervention and why existing approaches are insufficient.",
+      },
+      {
+        key: "question",
+        label: "Purpose and research questions",
+        hint: "Improve practice AND produce design knowledge",
+        help: "State the dual purpose of the study: to improve practice through a usable intervention and to produce theoretical or design knowledge. Develop questions that evolve across the DBR process. Consider: What needs and mechanisms should inform the initial design? How is the intervention enacted and adapted? What outcomes and unintended consequences emerge? How do context and implementation explain variation? Which design principles become credible across iterations?",
+      },
+      {
+        key: "topics",
+        label: "Topics",
+        hint: "Areas of interest that focus the inquiry",
+        help: "Which areas of interest will focus the inquiry without oversimplifying the problem? Topics might include participation, learning processes, identity, accessibility, educator decision-making, implementation conditions, usability, institutional routines, or equity. Clarify how each topic relates to the problem, intervention, research questions, and intended contribution.",
+        placeholder: "One topic per line",
+      },
+      {
+        key: "informants",
+        label: "Partners, stakeholders, and informants",
+        hint: "Who designs, implements, and interprets with you?",
+        help: "Who will participate in framing the problem, designing the intervention, implementing it, and interpreting evidence? Identify learners, practitioners, leaders, families, community members, designers, and researchers as relevant. For each group, specify its knowledge, role, decision rights, expected benefit, and potential burden. Which informants can illuminate contrasting experiences, including those most affected or historically underrepresented?",
+      },
+      {
+        key: "hypothesis",
+        label: "Initial design conjecture",
+        hint: "If [design features]... then [outcomes]...",
+        help: "Articulate the reasoning that links the proposed intervention to the desired processes and outcomes. For example: If Grade 8 science teachers and students collaboratively design and iteratively refine structured discussion routines that establish explicit norms for equitable participation; provide individual thinking and preparation time, and; use multiple participation formats, such as speaking, writing, drawing, and digital responses, then students who are typically less likely to contribute, including multilingual learners, students with disabilities, and students whose ideas have historically been marginalized, will have more frequent and meaningful opportunities to participate in science discussions.",
+      },
+      {
+        key: "variables",
+        label: "Intervention and design requirements",
+        hint: "What will be designed or redesigned?",
+        help: "What will be designed or redesigned - for example, a curriculum, tool, learning environment, professional practice, policy routine, or coordinated system? Identify its essential features, adaptable elements, users, activities, materials, supports, and intended sequence. Translate the problem analysis into design requirements and constraints. What would count as a viable, usable, equitable, and sustainable version in this context?",
+      },
+      {
+        key: "strategies",
+        label: "Iterations and decision points",
+        hint: "The DBR cycles and their criteria",
+        help: "Plan the DBR cycles: analysis and exploration; design and construction; implementation and evaluation; reflection and redesign. For each cycle, specify its purpose, setting, participants, duration, prototype version, evidence to be collected, and criteria for proceeding, adapting, or stopping. How will changes between versions be logged so that claims can be connected to particular design features and conditions?",
+      },
+      {
+        key: "data_gathering",
+        label: "Data gathering methods",
+        hint: "Outcomes, implementation, mechanisms, experiences",
+        help: "Select methods that capture outcomes, implementation, mechanisms, experiences, and context across time. Depending on the questions, these may include observations, interviews, focus groups, surveys, assessments, usage traces, recordings, think-alouds, design meetings, field notes, and implementation logs. Specify who or what will be sampled, when and how often data will be gathered, and how sources will be linked across cycles. Build in enough evidence to examine expected and unexpected effects.",
+      },
+      {
+        key: "other_documents",
+        label: "Other documents and artifacts to be analyzed",
+        hint: "Policies, prototypes, participant work, logs…",
+        help: "Which existing or generated materials will illuminate the problem, design process, enactment, and outcomes? Examples include policies, curricula, lesson plans, participant work, photographs, videos, journals, communications, meeting records, prototype versions, feedback forms, analytic memos, and decision logs. For each source, clarify its provenance, relevance, access conditions, and role in triangulation.",
+      },
+      {
+        key: "process_support",
+        label: "Process support and feasibility",
+        hint: "People, tools, permissions, contingencies",
+        help: "Which people, tools, resources, permissions, and capabilities are required? Consider facilitation, subject-matter expertise, research assistance, design and data-analysis software, training, technical infrastructure, budget, time, and leadership support. Identify dependencies and risks to implementation fidelity, partner participation, and continuity across cycles. What contingency plans are realistic if conditions change?",
+      },
+      {
+        key: "minicases",
+        label: "Design principles and knowledge contribution",
+        hint: "The transferable knowledge the study produces",
+        help: "What form should the study's transferable knowledge take? Draft provisional design principles that connect a purpose, design feature, mechanism, and contextual condition; then specify the evidence needed to revise or reject them. Also identify anticipated contributions to theory, measurement, methods, and local practice. Avoid universal prescriptions: state the limits, boundary conditions, and degree of confidence supported by the iterations.",
+      },
+    ],
+    layout: {
+      designName: "Design-Based Research (DBR)",
+      contextTitle: "Context and boundaries",
+      centerColor: "#CE0444",
+      centerLabelColor: "#FFFFFF",
+      centerDark: true,
+      contextMarkers: true,
+      contextMarkerColor: "#023A5F",
+      centerExtra: { key: "research_topic", label: "Name of your DBR Study" },
+      splitStrategies: { key: "minicases", label: "Design principles and knowledge contribution" },
+      leftRails: [
+        { key: "context", title: "Context and boundaries" },
+        { key: "hypothesis", title: "Initial design conjecture" },
+        { key: "variables", title: "Intervention and design requirements" },
+      ],
+      labels: {
+        informants: "Partners, stakeholders, and informants",
+        other_documents: "Other Documents & Artifacts",
+        data_gathering: "Data Gathering Methods",
+        central_item: "Problem of Practice",
+        strategies: "Iterations and decision points",
+        process_support: "Process support and feasibility",
+        question: "Purpose and research questions",
+      },
+    },
+  },
+  cross_sectional_survey: {
+    designName: "Cross-sectional Survey Study",
+    intro: "Answer the questions below to build the one-page visual design of your cross-sectional survey study. Everything you write appears in the diagram on the right - and you can click any text in the diagram to edit it directly.",
+    fields: [
+      {
+        key: "central_item",
+        label: "Phenomenon under study",
+        hint: "What will you take a snapshot of?",
+        help: "Describe briefly the phenomenon you will study. A cross-sectional survey takes a snapshot of a population at ONE point in time - i.e. how students across a district feel about homework right now.",
+      },
+      {
+        key: "study_type",
+        label: "Type of survey",
+        hint: "Descriptive or analytical",
+        help: "Cross-sectional surveys measure a population at a single point in time, with no manipulation of variables. They can be: a) Descriptive, aiming to describe the characteristics, attitudes or behaviors of the population, or; b) Analytical, additionally comparing subgroups of the population (i.e. by grade, gender, or school) to explore possible associations. Which type will your survey be?",
+        placeholder: "Descriptive survey / Analytical survey",
+      },
+      {
+        key: "variables",
+        label: "Variables",
+        hint: "What characteristics will the survey measure?",
+        help: "Describe the variables your survey will measure. These are usually: a) sociodemographic characteristics of the participants, such as age, gender or grade, and; b) attitudes, opinions, perceptions, behaviors or experiences captured at the moment of the survey.",
+      },
+      {
+        key: "question",
+        label: "Research Question",
+        hint: "About the state of the population right now",
+        help: "Cross-sectional survey questions ask about the state of a population at one point in time. i.e. What proportion of middle school students report using AI tools for homework, and does this differ by grade level? Include below the research question that will guide your study.",
+      },
+      {
+        key: "sample",
+        label: "Sample",
+        hint: "Representative sampling is essential here",
+        help: "Because a cross-sectional survey aims to describe a whole population from one measurement, a representative sample is ESSENTIAL. Describe the population, the probabilistic sampling method (i.e. random, stratified, cluster), and the sample size you plan to survey.",
+      },
+      {
+        key: "groups",
+        label: "# of Groups",
+        hint: "One population, possibly compared by subgroups",
+        help: "Cross-sectional surveys study one population at one point in time. Analytical surveys additionally compare natural subgroups within it (i.e. by grade or school). How will your survey be organized?",
+        placeholder: "1 population / subgroups compared",
+      },
+      {
+        key: "data_gathering",
+        label: "Data Gathering",
+        hint: "Questionnaires, online surveys, structured interviews",
+        help: "Which instruments will you use? The main options in cross-sectional surveys are: Questionnaires (paper or online); Likert scales, and; structured interviews - all administered once, in the same time window, to the whole sample.",
+      },
+      {
+        key: "data_analysis",
+        label: "Data Analysis",
+        hint: "Descriptive statistics, cross-tabulations",
+        help: "How will you analyze the data? Common options are: Descriptive statistics (frequencies, percentages, means); cross-tabulations comparing subgroups, and; chi-square or similar tests for associations between categorical variables.",
+      },
+      {
+        key: "process_support",
+        label: "Process Support",
+        hint: "Survey platforms, statistical packages…",
+        help: "Include in this section any strategy, tool or technology that will be of help to support the study. i.e. Online survey platforms for administration, and statistical packages such as SPSS for the analysis.",
+      },
+    ],
+    layout: {
+      kind: "pentagon",
+      designName: "Cross-sectional Survey",
+      titleName: "Cross-sectional survey",
+      sliders: { variance: 0.08, causality: 0.08, ivControl: 0.03 },
+      fixed: {
+        type: "Descriptive / Survey",
+        groups: "No control group",
+        representativeness: "Essential",
+      },
+    },
+  },
+
+  pre_experimental: {
+    designName: "Pre-experimental Study",
+    intro: "Answer the questions below to build the one-page visual design of your pre-experimental study. Everything you write appears in the diagram on the right - and you can click any text in the diagram to edit it directly.",
+    fields: [
+      {
+        key: "central_item",
+        label: "Phenomenon under study",
+        hint: "The situation where you will try your intervention",
+        help: "Describe briefly the phenomenon you will study. In pre-experimental designs you introduce an intervention or treatment, but with a single group and without a control group - a first, exploratory test of its effect.",
+      },
+      {
+        key: "study_type",
+        label: "Type of pre-experimental design",
+        hint: "One-shot, one-group pretest-posttest, static-group",
+        help: "Pre-experimental designs manipulate the independent variable but lack a control group and random assignment, so their causal claims are weak - they are best used as exploratory pilots. The main types are: a) One-shot case study, where one group receives the treatment and is measured afterwards; b) One-group pretest-posttest design, where the group is measured before and after the treatment, and; c) Static-group comparison, where the treated group is compared with an existing untreated group without pretest. Which type will your study follow?",
+        placeholder: "One-shot / One-group pretest-posttest / Static-group comparison",
+      },
+      {
+        key: "variables",
+        label: "Hypothesis: Variables (IV → DV)",
+        hint: "The treatment and the outcome you will measure",
+        help: "Describe your independent variable (IV - the treatment or intervention) and your dependent variable (DV - the outcome you measure), and the hypothesis linking them. i.e. IV: a two-week vocabulary game unit; DV: vocabulary quiz scores.",
+      },
+      {
+        key: "question",
+        label: "Research Question",
+        hint: "A cautious question about the treatment's effect",
+        help: "Pre-experimental questions ask about the apparent effect of the treatment, stated cautiously because rival explanations cannot be ruled out. i.e. Does students' vocabulary quiz performance improve after the two-week game unit? Include below the research question that will guide your study.",
+      },
+      {
+        key: "sample",
+        label: "Sample",
+        hint: "One intact group, not assigned at random",
+        help: "Pre-experimental designs work with a single intact group (i.e. one existing class) that receives the treatment, without random assignment or a control group. Describe the group that will take part in your study and how it will be selected.",
+      },
+      {
+        key: "groups",
+        label: "# of Groups",
+        hint: "1 group (occasionally a static comparison group)",
+        help: "Pre-experimental designs involve 1 group that receives the treatment. In a static-group comparison, an existing untreated group is added for comparison, but without pretest or random assignment. How many groups will your study involve?",
+        placeholder: "1 group",
+      },
+      {
+        key: "data_gathering",
+        label: "Data Gathering",
+        hint: "Tests, scales - often before and after",
+        help: "Which instruments will you use? The main options in pre-experimental studies are: achievement or performance tests, and scales measuring the dependent variable - applied after the treatment (one-shot) or before and after it (pretest-posttest).",
+      },
+      {
+        key: "data_analysis",
+        label: "Data Analysis",
+        hint: "Gain scores, paired comparisons",
+        help: "How will you analyze the data? Common options are: descriptive statistics of the outcome; gain scores between pretest and posttest, and; paired t-tests for pretest-posttest designs. Interpret results cautiously - without a control group, improvements may have other explanations (maturation, practice effects, external events).",
+      },
+      {
+        key: "process_support",
+        label: "Process Support",
+        hint: "SPSS, test-building tools…",
+        help: "Include in this section any strategy, tool or technology that will be of help to support the study. i.e. Statistical packages such as SPSS, and tools for building and administering the tests or scales.",
+      },
+    ],
+    layout: {
+      kind: "pentagon",
+      designName: "Pre-experimental",
+      titleName: "Pre-experimental",
+      centerColor: "#D0015E",
+      sliders: { variance: 0.45, causality: 0.4, ivControl: 0.45 },
+      fixed: {
+        type: "Exploratory",
+        groups: "1 group (no control)",
+        representativeness: "Limited",
+      },
     },
   },
 };
@@ -1487,9 +1770,12 @@ export function vdEditorSupports(designId) {
 }
 
 export default function VisualDesignEditor({ sessionId, data, onClose, aiEnabled = true }) {
-  const formKey = data.design === "embedded" && data.primary === "quantitative" ? "embedded_quant" : data.design;
-  const form = VD_FORMS[formKey];
   const [fields, setFields] = useState(() => ({ ...data.fields }));
+  // Embedded designs: the host strand is chosen at Step 4 (embedded_host),
+  // falling back to the primary methodology
+  const embeddedHost = data.primary || "qualitative";
+  const formKey = data.design === "embedded" && embeddedHost === "quantitative" ? "embedded_quant" : data.design;
+  const form = VD_FORMS[formKey];
   const [saveState, setSaveState] = useState("saved"); // saved | dirty | saving | error
   const [printing, setPrinting] = useState(false);
   const [activeKey, setActiveKey] = useState(null);
@@ -1548,6 +1834,7 @@ export default function VisualDesignEditor({ sessionId, data, onClose, aiEnabled
     const diagram = document.querySelector(".vd-diagram");
     if (!diagram) return;
     setPrinting(true);
+    setActiveKey(null);
     // Freeze the animated hopscotch squares at full color for the capture
     diagram.classList.add("vd-diagram--print-freeze");
     try {
@@ -1558,30 +1845,15 @@ export default function VisualDesignEditor({ sessionId, data, onClose, aiEnabled
         backgroundColor: "#ffffff",
         logging: false,
       });
-      const imgData = canvas.toDataURL("image/png");
-      const printWin = window.open("", "_blank");
-      if (!printWin) {
-        alert("Please allow pop-ups to print the Visual Design.");
-        return;
-      }
-      printWin.document.write(`
-        <html>
-        <head><title>Visual Design</title>
-        <style>
-          @page { size: landscape; margin: 0.25in; }
-          * { margin: 0; padding: 0; box-sizing: border-box; }
-          body { display: flex; justify-content: center; align-items: center; height: 100vh; background: #fff; }
-          img { max-width: 100%; max-height: 100vh; object-fit: contain; }
-        </style>
-        </head>
-        <body>
-          <img src="${imgData}" onload="setTimeout(function(){window.print();},200);" />
-        </body>
-        </html>
-      `);
-      printWin.document.close();
+      // The PDF page matches the diagram exactly (2 canvas px = 1 pt), so the
+      // orientation and size are always right regardless of browser/printer,
+      // with no URL headers or margins. Students print from the PDF itself.
+      const w = canvas.width / 2, h = canvas.height / 2;
+      const pdf = new jsPDF({ orientation: w >= h ? "landscape" : "portrait", unit: "pt", format: [w, h] });
+      pdf.addImage(canvas.toDataURL("image/png"), "PNG", 0, 0, w, h);
+      pdf.save(`Visual_Design_${(form.designName || "Study").replace(/[^\w-]+/g, "_")}.pdf`);
     } catch (e) {
-      console.error("Print capture failed:", e);
+      console.error("PDF capture failed:", e);
       window.print();
     } finally {
       diagram.classList.remove("vd-diagram--print-freeze");
@@ -1661,7 +1933,7 @@ export default function VisualDesignEditor({ sessionId, data, onClose, aiEnabled
             Show name &amp; email
           </label>
           <button className="vd-btn vd-btn--primary" onClick={handlePrint} disabled={printing}>
-            {printing ? "Capturing…" : "🖨 Print / Save PDF"}
+            {printing ? "Capturing…" : "⬇ Save PDF"}
           </button>
         </div>
       </div>
@@ -1721,7 +1993,7 @@ export default function VisualDesignEditor({ sessionId, data, onClose, aiEnabled
           <div className="vd-stage__inner">
             <TemplateComp
               layout={form.layout}
-              primary={data.primary}
+              primary={data.design === "embedded" ? embeddedHost : data.primary}
               name={data.name}
               email={data.email}
               fields={fields}

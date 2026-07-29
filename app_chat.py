@@ -3202,12 +3202,12 @@ VD_FIELD_KEYS = [
     # mixed methods (second-strand keys; the qualitative strand reuses the
     # qualitative keys and the quantitative strand reuses the quantitative ones)
     "research_topic", "mm_question", "mm_data_gathering", "mm_process_support",
-    "qual_tradition", "hypothesis", "qual_question",
+    "qual_tradition", "hypothesis", "qual_question", "embedded_host",
 ]
 
 # Quantitative designs supported by the visual design editor/export.
 # The quantitative template's fill-in slide is slide 2 (index 1).
-VD_QUANT_DESIGNS = {"descriptive", "correlational", "quasi_experimental", "experimental"}
+VD_QUANT_DESIGNS = {"descriptive", "correlational", "quasi_experimental", "experimental", "cross_sectional_survey", "pre_experimental"}
 
 # Mixed methods designs supported by the visual design editor (print-only;
 # stored in step_notes["4"]["mixed_design"] for pragmatist/mixed sessions)
@@ -3235,6 +3235,17 @@ def _vd_context(session_id: str, current_user: dict):
 
     design_id = (steps_data.get("4") or {}).get("design")
     mixed_design = (steps_data.get("4") or {}).get("mixed_design")
+
+    # The design saved at Step 4 is the ground truth for which template family
+    # applies: a stale chosen_methodology (e.g. the student explored the
+    # Step-4 methodology override and then went back) must not route a
+    # qualitative design down the quantitative path or vice versa.
+    if not (resolved == "mixed" and mixed_design):
+        if design_id in VD_SLIDE_BY_DESIGN:
+            effective = "qualitative"
+        elif design_id in VD_QUANT_DESIGNS:
+            effective = "quantitative"
+
     if resolved == "mixed" and mixed_design:
         # Pragmatist student who chose a mixed methods design: the visual
         # design combines both strands regardless of the primary methodology.
@@ -3363,6 +3374,7 @@ def _vd_prefill(raw_fields: dict) -> dict:
         "qual_tradition": "",
         "hypothesis": raw_fields["Hypothesis"].strip(),
         "qual_question": raw_fields["Research Question / Central Issue"].strip(),
+        "embedded_host": "",
     }
 
 
@@ -3390,7 +3402,8 @@ def get_visual_design_data(
         "design": design_id,
         "design_label": design_label,
         "path": effective,
-        "primary": sess.chosen_methodology or "qualitative",
+        "primary": ((sess.step_notes.get("4") or {}).get("embedded_host")
+                    or sess.chosen_methodology or "qualitative"),
         "name": name,
         "email": email,
         "fields": fields,
@@ -3414,128 +3427,6 @@ def save_visual_design_data(
     return {"ok": True}
 
 
-@app.get("/session/{session_id}/export/visual-design")
-def export_visual_design(
-    session_id: str,
-    current_user: dict = Depends(get_current_user)
-):
-    """
-    Generate the one-slide visual design diagram (.pptx) for a qualitative
-    study, using the slide matching the student's Step-4 design choice.
-    Fields the student saved in the visual design editor are used as-is;
-    otherwise the step data is condensed via the LLM.
-    """
-    from pptx import Presentation as PptxPresentation
-    import io
-
-    sess, raw_doc, design_id, design_label, name, email, effective = _vd_context(session_id, current_user)
-    if effective == "mixed":
-        raise HTTPException(
-            status_code=400,
-            detail="Mixed methods visual designs are printed from the editor page."
-        )
-    raw_fields = _vd_raw_fields(sess)
-    prefill = _vd_prefill(raw_fields)
-
-    stored = (raw_doc or {}).get("visual_design_fields") or {}
-    stored = {k: str(v).strip() for k, v in stored.items() if str(v).strip()}
-
-    # Only fall back to the LLM when the student hasn't edited the design
-    # (qualitative only - quantitative fields map directly from step data)
-    structured = {}
-    if not stored and design_id in VD_CENTRAL_LABEL:
-        structured = _structure_vd_via_llm(design_label, VD_CENTRAL_LABEL[design_id], raw_fields)
-
-    def pick(key: str) -> str:
-        for source in (stored, structured, prefill):
-            v = source.get(key)
-            if isinstance(v, str) and v.strip():
-                return v.strip()
-        return "Not yet defined"
-
-    values = {key: pick(key) for key in VD_FIELD_KEYS}
-
-    if effective == "quantitative":
-        replacements = {
-            "<<Name>>": name,
-            "<<email>>": email,
-            "<<Variables>>": values["variables"],
-            "<<Research Question>>": values["question"],
-            "<<Data Gathering>>": values["data_gathering"],
-            "<<Process Support>>": values["process_support"],
-            "<<Phenomenon under study>>": values["central_item"],
-            "<<# of groups>>": values["groups"],
-            "<<Sample>>": values["sample"],
-            "<<Data Analysis>>": values["data_analysis"],
-            "<<Type of correlational study>>": values["study_type"] if values["study_type"] != "Not yet defined" else "",
-        }
-    else:
-        replacements = {
-        "<<Name>>": name,
-        "<<email>>": email,
-        "<<Informants>>": values["informants"],
-        "<<Stories of the Informants>>": values["informants"],
-        "<<Name of your case>>": values["central_item"],
-        "<<Aspect to reflect upon and improve>>": values["central_item"],
-        "<<Culture to be studied>>": values["central_item"],
-        "<<Narrative Portraits>>": values["central_item"],
-        "<<Phenomenon Under Study>>": values["central_item"],
-        "<<Phenomenon under study that has not been covered in the literature (substantive area of interest)>>": values["central_item"],
-        "<<Other documents to be analyzed>>": values["other_documents"],
-        "<<Data Gathering Methods>>": values["data_gathering"],
-        "<<Case Study Strategies>>": values["strategies"],
-        "<<Action Research Strategies>>": values["strategies"],
-        "<<Ethnographic Research Strategies>>": values["strategies"],
-        "<<Narrative Research Strategies>>": values["strategies"],
-        "<<Phenomenological Strategies>>": values["strategies"],
-        "<<Phenomenographic Strategies>>": values["strategies"],
-        "<<Grounded Theory Strategies>>": values["strategies"],
-        "<<Process Support>>": values["process_support"],
-        "<<Issue>>": values["question"],
-        "<<Practical Question >>": values["question"],
-        "<<Ethnographic Question >>": values["question"],
-        "<<Narrative Question >>": values["question"],
-        "<<Phenomenological Questions>>": values["question"],
-        "<<Phenomenographic Questions>>": values["question"],
-        "<<Grounded Theory Questions>>": values["question"],
-        "<<Topics>>": values["topics"],
-        "<<Context>>": values["context"],
-        "<<Minicases>>": values["minicases"],
-        }
-
-    if effective == "quantitative":
-        template_path = TEMPLATE_DIR / "visual_design_quantitative.pptx"
-        keep_idx = 1  # slide 2 is the fill-in slide
-    else:
-        template_path = TEMPLATE_DIR / "visual_design_qualitative.pptx"
-        keep_idx = VD_SLIDE_BY_DESIGN[design_id]
-    if not template_path.exists():
-        raise HTTPException(status_code=500, detail="Visual design template not found")
-
-    prs = PptxPresentation(str(template_path))
-
-    # Drop every slide except the one for the student's design
-    from pptx.oxml.ns import qn
-    xml_slides = prs.slides._sldIdLst
-    for i, slide_id in reversed(list(enumerate(list(xml_slides)))):
-        if i != keep_idx:
-            prs.part.drop_rel(slide_id.get(qn('r:id')))
-            xml_slides.remove(slide_id)
-
-    for slide in prs.slides:
-        for shape in slide.shapes:
-            _replace_pptx_text(shape, replacements)
-
-    buf = io.BytesIO()
-    prs.save(buf)
-    buf.seek(0)
-
-    filename = f"Visual_Design_{design_label.replace(' ', '_')}_{name.replace(' ', '_')}.pptx"
-    return Response(
-        content=buf.getvalue(),
-        media_type="application/vnd.openxmlformats-officedocument.presentationml.presentation",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'}
-    )
 
 
 # ============================================================

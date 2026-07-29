@@ -8,6 +8,7 @@
 // Representativeness / Sample (bottom-right).
 // Each design passes fixed characteristic values + slider positions.
 import React from "react";
+import VDCitation from "./VDCitation";
 
 const PENT_W = 28.4; // % of width
 const PENT_H = 35.1; // % of height
@@ -27,8 +28,17 @@ const PENT_POINTS = "50,0 100,38.2 81,100 19,100 0,38.2";
 const PENT_POINTS_FLIPPED = "50,100 0,61.8 19,0 81,0 100,61.8";
 
 const STROKE = "#005493";
-// The center pentagon is filled bright blue on the PPTX reference slides
+// Fallback center fill; each quantitative design overrides it via layout.centerColor
 const CENTER_FILL = "#51A7F9";
+
+// Light center fills (e.g. the descriptive design's yellow) need dark text
+function isLightFill(hex) {
+  const m = /^#?([0-9a-f]{6})$/i.exec((hex || "").trim());
+  if (!m) return false;
+  const n = parseInt(m[1], 16);
+  const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+  return 0.299 * r + 0.587 * g + 0.114 * b > 165;
+}
 
 function Slider({ label, value, onChange }) {
   const trackRef = React.useRef(null);
@@ -77,13 +87,14 @@ function Slider({ label, value, onChange }) {
 function Pent({ pos, focusKeys, activeKey, flip = false, centerFill, children }) {
   const isActive = focusKeys.some((k) => activeKey === k);
   const p = PENT_POS[pos];
+  const fill = flip ? (centerFill || CENTER_FILL) : "#FFFFFF";
   return (
     <div
-      className={`vdq-pent${isActive ? " vdq-pent--focus" : ""}${flip ? " vdq-pent--flip" : ""}`}
+      className={`vdq-pent${isActive ? " vdq-pent--focus" : ""}${flip ? " vdq-pent--flip" : ""}${flip && isLightFill(fill) ? " vdq-pent--flip-light" : ""}`}
       style={{ left: `${p.x}%`, top: `${p.y}%`, width: `${PENT_W}%`, height: `${PENT_H}%` }}
     >
       <svg className="vdq-pent__shape" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-        <polygon className="vdq-pent__poly" points={flip ? PENT_POINTS_FLIPPED : PENT_POINTS} fill={flip ? (centerFill || CENTER_FILL) : "#FFFFFF"} stroke={STROKE} strokeWidth="1.6" vectorEffect="non-scaling-stroke" />
+        <polygon className="vdq-pent__poly" points={flip ? PENT_POINTS_FLIPPED : PENT_POINTS} fill={fill} stroke={STROKE} strokeWidth="1.6" vectorEffect="non-scaling-stroke" />
       </svg>
       <div className={`vdq-pent__content${flip ? " vdq-pent__content--flip" : ""}`}>{children}</div>
     </div>
@@ -191,20 +202,23 @@ export default function VDTemplatePentagonFlower({ layout, name, email, fields, 
         <E value={fields.sample} onChange={(v) => upd("sample", v)} className="vdq-text vdq-text--grow" placeholder="Click to write…" />
       </Pent>
 
-      {/* Footer: Hopscotch 4 All logo + animated hopscotch squares */}
+      {/* Footer: Hopscotch 4 All logo + animated hopscotch squares + citation */}
       {!embedded && <div className="vd-logo-row">
-        <img className="vd-logo" src="/Hopscotch-4-all-logo-alpha.png" alt="Hopscotch 4 All" />
-        <svg className="hop-grid-loader vd-logo-loader" viewBox="0 0 128 46" xmlns="http://www.w3.org/2000/svg" shapeRendering="geometricPrecision" fill="none" aria-hidden="true">
-          <rect className="hop-sq sq-1" x="0" y="0" width="18" height="22" rx="6" fill="#2B5EA7" />
-          <rect className="hop-sq sq-2" x="0" y="24" width="18" height="22" rx="6" fill="#E8618C" />
-          <rect className="hop-sq sq-3" x="22" y="12" width="18" height="22" rx="6" fill="#D94040" />
-          <rect className="hop-sq sq-4" x="44" y="0" width="18" height="22" rx="6" fill="#1A8A7D" />
-          <rect className="hop-sq sq-5" x="44" y="24" width="18" height="22" rx="6" fill="#B0A47A" />
-          <rect className="hop-sq sq-6" x="66" y="12" width="18" height="22" rx="6" fill="#00AEEF" />
-          <rect className="hop-sq sq-7" x="88" y="0" width="18" height="22" rx="6" fill="#F0B429" />
-          <rect className="hop-sq sq-8" x="88" y="24" width="18" height="22" rx="6" fill="#F5922A" />
-          <path className="hop-sq sq-9" d="M110,7 A16,16 0 0,1 110,39 Z" fill="#7B8794" />
-        </svg>
+        <div className="vd-logo-row__brand">
+          <img className="vd-logo" src="/Hopscotch-4-all-logo-alpha.png" alt="Hopscotch 4 All" />
+          <svg className="hop-grid-loader vd-logo-loader" viewBox="0 0 128 46" xmlns="http://www.w3.org/2000/svg" shapeRendering="geometricPrecision" fill="none" aria-hidden="true">
+            <rect className="hop-sq sq-1" x="0" y="0" width="18" height="22" rx="6" fill="#2B5EA7" />
+            <rect className="hop-sq sq-2" x="0" y="24" width="18" height="22" rx="6" fill="#E8618C" />
+            <rect className="hop-sq sq-3" x="22" y="12" width="18" height="22" rx="6" fill="#D94040" />
+            <rect className="hop-sq sq-4" x="44" y="0" width="18" height="22" rx="6" fill="#1A8A7D" />
+            <rect className="hop-sq sq-5" x="44" y="24" width="18" height="22" rx="6" fill="#B0A47A" />
+            <rect className="hop-sq sq-6" x="66" y="12" width="18" height="22" rx="6" fill="#00AEEF" />
+            <rect className="hop-sq sq-7" x="88" y="0" width="18" height="22" rx="6" fill="#F0B429" />
+            <rect className="hop-sq sq-8" x="88" y="24" width="18" height="22" rx="6" fill="#F5922A" />
+            <path className="hop-sq sq-9" d="M110,7 A16,16 0 0,1 110,39 Z" fill="#7B8794" />
+          </svg>
+        </div>
+        <VDCitation />
       </div>}
       {!embedded && <div className="vd-design-name">{layout.designName}</div>}
     </div>

@@ -405,18 +405,6 @@ export const API = {
     return res.json();
   },
 
-  async downloadVisualDesign(session_id) {
-    const res = await fetch(`${API_BASE}/session/${session_id}/export/visual-design`, {
-      headers: authHeaders(),
-    });
-    if (!res.ok) {
-      let detail = "Failed to download visual design";
-      try { detail = (await res.json()).detail || detail; } catch { /* keep default */ }
-      throw new Error(detail);
-    }
-    await saveBlob(await res.blob(), "Visual_Design.pptx");
-  },
-
   async downloadConceptualFramework(session_id) {
     const res = await fetch(`${API_BASE}/session/${session_id}/export/conceptual-framework`, {
       headers: authHeaders(),

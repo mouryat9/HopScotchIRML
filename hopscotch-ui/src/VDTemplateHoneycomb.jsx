@@ -5,6 +5,7 @@
 // rail on the left, Topics under the question hexagon, and name/email top-left.
 // Each design (narrative, phenomenology, ...) passes its own labels + colors.
 import React from "react";
+import VDCitation from "./VDCitation";
 
 // Hexagon geometry from the PPTX (inches on a 10 x 7.5 slide, w=2.65 h=2.31)
 const HEX_W = 26.5; // % of width
@@ -38,12 +39,33 @@ const CTX_TAGS = [
   { x: 79.3, y: 90.3, rot: -29 },  // between the Question hexagon and Process Support
 ];
 
-function ContextFootball({ x, y, rot }) {
+// Triangle-with-curved-base variant: each marker is centered on its notch's
+// bisector (computed from the hexagon geometry), apex tucked under the point
+// where the two hexagons nearly touch, base bulging outward. `flip` points the
+// apex to local-up instead of local-down so the text stays upright.
+const CTX_TRI_TAGS = [
+  { x: 44.3, y: 12.9, rot: -32, flip: false },
+  { x: 77.3, y: 12.9, rot: 32, flip: false },
+  { x: 26.4, y: 50.6, rot: 90, flip: true },
+  { x: 95.1, y: 50.6, rot: 90, flip: false },
+  { x: 44.3, y: 88.4, rot: 32, flip: true },
+  { x: 77.3, y: 88.4, rot: -32, flip: true },
+];
+
+function ContextFootball({ x, y, rot, color = "#999999", triangle = false, flip = false }) {
+  // Triangle: base corners at the football's old tip positions, curved base
+  // (bulge outward), apex overshooting the 200x52 box - the hexagons paint
+  // over the overshoot, so the wedge between them fills completely.
+  const f = (v) => (flip ? 52 - v : v);
+  const path = triangle
+    ? `M 4,${f(30)} Q 100,${f(-16)} 196,${f(30)} L 100,${f(80)} Z`
+    : "M 4,26 Q 100,-14 196,26 Q 100,66 4,26 Z";
+  const textY = triangle ? (flip ? 38 : 20) : 33;
   return (
     <div className="vd-ctx-tag" style={{ left: `${x}%`, top: `${y}%`, transform: `translate(-50%, -50%) rotate(${rot}deg)` }}>
-      <svg viewBox="0 0 200 52" preserveAspectRatio="none" aria-hidden="true">
-        <path d="M 4,26 Q 100,-14 196,26 Q 100,66 4,26 Z" fill="#999999" />
-        <text x="100" y="33" textAnchor="middle" fill="#ffffff" fontWeight="700" fontSize="20" letterSpacing="0.5">Context</text>
+      <svg viewBox="0 0 200 52" preserveAspectRatio="none" aria-hidden="true" style={{ overflow: "visible" }}>
+        <path d={path} fill={color} />
+        <text x="100" y={textY} textAnchor="middle" fill="#ffffff" fontWeight="700" fontSize="20" letterSpacing="0.5">Context</text>
       </svg>
     </div>
   );
@@ -71,7 +93,27 @@ export default function VDTemplateHoneycomb({ layout, name, email, fields, upd, 
         </div>
       )}
 
+      {/* Stacked left rails (DBR): several titled writing areas on the left */}
+      {layout.leftRails && layout.leftRails.map((rail, i) => (
+        <div
+          key={rail.key}
+          className={`vd-context vd-context--rail${activeKey === rail.key ? " vd-context--active" : ""}`}
+          style={{ top: `${11.5 + i * 29}%`, height: "26%" }}
+        >
+          <div className="vd-context__title" onClick={() => jump(rail.key)} title="Edit in the form">
+            {rail.title}
+          </div>
+          <E
+            value={fields[rail.key]}
+            onChange={(v) => upd(rail.key, v)}
+            className="vd-context__text"
+            placeholder="Click to write…"
+          />
+        </div>
+      ))}
+
       {/* Context rail (left, or bottom-left under Strategies in mixed strands) */}
+      {!layout.hideContext && !layout.leftRails && (
       <div className={`vd-context${layout.contextBottom ? " vd-context--bottom" : ""}${activeKey === "context" ? " vd-context--active" : ""}`}>
         <div className="vd-context__title" onClick={() => jump("context")} title="Edit in the form">
           {layout.contextTitle}
@@ -83,10 +125,17 @@ export default function VDTemplateHoneycomb({ layout, name, email, fields, upd, 
           placeholder="Describe the setting where your study will take place…"
         />
       </div>
+      )}
 
-      {/* Gray "Context" footballs in the gaps between hexagons (case study / action research) */}
-      {layout.contextMarkers && CTX_TAGS.map((t, i) => (
-        <ContextFootball key={`ctx-${i}`} x={t.x} y={t.y} rot={t.rot} />
+      {/* Gray "Context" markers in the gaps between hexagons (case study / action research) */}
+      {layout.contextMarkers && (layout.contextMarkerShape === "triangle" ? CTX_TRI_TAGS : CTX_TAGS).map((t, i) => (
+        <ContextFootball
+          key={`ctx-${i}`}
+          x={t.x} y={t.y} rot={t.rot}
+          color={layout.contextMarkerColor}
+          triangle={layout.contextMarkerShape === "triangle"}
+          flip={t.flip}
+        />
       ))}
 
       {/* Hexagon honeycomb */}
@@ -99,7 +148,7 @@ export default function VDTemplateHoneycomb({ layout, name, email, fields, upd, 
         return (
           <div
             key={key}
-            className={`vd-hex${isCenter ? " vd-hex--center" : ""}${isCenter && layout.centerDark ? " vd-hex--dark-center" : ""}${isQuestion ? " vd-hex--question" : ""}${key === "process_support" && layout.hasMinicases ? " vd-hex--split" : ""}${isActive ? " vd-hex--focus" : ""}`}
+            className={`vd-hex${isCenter ? " vd-hex--center" : ""}${isCenter && layout.centerDark ? " vd-hex--dark-center" : ""}${isQuestion ? " vd-hex--question" : ""}${key === "process_support" && layout.hasMinicases ? " vd-hex--split" : ""}${key === "strategies" && layout.splitStrategies ? " vd-hex--split" : ""}${isActive ? " vd-hex--focus" : ""}`}
             style={{ left: `${pos.x}%`, top: `${pos.y}%`, width: `${HEX_W}%`, height: `${HEX_H}%` }}
           >
             <svg className="vd-hex__shape" viewBox="0 0 265 231" preserveAspectRatio="none" aria-hidden="true">
@@ -108,10 +157,24 @@ export default function VDTemplateHoneycomb({ layout, name, email, fields, upd, 
                 points={hexPoints()}
                 fill={style.fill}
                 stroke={style.stroke}
-                strokeWidth={isQuestion ? 5 : 3}
+                strokeWidth={isQuestion ? 6.5 : 4}
+                vectorEffect="non-scaling-stroke"
               />
             </svg>
             <div className="vd-hex__content">
+              {isCenter && layout.centerExtra && (
+                <>
+                  <div className="vd-hex__label" style={{ color: style.labelColor }} onClick={() => jump(layout.centerExtra.key)} title="Edit in the form">
+                    {layout.centerExtra.label}
+                  </div>
+                  <E
+                    value={fields[layout.centerExtra.key]}
+                    onChange={(v) => upd(layout.centerExtra.key, v)}
+                    className="vd-hex__text vd-hex__text--extra"
+                    placeholder="Click to write…"
+                  />
+                </>
+              )}
               <div
                 className="vd-hex__label"
                 style={{ color: style.labelColor }}
@@ -130,6 +193,19 @@ export default function VDTemplateHoneycomb({ layout, name, email, fields, upd, 
           </div>
         );
       })}
+
+      {/* Split area inside the lower half of the Strategies hexagon (DBR) */}
+      {layout.splitStrategies && (
+        <div className={`vd-leftsplit${activeKey === layout.splitStrategies.key ? " vd-minicases--active" : ""}`}>
+          <div className="vd-minicases__label" onClick={() => jump(layout.splitStrategies.key)} title="Edit in the form">{layout.splitStrategies.label}</div>
+          <E
+            value={fields[layout.splitStrategies.key]}
+            onChange={(v) => upd(layout.splitStrategies.key, v)}
+            className="vd-minicases__text"
+            placeholder="Click to write…"
+          />
+        </div>
+      )}
 
       {/* Minicases (inside the lower half of the Process Support hexagon) */}
       {layout.hasMinicases && (
@@ -156,20 +232,23 @@ export default function VDTemplateHoneycomb({ layout, name, email, fields, upd, 
         />
       </div>
 
-      {/* Footer: Hopscotch 4 All logo + animated hopscotch squares + design name */}
+      {/* Footer: Hopscotch 4 All logo + animated hopscotch squares + citation */}
       {!embedded && <div className="vd-logo-row">
-        <img className="vd-logo" src="/Hopscotch-4-all-logo-alpha.png" alt="Hopscotch 4 All" />
-        <svg className="hop-grid-loader vd-logo-loader" viewBox="0 0 128 46" xmlns="http://www.w3.org/2000/svg" shapeRendering="geometricPrecision" fill="none" aria-hidden="true">
-          <rect className="hop-sq sq-1" x="0" y="0" width="18" height="22" rx="6" fill="#2B5EA7" />
-          <rect className="hop-sq sq-2" x="0" y="24" width="18" height="22" rx="6" fill="#E8618C" />
-          <rect className="hop-sq sq-3" x="22" y="12" width="18" height="22" rx="6" fill="#D94040" />
-          <rect className="hop-sq sq-4" x="44" y="0" width="18" height="22" rx="6" fill="#1A8A7D" />
-          <rect className="hop-sq sq-5" x="44" y="24" width="18" height="22" rx="6" fill="#B0A47A" />
-          <rect className="hop-sq sq-6" x="66" y="12" width="18" height="22" rx="6" fill="#00AEEF" />
-          <rect className="hop-sq sq-7" x="88" y="0" width="18" height="22" rx="6" fill="#F0B429" />
-          <rect className="hop-sq sq-8" x="88" y="24" width="18" height="22" rx="6" fill="#F5922A" />
-          <path className="hop-sq sq-9" d="M110,7 A16,16 0 0,1 110,39 Z" fill="#7B8794" />
-        </svg>
+        <div className="vd-logo-row__brand">
+          <img className="vd-logo" src="/Hopscotch-4-all-logo-alpha.png" alt="Hopscotch 4 All" />
+          <svg className="hop-grid-loader vd-logo-loader" viewBox="0 0 128 46" xmlns="http://www.w3.org/2000/svg" shapeRendering="geometricPrecision" fill="none" aria-hidden="true">
+            <rect className="hop-sq sq-1" x="0" y="0" width="18" height="22" rx="6" fill="#2B5EA7" />
+            <rect className="hop-sq sq-2" x="0" y="24" width="18" height="22" rx="6" fill="#E8618C" />
+            <rect className="hop-sq sq-3" x="22" y="12" width="18" height="22" rx="6" fill="#D94040" />
+            <rect className="hop-sq sq-4" x="44" y="0" width="18" height="22" rx="6" fill="#1A8A7D" />
+            <rect className="hop-sq sq-5" x="44" y="24" width="18" height="22" rx="6" fill="#B0A47A" />
+            <rect className="hop-sq sq-6" x="66" y="12" width="18" height="22" rx="6" fill="#00AEEF" />
+            <rect className="hop-sq sq-7" x="88" y="0" width="18" height="22" rx="6" fill="#F0B429" />
+            <rect className="hop-sq sq-8" x="88" y="24" width="18" height="22" rx="6" fill="#F5922A" />
+            <path className="hop-sq sq-9" d="M110,7 A16,16 0 0,1 110,39 Z" fill="#7B8794" />
+          </svg>
+        </div>
+        <VDCitation />
       </div>}
       {!embedded && <div className="vd-design-name">{layout.designName}</div>}
     </div>

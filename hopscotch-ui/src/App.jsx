@@ -988,19 +988,9 @@ function VisualDesignPage({ sessionId }) {
         <div className="cf-loading-card">
           <p className="cf-loading-text">Visual Design editor not available yet</p>
           <p className="cf-loading-sub">
-            The interactive editor currently supports Narrative studies. Support for {data.design_label} is
-            coming soon - meanwhile you can download your {data.design_label} visual design as a PowerPoint.
+            The interactive editor does not support {data.design_label} yet - it is coming soon.
           </p>
           <div style={{ display: "flex", gap: 10, justifyContent: "center", marginTop: 12 }}>
-            <button
-              className="cf-toolbar__btn cf-toolbar__btn--primary"
-              onClick={async () => {
-                try { await API.downloadVisualDesign(sessionId); }
-                catch (e) { alert(e.message || "Couldn't generate the visual design."); }
-              }}
-            >
-              Download PPTX
-            </button>
             <button className="hop-header__back-btn" onClick={handleClose}>Close tab</button>
           </div>
         </div>

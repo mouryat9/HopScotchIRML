@@ -9,6 +9,7 @@
 import React from "react";
 import VDTemplateHoneycomb from "./VDTemplateHoneycomb";
 import VDTemplatePentagonFlower from "./VDTemplatePentagonFlower";
+import VDCitation from "./VDCitation";
 
 // Generic qualitative strand layout used by the mixed templates (Julie's mixed
 // PPTX uses the generic labels, not a specific tradition's). Center hexagon
@@ -69,18 +70,21 @@ function Identity({ name, email }) {
 function LogoRow() {
   return (
     <div className="vd-logo-row">
-      <img className="vd-logo" src="/Hopscotch-4-all-logo-alpha.png" alt="Hopscotch 4 All" />
-      <svg className="hop-grid-loader vd-logo-loader" viewBox="0 0 128 46" xmlns="http://www.w3.org/2000/svg" shapeRendering="geometricPrecision" fill="none" aria-hidden="true">
-        <rect className="hop-sq sq-1" x="0" y="0" width="18" height="22" rx="6" fill="#2B5EA7" />
-        <rect className="hop-sq sq-2" x="0" y="24" width="18" height="22" rx="6" fill="#E8618C" />
-        <rect className="hop-sq sq-3" x="22" y="12" width="18" height="22" rx="6" fill="#D94040" />
-        <rect className="hop-sq sq-4" x="44" y="0" width="18" height="22" rx="6" fill="#1A8A7D" />
-        <rect className="hop-sq sq-5" x="44" y="24" width="18" height="22" rx="6" fill="#B0A47A" />
-        <rect className="hop-sq sq-6" x="66" y="12" width="18" height="22" rx="6" fill="#00AEEF" />
-        <rect className="hop-sq sq-7" x="88" y="0" width="18" height="22" rx="6" fill="#F0B429" />
-        <rect className="hop-sq sq-8" x="88" y="24" width="18" height="22" rx="6" fill="#F5922A" />
-        <path className="hop-sq sq-9" d="M110,7 A16,16 0 0,1 110,39 Z" fill="#7B8794" />
-      </svg>
+      <div className="vd-logo-row__brand">
+        <img className="vd-logo" src="/Hopscotch-4-all-logo-alpha.png" alt="Hopscotch 4 All" />
+        <svg className="hop-grid-loader vd-logo-loader" viewBox="0 0 128 46" xmlns="http://www.w3.org/2000/svg" shapeRendering="geometricPrecision" fill="none" aria-hidden="true">
+          <rect className="hop-sq sq-1" x="0" y="0" width="18" height="22" rx="6" fill="#2B5EA7" />
+          <rect className="hop-sq sq-2" x="0" y="24" width="18" height="22" rx="6" fill="#E8618C" />
+          <rect className="hop-sq sq-3" x="22" y="12" width="18" height="22" rx="6" fill="#D94040" />
+          <rect className="hop-sq sq-4" x="44" y="0" width="18" height="22" rx="6" fill="#1A8A7D" />
+          <rect className="hop-sq sq-5" x="44" y="24" width="18" height="22" rx="6" fill="#B0A47A" />
+          <rect className="hop-sq sq-6" x="66" y="12" width="18" height="22" rx="6" fill="#00AEEF" />
+          <rect className="hop-sq sq-7" x="88" y="0" width="18" height="22" rx="6" fill="#F0B429" />
+          <rect className="hop-sq sq-8" x="88" y="24" width="18" height="22" rx="6" fill="#F5922A" />
+          <path className="hop-sq sq-9" d="M110,7 A16,16 0 0,1 110,39 Z" fill="#7B8794" />
+        </svg>
+      </div>
+      <VDCitation />
     </div>
   );
 }
@@ -152,46 +156,110 @@ export default function VDTemplateMixed({ layout, name, email, fields, upd, E, a
     </div>
   );
 
-  /* ---- Embedded (portrait): the primary strand hosts a smaller study ---- */
+  /* ---- Embedded (portrait): the primary strand hosts a smaller study
+     rendered as a dashed hexagon cluster continuing the honeycomb ---- */
   if (variant === "embedded") {
     const quantHost = primary === "quantitative";
-    const panelFields = quantHost
+
+    // Hexagon geometry shared with the honeycomb template
+    const EMB_HEX_POINTS = "57.75,0 207.25,0 265,115.5 207.25,231 57.75,231 0,115.5";
+    // The host strand shifts left (its layout reserved room for the removed
+    // context rail) so the composition centers; the cluster follows its columns
+    const hostShift = quantHost ? 8 : 10;
+    const c1 = 47.6 - hostShift;
+    const c2 = 69 - hostShift;
+    const EMB_HEXES = quantHost
       ? [
-          { key: "question", label: "Qualitative Research Question" },
-          { key: "data_gathering", label: "Data Gathering Methods" },
-          { key: "strategies", label: "Strategies" },
+          { key: null, solid: true, x: c2, y: 0 },
+          { key: "data_gathering", label: "Data Gathering", x: c1, y: 16.6 },
+          { key: "strategies", label: "Strategies", x: c2, y: 33.3 },
+          { key: "informants", label: "Informants", x: c1, y: 49.9 },
+          { key: "context", label: "Context", x: c2, y: 66.6 },
         ]
       : [
-          { key: "mm_question", label: "Research Question" },
-          { key: "mm_data_gathering", label: "Data Gathering" },
-          { key: "data_analysis", label: "Data Analysis" },
+          { key: null, solid: true, x: c2, y: 0 },
+          { key: "mm_data_gathering", label: "Data Gathering", x: c1, y: 16.6 },
+          { key: "mm_process_support", label: "Process Support", x: c2, y: 33.3 },
+          { key: "data_analysis", label: "Analysis", x: c1, y: 49.9 },
+          { key: "sample", label: "Sample", x: c2, y: 66.6 },
         ];
+    const clusterColor = quantHost ? "#A64D79" : "#0097A7";
+    const clusterTitle = quantHost ? "Embedded Qualitative Study" : "Embedded Quantitative Study";
+    const rqKey = quantHost ? "question" : "mm_question";
+    const rqLabel = quantHost ? "Qualitative Research Question" : "Research Question";
+
     return (
       <div className="vd-diagram vd-diagram--embedded">
         <Identity name={name} email={email} />
         {title}
         <div className="vd-embedded__host-label">{quantHost ? "PRIMARY: QUANTITATIVE STUDY" : "PRIMARY: QUALITATIVE STUDY"}</div>
-        <div className="vd-embedded__host">
-          {quantHost ? quantStrand(true) : qualStrand}
+        <div className={`vd-embedded__host ${quantHost ? "vd-embedded__host--quant" : "vd-embedded__host--qual"}`}>
+          {quantHost ? quantStrand(true) : (
+            <div className="vd-mixed__strand-canvas">
+              <VDTemplateHoneycomb
+                embedded
+                layout={{ ...QUAL_STRAND_LAYOUT, hideContext: true }}
+                fields={fields}
+                upd={upd}
+                E={E}
+                activeKey={qualActive}
+                onJumpToField={onJumpToField}
+              />
+            </div>
+          )}
         </div>
-        <div className={`vd-embedded__panel ${quantHost ? "vd-embedded__panel--qual" : "vd-embedded__panel--quant"}`}>
-          <div className="vd-embedded__panel-title">
-            {quantHost ? "Embedded Qualitative Study" : "Embedded Quantitative Study"}
-          </div>
-          <div className="vd-embedded__panel-fields">
-            {panelFields.map((pf) => (
-              <div key={pf.key} className={`vd-embedded__panel-field${activeKey === pf.key ? " vd-embedded__panel-field--active" : ""}`}>
-                <div className="vd-embedded__panel-label" onClick={() => onJumpToField && onJumpToField(pf.key)} title="Edit in the form">{pf.label}</div>
-                <E
-                  value={fields[pf.key]}
-                  onChange={(v) => upd(pf.key, v)}
-                  className="vd-embedded__panel-text"
-                  placeholder="Click to write…"
+
+        {/* Embedded study: dashed hexagon cluster nesting into the honeycomb */}
+        <div className="vd-embhex" style={{ "--emb-color": clusterColor }}>
+          {/* dashed arc: from the Analysis hexagon's left tip up to the
+              Topics hexagon - the embedded results inform the understanding */}
+          <svg className="vd-embhex__arc" style={{ left: `${c1 - 29}%` }} viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+            <path d="M96,2 C20,14 20,84 96,96" stroke={clusterColor} strokeWidth="2" strokeDasharray="6 7" fill="none" vectorEffect="non-scaling-stroke" />
+          </svg>
+          <span className="vd-embhex__arc-label" style={{ left: `${c1 - 33}%` }}>Informs the understanding</span>
+
+          {EMB_HEXES.map((hx, i) => (
+            <div key={i} className="vd-embhex__hex" style={{ left: `${hx.x}%`, top: `${hx.y}%` }}>
+              <svg className="vd-embhex__shape" viewBox="0 0 265 231" preserveAspectRatio="none" aria-hidden="true">
+                <polygon
+                  points={EMB_HEX_POINTS}
+                  fill={hx.solid ? clusterColor : "#FFFFFF"}
+                  stroke={hx.solid ? clusterColor : clusterColor}
+                  strokeWidth="3"
+                  strokeDasharray="14 10"
                 />
+              </svg>
+              <div className="vd-embhex__content">
+                {hx.solid ? (
+                  <div className="vd-embhex__title">{clusterTitle}</div>
+                ) : (
+                  <>
+                    <div className="vd-embhex__label" onClick={() => onJumpToField && onJumpToField(hx.key)} title="Edit in the form">{hx.label}</div>
+                    <E
+                      value={fields[hx.key]}
+                      onChange={(v) => upd(hx.key, v)}
+                      className="vd-embhex__text"
+                      placeholder="Click to write…"
+                    />
+                  </>
+                )}
               </div>
-            ))}
+            </div>
+          ))}
+
+          {/* the embedded study's research question closes the cluster
+              (qual host: right under the Analysis hexagon) */}
+          <div className="vd-embhex__rq" style={quantHost ? { left: `${c2 - 5}%` } : { left: `${c1 - 4.5}%`, top: "85%", width: "26%" }}>
+            <span className="vd-embhex__rq-label">{rqLabel}</span>
+            <E
+              value={fields[rqKey]}
+              onChange={(v) => upd(rqKey, v)}
+              className="vd-embhex__rq-text"
+              placeholder="The question the embedded study answers…"
+            />
           </div>
         </div>
+
         <div className="vd-embedded__footer">
           <LogoRow />
           <div className="vd-design-name">{layout.designName}</div>

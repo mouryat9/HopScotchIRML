@@ -24,7 +24,7 @@
           "field_type": "single_select",
           "field_key": "design",
           "options": [
-            {"id": "descriptive", "label": "Descriptive", "description": "Describes characteristics of a population or phenomenon."},
+            {"id": "descriptive", "label": "Descriptive non-experimental", "description": "Describes characteristics of a population or phenomenon."},
             {"id": "correlational", "label": "Correlational", "description": "Examines relationships between two or more variables."},
             {"id": "cross_sectional_survey", "label": "Cross-sectional Survey", "description": "Collects data from a population at a single point in time."},
             {"id": "pre_experimental", "label": "Pre-experimental", "description": "Uses a single group with limited controls."},
