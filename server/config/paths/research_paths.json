@@ -26,12 +26,11 @@
           "options": [
             {"id": "descriptive", "label": "Descriptive non-experimental", "description": "Describes characteristics of a population or phenomenon."},
             {"id": "correlational", "label": "Correlational", "description": "Examines relationships between two or more variables."},
-            {"id": "cross_sectional_survey", "label": "Cross-sectional Survey", "description": "Collects data from a population at a single point in time."},
             {"id": "pre_experimental", "label": "Pre-experimental", "description": "Uses a single group with limited controls."},
             {"id": "quasi_experimental", "label": "Quasi-experimental", "description": "Resembles experiments but lacks random assignment."},
             {"id": "experimental", "label": "Experimental", "description": "Uses random assignment and control groups to test causality."}
           ],
-          "llm_guidance": "Help the student choose a quantitative research design. Consider their topic, goals, and feasibility. Explain the tradeoffs between descriptive, correlational, cross-sectional survey, pre-experimental, quasi-experimental, and experimental designs. Ask clarifying questions about what they want to measure or test."
+          "llm_guidance": "Help the student choose a quantitative research design. Consider their topic, goals, and feasibility. Explain the tradeoffs between descriptive, correlational, pre-experimental, quasi-experimental, and experimental designs. Ask clarifying questions about what they want to measure or test."
         },
         "5": {
           "title": "Step 5: What is my research question? (Hypothesis)",
