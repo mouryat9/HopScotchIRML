@@ -13021,8 +13021,18 @@ body.wl-dragging, body.wl-dragging * { cursor: grabbing !important; user-select:
 /* The embedded host label replaces the quant type line (edited via the form) */
 .vd-diagram--embedded .vd-mixed__quant-type { display: none; }
 
-/* The pentagon flower reaches lower than the honeycomb - less overlap */
-.vd-embedded__host--quant + .vd-embhex { margin-top: -4%; }
+/* The pentagon flower reaches lower than the honeycomb - less overlap. The
+   cluster also shifts left to line up under the pentagon (which itself is
+   translated -8%), so the Embedded Qualitative Study hex touches the
+   Control-of-Independent-Variable petal. Quant host only. */
+.vd-embedded__host--quant + .vd-embhex {
+  margin-top: -1.5%;
+  transform: translateX(-8%);
+}
+.vd-embedded__host--quant + .vd-embhex .vd-embhex__arc {
+  top: -0.5%;
+  width: 26%;
+}
 
 /* ---- DBR honeycomb extensions ---- */
 .vd-context--rail {

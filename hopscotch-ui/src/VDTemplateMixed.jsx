@@ -187,6 +187,10 @@ export default function VDTemplateMixed({ layout, name, email, fields, upd, E, a
     const clusterTitle = quantHost ? "Embedded Qualitative Study" : "Embedded Quantitative Study";
     const rqKey = quantHost ? "question" : "mm_question";
     const rqLabel = quantHost ? "Qualitative Research Question" : "Research Question";
+    // Arc position: quant host was tuned to sit tight against the cluster;
+    // the qual host keeps its column-derived placement.
+    const arcLeft = quantHost ? 10 : c1 - 29;
+    const arcLabelLeft = quantHost ? 6 : c1 - 33;
 
     return (
       <div className="vd-diagram vd-diagram--embedded">
@@ -213,10 +217,10 @@ export default function VDTemplateMixed({ layout, name, email, fields, upd, E, a
         <div className="vd-embhex" style={{ "--emb-color": clusterColor }}>
           {/* dashed arc: from the Analysis hexagon's left tip up to the
               Topics hexagon - the embedded results inform the understanding */}
-          <svg className="vd-embhex__arc" style={{ left: `${c1 - 29}%` }} viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+          <svg className="vd-embhex__arc" style={{ left: `${arcLeft}%` }} viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
             <path d="M96,2 C20,14 20,84 96,96" stroke={clusterColor} strokeWidth="2" strokeDasharray="6 7" fill="none" vectorEffect="non-scaling-stroke" />
           </svg>
-          <span className="vd-embhex__arc-label" style={{ left: `${c1 - 33}%` }}>Informs the understanding</span>
+          <span className="vd-embhex__arc-label" style={{ left: `${arcLabelLeft}%` }}>Informs the understanding</span>
 
           {EMB_HEXES.map((hx, i) => (
             <div key={i} className="vd-embhex__hex" style={{ left: `${hx.x}%`, top: `${hx.y}%` }}>
@@ -249,7 +253,7 @@ export default function VDTemplateMixed({ layout, name, email, fields, upd, E, a
 
           {/* the embedded study's research question closes the cluster
               (qual host: right under the Analysis hexagon) */}
-          <div className="vd-embhex__rq" style={quantHost ? { left: `${c2 - 5}%` } : { left: `${c1 - 4.5}%`, top: "85%", width: "26%" }}>
+          <div className="vd-embhex__rq" style={quantHost ? { left: `${c1}%`, top: "84%", width: "26%" } : { left: `${c1 - 4.5}%`, top: "85%", width: "26%" }}>
             <span className="vd-embhex__rq-label">{rqLabel}</span>
             <E
               value={fields[rqKey]}
