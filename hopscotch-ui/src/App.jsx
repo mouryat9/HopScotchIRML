@@ -586,7 +586,9 @@ function StudentApp({ onBackToDashboard }) {
     } catch (e) {
       console.error("resetSession error:", e);
       if (e.message?.includes("401")) {
-        setStatus("Session expired. Please sign out and log back in.");
+        // Token expired mid-session: cleanly log out (AuthProvider listens for
+        // this) so the user lands on the login screen instead of a broken UI.
+        window.dispatchEvent(new CustomEvent("hopscotch:unauthorized"));
       } else {
         setStatus(`Failed to reset session: ${e.message}`);
       }

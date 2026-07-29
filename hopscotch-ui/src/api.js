@@ -135,6 +135,22 @@ export const API = {
     return res.json();
   },
 
+  // Validate the stored token AND slide the session forward: /auth/refresh
+  // returns the current profile plus a fresh token whenever the current one is
+  // still valid. Distinguishes an expired/invalid token ("expired" -> caller
+  // should log out) from a transient network/server problem ("error" -> keep
+  // the session). Never throws.
+  async validateSession() {
+    try {
+      const res = await fetch(`${API_BASE}/auth/refresh`, { method: "POST", headers: authHeaders() });
+      if (res.status === 401) return { status: "expired" };
+      if (!res.ok) return { status: "error" };
+      return { status: "ok", user: await res.json() };
+    } catch {
+      return { status: "error" };
+    }
+  },
+
   // ---------- Teacher / Class Management ----------
 
   async createClass({ class_name, student_count, password }) {

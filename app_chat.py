@@ -1146,6 +1146,30 @@ def get_me(user: dict = Depends(get_current_user)):
     }
 
 
+@app.post("/auth/refresh")
+def refresh_token(user: dict = Depends(get_current_user)):
+    """Sliding session: while the current token is still valid, hand back a
+    fresh 7-day token plus the current profile (same shape as /auth/me). The
+    client swaps it in on load / tab refocus, so active users are never forced
+    to log back in. An expired token fails get_current_user with 401, which the
+    client treats as a real logout."""
+    if user.get("email"):
+        token = create_access_token({"sub": user["email"]})
+    else:
+        token = create_access_token({"sub": user["username"], "sub_type": "username"})
+    return {
+        "token": token,
+        "email": user.get("email"),
+        "username": user.get("username"),
+        "name": user["name"],
+        "role": user["role"],
+        "education_level": user.get("education_level", "high_school"),
+        "ai_enabled": _student_ai_enabled(user),
+        "access_mode": _student_class_settings(user).get("access_mode", "full"),
+        "unlocked_phase": _student_class_settings(user).get("unlocked_phase"),
+    }
+
+
 # ---------- Password reset ----------
 
 class ForgotPasswordReq(BaseModel):
