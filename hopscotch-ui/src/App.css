@@ -10121,6 +10121,10 @@ body.wl-dragging, body.wl-dragging * { cursor: grabbing !important; user-select:
 }
 
 .session-card__progress { display: flex; align-items: center; gap: 10px; }
+/* Mini hopscotch-court progress: completed steps light up in the brand
+   colors, incomplete stay neutral. Replaces the old dots row. */
+.session-card__court { height: 30px; width: auto; flex: 0 0 auto; display: block; }
+:root[data-theme="dark"] .session-card__court { filter: brightness(0.85) saturate(0.95); }
 .session-card__dots { display: flex; align-items: center; gap: 5px; flex: 1; }
 .session-card__dot {
   width: 12px; height: 12px; border-radius: 50%;

@@ -10,6 +10,45 @@ const STEP_LABELS = [
   "Data", "Analysis", "Trustworthiness", "Ethics",
 ];
 
+// Steps 1-8 as squares of the hopscotch court (same layout as the logo
+// loader); step 9 is the semicircle "home". STEP_COLORS already matches the
+// court's square colors 1:1.
+const COURT_SQUARES = [
+  { x: 0, y: 0 }, { x: 0, y: 24 },   // 1,2 pair
+  { x: 22, y: 12 },                  // 3 single
+  { x: 44, y: 0 }, { x: 44, y: 24 }, // 4,5 pair
+  { x: 66, y: 12 },                  // 6 single
+  { x: 88, y: 0 }, { x: 88, y: 24 }, // 7,8 pair
+];
+const COURT_IDLE = "#E4E9F0";
+
+function HopscotchProgress({ completed, activeStep }) {
+  const shapeProps = (n) => {
+    const done = completed.includes(n);
+    const active = activeStep === n;
+    return {
+      fill: done ? STEP_COLORS[n - 1] : COURT_IDLE,
+      stroke: active && !done ? STEP_COLORS[n - 1] : "none",
+      strokeWidth: active && !done ? 2.5 : 0,
+    };
+  };
+  return (
+    <svg className="session-card__court" viewBox="-2 -2 132 50" aria-label={`${completed.length} of 9 steps completed`}>
+      {COURT_SQUARES.map((p, i) => {
+        const n = i + 1;
+        return (
+          <rect key={n} x={p.x} y={p.y} width="18" height="22" rx="6" {...shapeProps(n)}>
+            <title>{`Step ${n}: ${STEP_LABELS[i]}${completed.includes(n) ? " (done)" : ""}`}</title>
+          </rect>
+        );
+      })}
+      <path d="M110,7 A16,16 0 0,1 110,39 Z" {...shapeProps(9)}>
+        <title>{`Step 9: ${STEP_LABELS[8]}${completed.includes(9) ? " (done)" : ""}`}</title>
+      </path>
+    </svg>
+  );
+}
+
 export default function SessionHistoryPanel({
   isOpen,
   onClose,
@@ -125,21 +164,7 @@ export default function SessionHistoryPanel({
                 </div>
 
                 <div className="session-card__progress">
-                  <div className="session-card__dots">
-                    {STEP_COLORS.map((c, si) => {
-                      const n = si + 1;
-                      const done = completed.includes(n);
-                      const active = s.active_step === n;
-                      return (
-                        <span
-                          key={n}
-                          className={`session-card__dot${done ? " session-card__dot--done" : ""}${active ? " session-card__dot--active" : ""}`}
-                          style={done ? { background: c, borderColor: c } : (active ? { borderColor: c } : {})}
-                          title={`Step ${n}: ${STEP_LABELS[si]}${done ? " (done)" : ""}`}
-                        />
-                      );
-                    })}
-                  </div>
+                  <HopscotchProgress completed={completed} activeStep={s.active_step} />
                   <span className="session-card__step-count">{completed.length}/9</span>
                 </div>
               </button>
