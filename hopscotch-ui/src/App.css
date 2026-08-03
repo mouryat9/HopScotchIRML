@@ -11537,6 +11537,12 @@ body.wl-dragging, body.wl-dragging * { cursor: grabbing !important; user-select:
   color: #0b5394;
   margin-bottom: 3px;
   cursor: pointer;
+  /* The hexagon narrows toward its top corners, but the content box is a plain
+     rectangle - long titles (e.g. "Ethnographic Research Strategies") must wrap
+     before they reach the slanted borders. */
+  max-width: 84%;
+  margin-left: auto;
+  margin-right: auto;
 }
 .vd-hex__label:hover { color: #6db33f; }
 .vd-hex--center .vd-hex__label { color: #1c4a12; }
