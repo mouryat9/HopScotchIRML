@@ -8,7 +8,7 @@ import ProfileMenu from "./ProfileMenu";
 import SettingsModal from "./SettingsModal";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, Legend, LabelList,
+  Cell,
 } from "recharts";
 
 const STEP_LABELS = [
@@ -106,8 +106,33 @@ export default function TeacherDashboard({ onOpenDesigns }) {
         if (!cancelled) setLoadingClasses(false);
       }
     })();
+    // Sessions feed the per-class progress/activity shown on the class cards
+    loadSessions();
     return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Per-class stats for the card grid: average progress + last activity
+  const classStats = useMemo(() => {
+    const byCode = {};
+    for (const s of sessions) {
+      if (!s.class_code || !s.session_id) continue;
+      const entry = byCode[s.class_code] || { pcts: [], last: "" };
+      entry.pcts.push(((s.completed_steps || []).length / 9) * 100);
+      const ts = s.updated_at || s.created_at || "";
+      if (ts > entry.last) entry.last = ts;
+      byCode[s.class_code] = entry;
+    }
+    const out = {};
+    for (const [code, e] of Object.entries(byCode)) {
+      out[code] = {
+        avg: e.pcts.length ? Math.round(e.pcts.reduce((a, b) => a + b, 0) / e.pcts.length) : 0,
+        active: e.pcts.length,
+        last: e.last,
+      };
+    }
+    return out;
+  }, [sessions]);
 
   async function loadSessions() {
     setLoadingSessions(true);
@@ -266,18 +291,67 @@ export default function TeacherDashboard({ onOpenDesigns }) {
 
   // Summary stats
   const totalStudents = classes.reduce((sum, c) => sum + (c.students?.length || 0), 0);
-  const filteredSessions = progressFilter === "all"
-    ? sessions
-    : sessions.filter((s) => s.class_code === progressFilter);
 
-  // Table rows: class-filtered sessions further narrowed by the student search
+  // Actionable dashboard tiles: who's working, who needs feedback, who finished
+  const [progressFocus, setProgressFocus] = useState(null); // null | "week" | "feedback" | "done"
+  const WEEK_MS = 7 * 24 * 3600 * 1000;
+  const isThisWeek = (s) => {
+    const ts = s.updated_at || s.created_at;
+    if (!ts) return false;
+    return Date.now() - new Date(ts.endsWith("Z") ? ts : ts + "Z").getTime() < WEEK_MS;
+  };
+  const needsFeedback = (s) =>
+    !!s.session_id && (s.completed_steps || []).length > 0 &&
+    (!s.last_feedback_at || (s.updated_at || "") > s.last_feedback_at);
+  const isDone = (s) => (s.completed_steps || []).length === 9;
+  const dashStats = useMemo(() => ({
+    week: sessions.filter((s) => s.session_id && isThisWeek(s)).length,
+    feedback: sessions.filter(needsFeedback).length,
+    done: sessions.filter(isDone).length,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [sessions]);
+
+  const focusFiltered = (list) => {
+    if (progressFocus === "week") return list.filter((s) => s.session_id && isThisWeek(s));
+    if (progressFocus === "feedback") return list.filter(needsFeedback);
+    if (progressFocus === "done") return list.filter(isDone);
+    return list;
+  };
+  const filteredSessions = focusFiltered(progressFilter === "all"
+    ? sessions
+    : sessions.filter((s) => s.class_code === progressFilter));
+
+  // Chart click-to-filter: charts drive the student table below
+  const [chartFilter, setChartFilter] = useState(null); // {type:"step",step} | {type:"band",code,name,band}
+  const BAND_LABELS = ["Not started", "Steps 1-3", "Steps 4-6", "Steps 7-9"];
+  const BAND_COLORS = ["#B9C2CE", "#F0B429", "#00AEEF", "#1A8A7D"];
+  const firstIncomplete = (s) => {
+    const done = s.completed_steps || [];
+    for (let n = 1; n <= 9; n++) if (!done.includes(n)) return n;
+    return 10; // finished
+  };
+  const bandOf = (count) => (count === 0 ? 0 : count <= 3 ? 1 : count <= 6 ? 2 : 3);
+  const applyChartFilter = (list) => {
+    if (!chartFilter) return list;
+    if (chartFilter.type === "step") {
+      return list.filter((s) => s.session_id && firstIncomplete(s) === chartFilter.step);
+    }
+    return list.filter((s) =>
+      (!chartFilter.code || s.class_code === chartFilter.code) &&
+      bandOf((s.completed_steps || []).length) === chartFilter.band);
+  };
+
+  // Table rows: class-filtered sessions narrowed by chart clicks + search.
+  // (Charts read filteredSessions, so clicking a chart filters the TABLE
+  // without the chart filtering itself.)
   const sq = studentQuery.trim().toLowerCase();
+  const chartFiltered = applyChartFilter(filteredSessions);
   const tableSessions = sq
-    ? filteredSessions.filter((s) =>
+    ? chartFiltered.filter((s) =>
         (s.user?.name || "").toLowerCase().includes(sq) ||
         (s.user?.username || "").toLowerCase().includes(sq) ||
         (s.user?.email || "").toLowerCase().includes(sq))
-    : filteredSessions;
+    : chartFiltered;
 
   // Unique class codes from sessions for filter dropdown
   const sessionClassCodes = [...new Set(sessions.map((s) => s.class_code).filter(Boolean))];
@@ -287,12 +361,29 @@ export default function TeacherDashboard({ onOpenDesigns }) {
     if (filteredSessions.length === 0) return null;
 
     // 1. Step completion: how many students completed each step
+    const started = filteredSessions.filter((s) => s.session_id);
     const stepCompletion = STEP_LABELS.map((label, i) => ({
       step: `S${i + 1}`,
+      stepNum: i + 1,
       fullLabel: `Step ${i + 1}: ${label}`,
       students: filteredSessions.filter((s) => (s.completed_steps || []).includes(i + 1)).length,
+      pct: started.length ? filteredSessions.filter((s) => (s.completed_steps || []).includes(i + 1)).length / started.length : 0,
       color: STEP_COLORS[i],
     }));
+
+    // Bottleneck: the step most students are currently working on
+    const curCounts = Array(11).fill(0);
+    for (const s of started) {
+      const done = s.completed_steps || [];
+      let cur = 10;
+      for (let n = 1; n <= 9; n++) if (!done.includes(n)) { cur = n; break; }
+      curCounts[cur]++;
+    }
+    let bottleneck = null;
+    for (let n = 1; n <= 9; n++) {
+      if (curCounts[n] > 0 && (bottleneck === null || curCounts[n] > curCounts[bottleneck])) bottleneck = n;
+    }
+    const bottleneckCount = bottleneck ? curCounts[bottleneck] : 0;
 
     // 2. Progress distribution: bucket students into ranges
     const buckets = { "Not Started": 0, "1-3 Steps": 0, "4-6 Steps": 0, "7-9 Steps": 0 };
@@ -308,11 +399,12 @@ export default function TeacherDashboard({ onOpenDesigns }) {
       name, value, color: PIE_COLORS[i],
     })).filter((d) => d.value > 0);
 
-    // 3. Class average progress - last 5 most recently active classes
+    // 3. Per-class progress distribution (stacked bands) - averages hide the
+    // spread, so each class row shows how its students are distributed
     const classGroups = {};
     sessions.forEach((s) => {
       const key = s.class_name || s.class_code || "Unknown";
-      if (!classGroups[key]) classGroups[key] = { counts: [], latest: null };
+      if (!classGroups[key]) classGroups[key] = { counts: [], latest: null, code: s.class_code || "" };
       classGroups[key].counts.push((s.completed_steps || []).length);
       const ts = s.updated_at || s.created_at;
       if (ts && (!classGroups[key].latest || ts > classGroups[key].latest)) {
@@ -321,16 +413,21 @@ export default function TeacherDashboard({ onOpenDesigns }) {
     });
     // Show ALL classes (scales to many), sorted by average progress
     const classAvg = Object.entries(classGroups)
-      .map(([name, { counts, latest }]) => ({
+      .map(([name, { counts, latest, code }]) => ({
         name,
+        code,
         avg: Math.round((counts.reduce((a, b) => a + b, 0) / counts.length) * 10) / 10,
         students: counts.length,
         latest,
+        b0: counts.filter((c) => c === 0).length,
+        b1: counts.filter((c) => c >= 1 && c <= 3).length,
+        b2: counts.filter((c) => c >= 4 && c <= 6).length,
+        b3: counts.filter((c) => c >= 7).length,
       }))
       .sort((a, b) => b.avg - a.avg || (b.latest || "").localeCompare(a.latest || ""));
 
     const totalStudents = filteredSessions.length;
-    return { stepCompletion, progressDist, classAvg, totalStudents };
+    return { stepCompletion, progressDist, classAvg, totalStudents, bottleneck, bottleneckCount, startedCount: started.length };
   }, [filteredSessions, sessions]);
 
   const NAV_ITEMS = [
@@ -343,7 +440,7 @@ export default function TeacherDashboard({ onOpenDesigns }) {
   ];
   const pageTitle = tab === "classes" ? "My Classes" : "Student Progress";
   const pageSub = tab === "classes"
-    ? "Create classes, share logins, and control each class's AI access."
+    ? `${classes.length} ${classes.length === 1 ? "class" : "classes"} · ${totalStudents} ${totalStudents === 1 ? "student" : "students"} - create classes, share logins, and control AI access.`
     : "Track how your students are progressing through the 9-step research design.";
 
   return (
@@ -398,35 +495,38 @@ export default function TeacherDashboard({ onOpenDesigns }) {
           </div>
         </header>
 
-      {/* ── Summary stats ── */}
+      {/* ── Actionable tiles: who's working, who needs feedback, who finished ── */}
       <div className="td-stats">
-        <div className="td-stats__card">
+        <button className="td-stats__card td-stats__card--action" onClick={() => { setProgressFocus("week"); handleTabChange("progress"); }}>
           <span className="td-stats__icon td-stats__icon--blue">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-          </span>
-          <div className="td-stats__text">
-            <span className="td-stats__number">{classes.length}</span>
-            <span className="td-stats__label">Classes</span>
-          </div>
-        </div>
-        <div className="td-stats__card">
-          <span className="td-stats__icon td-stats__icon--green">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-          </span>
-          <div className="td-stats__text">
-            <span className="td-stats__number">{totalStudents}</span>
-            <span className="td-stats__label">Students</span>
-          </div>
-        </div>
-        <div className="td-stats__card">
-          <span className="td-stats__icon td-stats__icon--amber">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
           </span>
           <div className="td-stats__text">
-            <span className="td-stats__number">{sessions.length}</span>
-            <span className="td-stats__label">Active Sessions</span>
+            <span className="td-stats__number">{dashStats.week}</span>
+            <span className="td-stats__label">Active this week</span>
+            <span className="td-stats__hint">students working in the last 7 days</span>
           </div>
-        </div>
+        </button>
+        <button className="td-stats__card td-stats__card--action" onClick={() => { setProgressFocus("feedback"); handleTabChange("progress"); }}>
+          <span className="td-stats__icon td-stats__icon--amber">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          </span>
+          <div className="td-stats__text">
+            <span className="td-stats__number">{dashStats.feedback}</span>
+            <span className="td-stats__label">Awaiting your feedback</span>
+            <span className="td-stats__hint">progressed since you last commented</span>
+          </div>
+        </button>
+        <button className="td-stats__card td-stats__card--action" onClick={() => { setProgressFocus("done"); handleTabChange("progress"); }}>
+          <span className="td-stats__icon td-stats__icon--green">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          </span>
+          <div className="td-stats__text">
+            <span className="td-stats__number">{dashStats.done}</span>
+            <span className="td-stats__label">Designs completed</span>
+            <span className="td-stats__hint">all 9 steps finished</span>
+          </div>
+        </button>
       </div>
 
       {/* ── Content ── */}
@@ -481,49 +581,78 @@ export default function TeacherDashboard({ onOpenDesigns }) {
                   return <div className="td-empty">No classes match “{classQuery}”.</div>;
                 }
                 return (
-              <div className="td-classlist">
-                <div className="td-classlist__head">
-                  <span className="td-classlist__col td-classlist__col--name">Class</span>
-                  <span className="td-classlist__col td-classlist__col--students">Students</span>
-                  <span className="td-classlist__col td-classlist__col--ai">AI Assistant</span>
-                  <span className="td-classlist__col td-classlist__col--actions" />
-                </div>
-                {!loadingClasses && shown.map((cls) => {
+              <div className="tdc-grid">
+                {!loadingClasses && shown.map((cls, ci) => {
                   const students = cls.students || [];
                   const aiOn = cls.settings?.ai_enabled ?? true;
                   const saving = savingSettings === cls.class_id;
+                  const COURT = ["#2B5EA7", "#E8618C", "#D94040", "#1A8A7D", "#B0A47A", "#00AEEF", "#F0B429", "#F5922A", "#7B8794"];
+                  let h = 0;
+                  for (let i = 0; i < (cls.class_code || "").length; i++) h = (h * 31 + cls.class_code.charCodeAt(i)) >>> 0;
+                  const accent = COURT[h % COURT.length];
+                  const stats = classStats[cls.class_code];
+                  const shownAvatars = students.slice(0, 4);
                   return (
-                    <div className="td-classrow" key={cls.class_id}>
-                      <button className="td-classrow__name" onClick={() => setDetailClass(cls)}>
-                        <span className="td-classrow__title" title={cls.class_name}>{cls.class_name}</span>
-                      </button>
+                    <div className="tdc-card" key={cls.class_id} style={{ "--tdc-accent": accent }}>
+                      <div className="tdc-card__stripe" />
+                      <div className="tdc-card__body">
+                        <div className="tdc-card__top">
+                          <button className="tdc-card__name" onClick={() => setDetailClass(cls)} title={`Manage ${cls.class_name}`}>
+                            {cls.class_name}
+                          </button>
+                          <button
+                            type="button"
+                            className={`tdc-ai${aiOn ? " tdc-ai--on" : ""}`}
+                            role="switch"
+                            aria-checked={aiOn}
+                            disabled={saving}
+                            onClick={() => toggleClassAI(cls)}
+                            title="Toggle the AI assistant for this class"
+                          >
+                            <span className="tdc-ai__dot" />
+                            {saving ? "…" : aiOn ? "AI on" : "AI off"}
+                          </button>
+                        </div>
 
-                      <span className="td-classrow__students">{students.length} students</span>
+                        <div className="tdc-card__students">
+                          <span className="tdc-avatars">
+                            {shownAvatars.map((st, si) => (
+                              <span className="tdc-avatar" key={st.username || si} style={{ background: COURT[(h + si) % COURT.length] }} title={st.username || st.name}>
+                                {(st.username || st.name || "?").slice(-2)}
+                              </span>
+                            ))}
+                            {students.length > 4 && <span className="tdc-avatar tdc-avatar--more">+{students.length - 4}</span>}
+                          </span>
+                          <span className="tdc-card__count">{students.length} student{students.length === 1 ? "" : "s"}</span>
+                        </div>
 
-                      <div className="td-classrow__ai">
-                        <button
-                          type="button"
-                          className={`td-switch${aiOn ? " td-switch--on" : ""}`}
-                          role="switch"
-                          aria-checked={aiOn}
-                          aria-label="Toggle AI assistant for this class"
-                          disabled={saving}
-                          onClick={() => toggleClassAI(cls)}
-                        >
-                          <span className="td-switch__track"><span className="td-switch__thumb" /></span>
-                          <span className="td-switch__state">{saving ? "…" : aiOn ? "On" : "Off"}</span>
-                        </button>
-                      </div>
+                        <div className="tdc-card__progress">
+                          <div className="tdc-bar" role="img" aria-label={stats ? `${stats.avg}% average progress` : "No activity yet"}>
+                            <div className="tdc-bar__fill" style={{ width: `${stats ? stats.avg : 0}%` }} />
+                          </div>
+                          <span className="tdc-card__pct">
+                            {stats ? `${stats.avg}% avg` : "No activity yet"}
+                          </span>
+                        </div>
 
-                      <div className="td-classrow__actions">
-                        <button className="td-btn td-btn--ghost td-btn--sm" onClick={() => setDetailClass(cls)}>
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 5 }}><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
-                          Manage
-                        </button>
-                        <button className="td-btn td-btn--ghost td-btn--sm" onClick={() => handlePrintCredentials(cls)}>
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 5 }}><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
-                          Print
-                        </button>
+                        <div className="tdc-card__meta">
+                          <span className="tdc-card__code">code {cls.class_code}</span>
+                          {stats?.last && <span>· active {timeAgo(stats.last)}</span>}
+                        </div>
+
+                        <div className="tdc-card__actions">
+                          <button className="tdc-act" onClick={() => setDetailClass(cls)}>
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                            Manage
+                          </button>
+                          <button className="tdc-act" onClick={() => { setProgressFilter(cls.class_code); handleTabChange("progress"); }}>
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                            Progress
+                          </button>
+                          <button className="tdc-act tdc-act--icon" onClick={() => handlePrintCredentials(cls)} title="Print login credentials" aria-label="Print login credentials">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                          </button>
+                        </div>
                       </div>
                     </div>
                   );
@@ -556,6 +685,20 @@ export default function TeacherDashboard({ onOpenDesigns }) {
                     </select>
                   </>
                 )}
+                {progressFocus && (
+                  <button className="td-focus-chip" onClick={() => setProgressFocus(null)} title="Clear this filter">
+                    {progressFocus === "week" ? "Active this week" : progressFocus === "feedback" ? "Awaiting your feedback" : "Designs completed"}
+                    <span aria-hidden="true">×</span>
+                  </button>
+                )}
+                {chartFilter && (
+                  <button className="td-focus-chip" onClick={() => setChartFilter(null)} title="Clear this filter">
+                    {chartFilter.type === "step"
+                      ? `Working on Step ${chartFilter.step}: ${STEP_LABELS[chartFilter.step - 1]}`
+                      : `${chartFilter.name} · ${BAND_LABELS[chartFilter.band]}`}
+                    <span aria-hidden="true">×</span>
+                  </button>
+                )}
               </div>
             )}
 
@@ -571,7 +714,17 @@ export default function TeacherDashboard({ onOpenDesigns }) {
                     <span className="td-chart-card__ic"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span>
                     Step Completion Overview
                   </h3>
-                  <p className="td-chart-card__desc">Number of students who completed each step</p>
+                  <p className="td-chart-card__desc">Students who completed each step - click a bar to see who's working on it</p>
+                  {chartData.bottleneck && chartData.bottleneckCount > 1 && (
+                    <button
+                      className="td-bottleneck"
+                      onClick={() => setChartFilter({ type: "step", step: chartData.bottleneck })}
+                      title="Show these students in the table below"
+                    >
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+                      Most students ({chartData.bottleneckCount}) are working on Step {chartData.bottleneck}: {STEP_LABELS[chartData.bottleneck - 1]}
+                    </button>
+                  )}
                   <ResponsiveContainer width="100%" height={220}>
                     <BarChart data={chartData.stepCompletion} margin={{ top: 8, right: 8, bottom: 4, left: -16 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="var(--hop-border)" />
@@ -581,7 +734,12 @@ export default function TeacherDashboard({ onOpenDesigns }) {
                         formatter={(val, _, props) => [`${val} students`, props.payload.fullLabel]}
                         contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid var(--hop-border)" }}
                       />
-                      <Bar dataKey="students" radius={[4, 4, 0, 0]}>
+                      <Bar
+                        dataKey="students"
+                        radius={[4, 4, 0, 0]}
+                        cursor="pointer"
+                        onClick={(d) => d && setChartFilter({ type: "step", step: d.payload.stepNum })}
+                      >
                         {chartData.stepCompletion.map((entry, i) => (
                           <Cell key={i} fill={entry.color} />
                         ))}
@@ -590,32 +748,60 @@ export default function TeacherDashboard({ onOpenDesigns }) {
                   </ResponsiveContainer>
                 </div>
 
-                {/* Progress Distribution Donut */}
+                {/* Class hopscotch court: each square lights up with the share
+                    of the class that completed that step */}
                 <div className="td-chart-card td-chart-card--green">
                   <h3 className="td-chart-card__title">
-                    <span className="td-chart-card__ic"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg></span>
-                    Progress Distribution
+                    <span className="td-chart-card__ic"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/></svg></span>
+                    Class Hopscotch Court
                   </h3>
-                  <p className="td-chart-card__desc">Where students are in the 9-step process</p>
-                  <ResponsiveContainer width="100%" height={220}>
-                    <PieChart>
-                      <Pie
-                        data={chartData.progressDist}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={50}
-                        outerRadius={80}
-                        paddingAngle={3}
-                        dataKey="value"
-                      >
-                        {chartData.progressDist.map((entry, i) => (
-                          <Cell key={i} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <Tooltip formatter={(val) => [`${val} students`]} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
-                      <Legend iconType="circle" wrapperStyle={{ fontSize: 11 }} />
-                    </PieChart>
-                  </ResponsiveContainer>
+                  <p className="td-chart-card__desc">The brighter a square, the more of the class completed that step - click one to see who's on it</p>
+                  <div className="td-court">
+                    <svg viewBox="-2 -8 132 62" className="td-court__svg" aria-label="Class step completion court">
+                      {[
+                        { x: 0, y: 0 }, { x: 0, y: 24 }, { x: 22, y: 12 }, { x: 44, y: 0 },
+                        { x: 44, y: 24 }, { x: 66, y: 12 }, { x: 88, y: 0 }, { x: 88, y: 24 },
+                      ].map((p, i) => {
+                        const e = chartData.stepCompletion[i];
+                        return (
+                          <g key={i} className="td-court__sq" onClick={() => setChartFilter({ type: "step", step: i + 1 })}>
+                            <rect x={p.x} y={p.y} width="18" height="22" rx="6"
+                              fill={e.color} fillOpacity={0.14 + 0.86 * e.pct}
+                              stroke={e.color} strokeWidth="1.2" strokeOpacity="0.75">
+                              <title>{`${e.fullLabel} - ${Math.round(e.pct * 100)}% of the class completed`}</title>
+                            </rect>
+                            <text x={p.x + 9} y={p.y + 11} textAnchor="middle" dominantBaseline="central" fontSize="6.5" fontWeight="700"
+                              fill={e.pct > 0.55 ? "#fff" : "var(--hop-ink-secondary)"} pointerEvents="none">
+                              {Math.round(e.pct * 100)}%
+                            </text>
+                          </g>
+                        );
+                      })}
+                      {(() => {
+                        const e = chartData.stepCompletion[8];
+                        return (
+                          <g className="td-court__sq" onClick={() => setChartFilter({ type: "step", step: 9 })}>
+                            <path d="M110,7 A16,16 0 0,1 110,39 Z"
+                              fill={e.color} fillOpacity={0.14 + 0.86 * e.pct}
+                              stroke={e.color} strokeWidth="1.2" strokeOpacity="0.75">
+                              <title>{`${e.fullLabel} - ${Math.round(e.pct * 100)}% of the class completed`}</title>
+                            </path>
+                            <text x="116.8" y="23" textAnchor="middle" dominantBaseline="central" fontSize="6.5" fontWeight="700"
+                              fill={e.pct > 0.55 ? "#fff" : "var(--hop-ink-secondary)"} pointerEvents="none">
+                              {Math.round(e.pct * 100)}%
+                            </text>
+                          </g>
+                        );
+                      })()}
+                    </svg>
+                    <div className="td-court__legend">
+                      {STEP_LABELS.map((l, i) => (
+                        <span key={i} className="td-court__leg" style={{ "--leg": STEP_COLORS[i] }}>
+                          <span className="td-court__leg-dot" />S{i + 1} {l}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
                 </div>
 
                 {/* Class Average Progress - horizontal bars, scales to any number of classes */}
@@ -626,18 +812,25 @@ export default function TeacherDashboard({ onOpenDesigns }) {
                       Average Progress by Class
                     </h3>
                     <p className="td-chart-card__desc">
-                      Average steps completed per class · {chartData.classAvg.length} classes (sorted, scroll for more)
+                      How each class's students are spread across the journey · {chartData.classAvg.length} classes (sorted by average, click a segment to see those students)
                     </p>
+                    <div className="td-band-legend">
+                      {BAND_LABELS.map((l, i) => (
+                        <span key={l} className="td-band-legend__item">
+                          <span className="td-band-legend__dot" style={{ background: BAND_COLORS[i] }} />{l}
+                        </span>
+                      ))}
+                    </div>
                     <div className="td-chart-scroll" style={{ maxHeight: 320, overflowY: chartData.classAvg.length > 8 ? "auto" : "visible" }}>
                       <ResponsiveContainer width="100%" height={Math.max(160, chartData.classAvg.length * 34 + 20)}>
                         <BarChart
                           layout="vertical"
                           data={chartData.classAvg}
-                          margin={{ top: 4, right: 40, bottom: 4, left: 8 }}
+                          margin={{ top: 4, right: 24, bottom: 4, left: 8 }}
                           barCategoryGap="22%"
                         >
                           <CartesianGrid strokeDasharray="3 3" stroke="var(--hop-border)" horizontal={false} />
-                          <XAxis type="number" domain={[0, 9]} ticks={[0, 3, 6, 9]} tick={{ fontSize: 11, fill: "var(--hop-muted)" }} />
+                          <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11, fill: "var(--hop-muted)" }} />
                           <YAxis
                             type="category" dataKey="name" width={130}
                             tick={{ fontSize: 11, fill: "var(--hop-ink-secondary)" }}
@@ -645,12 +838,24 @@ export default function TeacherDashboard({ onOpenDesigns }) {
                             tickFormatter={(n) => (n.length > 18 ? n.slice(0, 17) + "…" : n)}
                           />
                           <Tooltip
-                            formatter={(val, _, props) => [`${val} of 9 avg steps · ${props.payload.students} students`, props.payload.name]}
+                            formatter={(val, key, props) => {
+                              const idx = { b0: 0, b1: 1, b2: 2, b3: 3 }[key];
+                              return [`${val} student${val === 1 ? "" : "s"}`, `${props.payload.name} · ${BAND_LABELS[idx]}`];
+                            }}
                             contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid var(--hop-border)" }}
                           />
-                          <Bar dataKey="avg" fill="#7C8AA0" radius={[0, 6, 6, 0]} maxBarSize={22}>
-                            <LabelList dataKey="avg" position="right" style={{ fontSize: 11, fontWeight: 700, fill: "var(--hop-ink-secondary)" }} />
-                          </Bar>
+                          {["b0", "b1", "b2", "b3"].map((key, bi) => (
+                            <Bar
+                              key={key}
+                              dataKey={key}
+                              stackId="bands"
+                              fill={BAND_COLORS[bi]}
+                              maxBarSize={22}
+                              cursor="pointer"
+                              radius={bi === 3 ? [0, 6, 6, 0] : 0}
+                              onClick={(d) => d && setChartFilter({ type: "band", code: d.payload.code, name: d.payload.name, band: bi })}
+                            />
+                          ))}
                         </BarChart>
                       </ResponsiveContainer>
                     </div>

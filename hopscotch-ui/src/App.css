@@ -9017,7 +9017,8 @@ body.wl-dragging, body.wl-dragging * { cursor: grabbing !important; user-select:
 
 /* Sidebar: cleaner active state + spacing */
 .td-sidebar { padding: 20px 14px; }
-.td-sidebar__item { border-radius: 12px; font-weight: 700; }
+.td-sidebar__item { border-radius: 12px; font-weight: 500; }
+.td-sidebar__item--active { font-weight: 650; }
 .td-sidebar__item--active {
   background: rgba(43, 76, 126, 0.10);
   color: var(--hop-navy, #2B4C7E);
@@ -13446,3 +13447,206 @@ body.wl-dragging, body.wl-dragging * { cursor: grabbing !important; user-select:
 
 /* During teacher PDF capture: undo the fit-to-pane zoom so pages render full size */
 .sdv-vd__stage--capture { zoom: 1; }
+
+/* ============================================================
+   Teacher dashboard: class card grid (My Classes)
+   ============================================================ */
+.tdc-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  gap: 16px;
+}
+.tdc-card {
+  position: relative;
+  background: var(--hop-surface, #fff);
+  border: 1px solid var(--hop-border);
+  border-radius: 14px;
+  overflow: hidden;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s;
+}
+.tdc-card:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--tdc-accent) 45%, var(--hop-border));
+  box-shadow: 0 12px 28px -12px rgba(20, 35, 60, 0.25);
+}
+.tdc-card__stripe { height: 6px; background: var(--tdc-accent); }
+.tdc-card__body { padding: 14px 16px 12px; display: flex; flex-direction: column; gap: 10px; }
+.tdc-card__top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.tdc-card__name {
+  font: inherit;
+  font-size: 1.02rem;
+  font-weight: 750;
+  color: var(--hop-ink);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tdc-card__name:hover { color: var(--tdc-accent); }
+.tdc-ai {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--hop-border);
+  background: var(--hop-bg);
+  color: var(--hop-muted);
+  cursor: pointer;
+  transition: background 0.18s, color 0.18s, border-color 0.18s;
+}
+.tdc-ai__dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; opacity: 0.6; }
+.tdc-ai--on { background: #E5F5E9; border-color: #b9e2c4; color: #157A3A; }
+.tdc-ai--on .tdc-ai__dot { opacity: 1; }
+:root[data-theme="dark"] .tdc-ai--on { background: rgba(21,122,58,0.2); border-color: rgba(94,203,133,0.35); color: #5ecb85; }
+.tdc-card__students { display: flex; align-items: center; gap: 10px; }
+.tdc-avatars { display: flex; }
+.tdc-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 0.6rem;
+  font-weight: 800;
+  border: 2px solid var(--hop-surface, #fff);
+  margin-left: -6px;
+}
+.tdc-avatar:first-child { margin-left: 0; }
+.tdc-avatar--more { background: var(--hop-bg); color: var(--hop-ink-secondary); }
+.tdc-card__count { font-size: 0.8rem; color: var(--hop-ink-secondary); font-weight: 600; }
+.tdc-card__progress { display: flex; align-items: center; gap: 10px; }
+.tdc-bar { flex: 1; height: 6px; border-radius: 999px; background: var(--hop-bg); overflow: hidden; }
+.tdc-bar__fill { height: 100%; border-radius: 999px; background: var(--tdc-accent); transition: width 0.5s ease; }
+.tdc-card__pct { flex-shrink: 0; font-size: 0.74rem; font-weight: 700; color: var(--hop-ink-secondary); }
+.tdc-card__meta { font-size: 0.72rem; color: var(--hop-muted); display: flex; gap: 5px; }
+.tdc-card__code { font-weight: 600; }
+.tdc-card__actions {
+  display: flex;
+  gap: 8px;
+  border-top: 1px solid var(--hop-border);
+  padding-top: 10px;
+  margin-top: 2px;
+}
+.tdc-act {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 650;
+  padding: 6px 0;
+  border-radius: 8px;
+  border: 1px solid var(--hop-border);
+  background: none;
+  color: var(--hop-ink-secondary);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.tdc-act:hover { background: var(--hop-bg); color: var(--hop-ink); border-color: var(--hop-border-strong, var(--hop-border)); }
+.tdc-act--icon { flex: 0 0 34px; }
+
+/* Actionable dashboard tiles + focus chip */
+.td-stats__card--action {
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s;
+}
+.td-stats__card--action:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px -12px rgba(20, 35, 60, 0.22);
+}
+.td-stats__hint {
+  display: block;
+  font-size: 0.7rem;
+  color: var(--hop-muted);
+  margin-top: 1px;
+}
+.td-focus-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 650;
+  color: var(--hop-blue, #2B5EA7);
+  background: rgba(43, 94, 167, 0.09);
+  border: 1px solid rgba(43, 94, 167, 0.25);
+  border-radius: 999px;
+  padding: 4px 12px;
+  cursor: pointer;
+  margin-left: 10px;
+}
+.td-focus-chip span { opacity: 0.65; font-size: 0.9rem; }
+.td-focus-chip:hover span { opacity: 1; }
+
+/* Progress charts: bottleneck pill, class court heatmap, band legend */
+.td-bottleneck {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 650;
+  color: #A16A08;
+  background: #FCF2DB;
+  border: 1px solid #f0dcae;
+  border-radius: 999px;
+  padding: 4px 12px;
+  margin: 2px 0 8px;
+  cursor: pointer;
+  transition: filter 0.15s;
+}
+.td-bottleneck:hover { filter: brightness(0.97); }
+:root[data-theme="dark"] .td-bottleneck { background: rgba(161,106,8,0.2); border-color: rgba(236,192,106,0.35); color: #ecc06a; }
+.td-court { display: flex; flex-direction: column; gap: 10px; padding-top: 6px; }
+.td-court__svg { width: 100%; max-height: 210px; }
+.td-court__sq { cursor: pointer; }
+.td-court__sq:hover rect, .td-court__sq:hover path { stroke-width: 2.4; stroke-opacity: 1; }
+.td-court__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+.td-court__leg {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--hop-ink-secondary);
+}
+.td-court__leg-dot { width: 8px; height: 8px; border-radius: 3px; background: var(--leg); }
+.td-band-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 2px 0 8px; }
+.td-band-legend__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--hop-ink-secondary);
+}
+.td-band-legend__dot { width: 9px; height: 9px; border-radius: 3px; }
+
+/* Recharts marks its surface focusable (tabindex) - suppress the browser's
+   blue focus ring on mouse clicks, keep it for keyboard navigation */
+.td-chart-card .recharts-wrapper:focus:not(:focus-visible),
+.td-chart-card .recharts-surface:focus:not(:focus-visible),
+.td-chart-card svg:focus:not(:focus-visible),
+.td-chart-card g:focus:not(:focus-visible),
+.td-chart-card path:focus:not(:focus-visible) {
+  outline: none;
+}

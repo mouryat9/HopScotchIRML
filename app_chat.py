@@ -1422,8 +1422,14 @@ def get_teacher_student_sessions(user: dict = Depends(get_current_user)):
             if data:
                 completed.append(step_num)
         s["completed_steps"] = completed
-        # Remove step_notes from response (bulky)
+        # When the teacher last left feedback (drives the "awaiting your
+        # feedback" dashboard tile)
+        fb = s.get("teacher_feedback") or []
+        s["last_feedback_at"] = max((f.get("created_at", "") for f in fb), default=None) or None
+        # Remove bulky fields from the response
         s.pop("step_notes", None)
+        s.pop("teacher_feedback", None)
+        s.pop("chat", None)
     return {"sessions": sessions}
 
 
