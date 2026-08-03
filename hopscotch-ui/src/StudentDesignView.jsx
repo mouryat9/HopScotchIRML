@@ -1,6 +1,11 @@
 // src/StudentDesignView.jsx - Read-only view of a student's research design (teacher overlay)
 import React, { useEffect, useState } from "react";
+import html2canvas from "html2canvas";
+import { jsPDF } from "jspdf";
 import { API } from "./api";
+import { notify } from "./Toast";
+import VisualDesignReadOnly from "./VisualDesignReadOnly";
+import ConceptualFrameworkReadOnly from "./ConceptualFrameworkReadOnly";
 
 const STEP_LABELS = [
   "Worldview", "Topic & Goals", "Framework", "Design", "Research Questions",
@@ -100,6 +105,37 @@ export default function StudentDesignView({ sessionId, studentName, className: c
   const [downloading, setDownloading] = useState(null); // "pdf" | "cf" | null
   const [downloadError, setDownloadError] = useState("");
 
+  // Embedded design views (teacher sees the diagrams next to feedback)
+  const [contentView, setContentView] = useState("steps"); // "steps" | "visual" | "cf"
+  const [vdData, setVdData] = useState(null);
+  const [vdError, setVdError] = useState("");
+  const [vdLoading, setVdLoading] = useState(false);
+  const [cfData, setCfData] = useState(null);
+  const [cfError, setCfError] = useState("");
+  const [cfLoading, setCfLoading] = useState(false);
+
+  function showVisualDesign() {
+    setContentView("visual");
+    if (vdData || vdLoading) return;
+    setVdLoading(true);
+    setVdError("");
+    API.getVisualDesignData(sessionId)
+      .then(setVdData)
+      .catch((e) => setVdError(e.message || "The visual design could not be loaded."))
+      .finally(() => setVdLoading(false));
+  }
+
+  function showConceptualFramework() {
+    setContentView("cf");
+    if (cfData || cfLoading) return;
+    setCfLoading(true);
+    setCfError("");
+    API.getConceptualFrameworkData(sessionId)
+      .then(setCfData)
+      .catch((e) => setCfError(e.message || "The conceptual framework could not be loaded."))
+      .finally(() => setCfLoading(false));
+  }
+
   async function handleDownloadPDF() {
     if (!sessionId || downloading) return;
     setDownloadError("");
@@ -114,16 +150,34 @@ export default function StudentDesignView({ sessionId, studentName, className: c
     }
   }
 
-  async function handleDownloadCF() {
-    if (!sessionId || downloading) return;
-    setDownloadError("");
+  // Same PDF pipeline the student uses (html2canvas + jsPDF with the logo
+  // freeze), but one page per CF layout since the teacher sees all three.
+  async function handleDownloadCFPdf() {
+    if (downloading) return;
+    const stage = document.querySelector(".sdv-vd__stage");
+    const diagrams = document.querySelectorAll(".sdv-cf .cf-diagram, .sdv-cf .cfb-diagram, .sdv-cf .cfe-diagram");
+    if (!diagrams.length) return;
     setDownloading("cf");
+    stage && stage.classList.add("sdv-vd__stage--capture");
     try {
-      await API.downloadConceptualFramework(sessionId);
+      let pdf = null;
+      for (const el of diagrams) {
+        el.classList.add("vd-diagram--print-freeze");
+        await new Promise((r) => setTimeout(r, 60));
+        const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: "#ffffff", logging: false });
+        el.classList.remove("vd-diagram--print-freeze");
+        const w = canvas.width / 2, h = canvas.height / 2;
+        if (!pdf) pdf = new jsPDF({ orientation: w >= h ? "landscape" : "portrait", unit: "pt", format: [w, h] });
+        else pdf.addPage([w, h], w >= h ? "landscape" : "portrait");
+        pdf.addImage(canvas.toDataURL("image/png"), "PNG", 0, 0, w, h);
+      }
+      pdf.save(`Conceptual_Framework_${(studentName || "Student").replace(/[^\w-]+/g, "_")}.pdf`);
     } catch (e) {
-      console.error("Conceptual framework download failed:", e);
-      setDownloadError("Couldn't generate the conceptual framework. Please try again.");
+      console.error("CF PDF capture failed:", e);
+      notify.error("The conceptual framework PDF could not be generated. Please try again.", { title: "Download failed" });
     } finally {
+      diagrams.forEach((el) => el.classList.remove("vd-diagram--print-freeze"));
+      stage && stage.classList.remove("sdv-vd__stage--capture");
       setDownloading(null);
     }
   }
@@ -154,19 +208,23 @@ export default function StudentDesignView({ sessionId, studentName, className: c
         </div>
         <div className="sdv-header__right">
           {downloadError && <span className="sdv-dl-error">{downloadError}</span>}
-          <button className="sdv-dl-btn" onClick={handleOpenVD} disabled={!!downloading} title="View the student's visual design diagram (opens in a new tab)">
+          <button
+            className={`sdv-dl-btn${contentView === "visual" ? " sdv-dl-btn--active" : ""}`}
+            onClick={() => (contentView === "visual" ? setContentView("steps") : showVisualDesign())}
+            disabled={!!downloading}
+            title="See the student's visual design diagram here, next to your feedback"
+          >
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-            Visual Design
+            {contentView === "visual" ? "Back to Steps" : "Visual Design"}
           </button>
-          <button className="sdv-dl-btn" onClick={handleDownloadCF} disabled={!!downloading} title="Generate & download the conceptual framework (.pptx)">
-            {downloading === "cf" ? (
-              <><span className="sdv-dl-spinner" />Generating…</>
-            ) : (
-              <>
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                Conceptual Framework
-              </>
-            )}
+          <button
+            className={`sdv-dl-btn${contentView === "cf" ? " sdv-dl-btn--active" : ""}`}
+            onClick={() => (contentView === "cf" ? setContentView("steps") : showConceptualFramework())}
+            disabled={!!downloading}
+            title="See the student's conceptual framework here, next to your feedback"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            {contentView === "cf" ? "Back to Steps" : "Conceptual Framework"}
           </button>
           <button className="sdv-dl-btn sdv-dl-btn--primary" onClick={handleDownloadPDF} disabled={!!downloading} title="Generate & download the research design (.pdf)">
             {downloading === "pdf" ? (
@@ -197,7 +255,7 @@ export default function StudentDesignView({ sessionId, studentName, className: c
                   key={num}
                   className={`sdv-chip${isActive ? " sdv-chip--active" : ""}${isDone ? " sdv-chip--done" : ""}`}
                   style={{ "--chip-color": STEP_COLORS[i] }}
-                  onClick={() => setViewStep(num)}
+                  onClick={() => { setViewStep(num); setContentView("steps"); }}
                   role="tab"
                   aria-selected={isActive}
                   title={`Step ${num}: ${label}`}
@@ -211,8 +269,41 @@ export default function StudentDesignView({ sessionId, studentName, className: c
 
           {/* Right side - step content + feedback */}
           <div className="sdv-right">
-            {/* Step content (scrollable) */}
+            {/* Step content (scrollable), or the embedded visual design */}
             <div className="sdv-content">
+              {contentView === "cf" ? (
+                <div className="sdv-vd">
+                  <div className="sdv-vd__bar">
+                    <span className="sdv-vd__title">Conceptual Framework - all three layouts, read only</span>
+                    <button className="sdv-vd__open" onClick={handleDownloadCFPdf} disabled={!!downloading} title="Download all three layouts as a PDF (one page each)">
+                      {downloading === "cf" ? "Capturing…" : "⬇ Save PDF"}
+                    </button>
+                  </div>
+                  {cfLoading && <div className="sdv-loading">Loading conceptual framework… (structuring the student's notes may take a moment)</div>}
+                  {cfError && <div className="sdv-vd-unsupported">{cfError}</div>}
+                  {cfData && (
+                    <div className="sdv-vd__stage">
+                      <ConceptualFrameworkReadOnly data={cfData} />
+                    </div>
+                  )}
+                </div>
+              ) : contentView === "visual" ? (
+                <div className="sdv-vd">
+                  <div className="sdv-vd__bar">
+                    <span className="sdv-vd__title">Visual Design - read only</span>
+                    <button className="sdv-vd__open" onClick={handleOpenVD} title="Open the full-size visual design in a new tab">
+                      Open full size ↗
+                    </button>
+                  </div>
+                  {vdLoading && <div className="sdv-loading">Loading visual design…</div>}
+                  {vdError && <div className="sdv-vd-unsupported">{vdError}</div>}
+                  {vdData && (
+                    <div className="sdv-vd__stage">
+                      <VisualDesignReadOnly data={vdData} />
+                    </div>
+                  )}
+                </div>
+              ) : (
               <div className="sdv-doc">
                 <div className="sdv-doc__eyebrow" style={{ color: STEP_COLORS[viewStep - 1] }}>
                   <span className="sdv-doc__dot" style={{ background: STEP_COLORS[viewStep - 1] }} />
@@ -231,6 +322,7 @@ export default function StudentDesignView({ sessionId, studentName, className: c
                   sessionData={sessionData}
                 />
               </div>
+              )}
             </div>
 
             {/* Feedback panel - redesigned as a threaded conversation */}
