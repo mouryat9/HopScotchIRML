@@ -5790,25 +5790,64 @@ select.input:focus {
 }
 
 /* Page wrapper — centers the diagram */
+/* The CF editor now uses the VD shell (vd-overlay/vd-stage); the page wrapper
+   just holds the fixed-size diagram, the stage handles centering + scroll. */
 .cf-page {
-  flex: 1;
+  display: block;
+  padding: 0;
+}
+
+/* Suggested-citation line on the CF slides: a compact flex item in the footer
+   bars (Boxed, Mosaic) or pinned to the slide corner (Extended). */
+.cf-footer-cite { flex: 0 1 auto; min-width: 0; max-width: 30%; margin-left: 14px; }
+/* Boxed layout: citation hugs the right edge of the footer bar */
+.cfb-footer .cf-footer-cite { margin-left: auto; }
+/* Mosaic footer: logo group bottom-left, name + date centered */
+.cf-footer__brand { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }
+.cf-footer__brand .cf-footer__logo { margin-left: 0; }
+.cf-footer__name { font-weight: 700; }
+/* The document-type label stays on the slide, above the name/date */
+.cf-footer__doctitle { font-weight: 800; font-size: 1.12em; }
+/* Name on top, date underneath - same stacked style as the Boxed header.
+   Absolutely pinned to 50% of the slide so it is mathematically centered on
+   the document, regardless of how wide the logo/citation neighbors are. */
+.cf-footer__center--stacked {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 1rem;
+  gap: 2px;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+.cf-footer-cite .vd-citation { font-size: 7.5px; line-height: 1.3; gap: 2px; }
+.cf-footer-cite .vd-citation__copy { font-size: 8px; padding: 0 6px; }
+.cf-footer-cite--corner {
+  position: absolute;
+  left: 1.2%;
+  bottom: 1.5%;
+  width: 32%;
+  max-width: 32%;
+  margin: 0;
+  z-index: 30;
 }
 
 /* The diagram — fixed aspect ratio matching PPTX (10" x 6.25" = 1.6:1) */
 .cf-diagram {
   position: relative;
-  /* Scale with the screen (width + height bound); font tracks actual width */
-  width: min(1800px, 94vw, 144vh);
+  /* Fixed comfortable size like the Step 4 VD diagrams: identical on every
+     screen and in the PDF capture (the stage scrolls when smaller) */
+  width: 1500px;
   aspect-ratio: 10 / 6.25;
   background: #fff;
   border-radius: 4px;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15);
   overflow: hidden;
-  font-size: max(10px, min(21px, 1.1vw, 1.68vh));
+  font-size: 17.5px;
 }
 
 /* ── Editable text ── */
@@ -6087,14 +6126,14 @@ select.input:focus {
 
 .cfb-diagram {
   position: relative;
-  /* Scale with the screen (width + height bound); font tracks actual width */
-  width: min(1800px, 96vw, 138vh);
+  /* Fixed size (VD-style): identical on every screen and in the PDF */
+  width: 1500px;
   aspect-ratio: 10 / 6.5;
   background: #fff;
   border-radius: 4px;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15);
   overflow: hidden;
-  font-size: max(10px, min(19.5px, 1.04vw, 1.49vh));
+  font-size: 16px;
   color: #1e2740;
   display: flex;
   flex-direction: column;
@@ -6270,9 +6309,11 @@ select.input:focus {
 
 /* Research Topic — large rounded rect */
 .cfb-topic-box {
-  width: 85%;
-  aspect-ratio: 1;
-  max-width: 180px;
+  /* Use the column: near-full width, grows with the text up to almost the
+     whole column height - so long topics get space instead of clipping */
+  width: 92%;
+  min-height: 180px;
+  max-height: 97%;
   border-radius: 16px;
   background: #2B5EA7;
   border: 3px solid #1C4587;
@@ -6281,12 +6322,16 @@ select.input:focus {
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  /* When the text is taller than the cap, keep the heading visible and
+     clip at the bottom only (falls back to plain center on old browsers) */
+  justify-content: safe center;
   text-align: center;
   padding: 14px;
   overflow: hidden;
 }
 
 .cfb-topic-box__label {
+  flex-shrink: 0;
   font-weight: 700;
   font-size: 0.95em;
   margin-bottom: 6px;
@@ -6373,13 +6418,14 @@ select.input:focus {
 }
 
 .cfb-footer__logo {
-  height: 44px;
+  /* Same size as the Mosaic footer logo */
+  height: 36px;
   width: auto;
   object-fit: contain;
 }
 
 .cfb-footer__grid {
-  height: 32px;
+  height: 28px;
   width: auto;
   margin-left: 10px;
 }
@@ -6390,14 +6436,16 @@ select.input:focus {
 
 .cfe-diagram {
   position: relative;
-  /* Scale with the screen (width + height bound); font tracks actual width */
-  width: min(1800px, 96vw, 138vh);
-  aspect-ratio: 10 / 6.5;
+  /* Fixed size (VD-style): identical on every screen and in the PDF.
+     Slightly taller than the other CF slides: the extra height is the white
+     footer strip holding the logo + citation below the design. */
+  width: 1500px;
+  aspect-ratio: 10 / 7;
   background: #fff;
   border-radius: 4px;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15);
   overflow: hidden;
-  font-size: max(9px, min(18px, 0.96vw, 1.38vh));
+  font-size: 15px;
   color: #1e2740;
   display: flex;
   flex-direction: column;
@@ -6438,6 +6486,21 @@ select.input:focus {
   gap: 6px;
   flex-shrink: 0;
 }
+
+/* Balances the meta block so the topic stays centered (logo moved to footer) */
+.cfe-header__spacer { flex-shrink: 0; width: 150px; }
+
+/* White footer strip below the design: logo left, citation right */
+.cfe-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 16px 10px;
+  background: #fff;
+}
+.cfe-footer__brand { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.cfe-footer .cf-footer-cite { max-width: 46%; }
 
 .cfe-header__logo-img {
   height: 36px;
@@ -11041,7 +11104,9 @@ body.wl-dragging, body.wl-dragging * { cursor: grabbing !important; user-select:
   gap: 0.15em;
   padding: 0.5em 0.6em;
   background: #fff;
-  border: 1px solid color-mix(in srgb, var(--node-color) 30%, #e4e7ec);
+  /* Precomputed tint (see CFTemplateExtended) - color-mix() computes to a
+     color() value html2canvas cannot parse, breaking the PDF capture */
+  border: 1px solid var(--node-border, #d5dae2);
   border-top: 3px solid var(--node-color);
   border-radius: 7px;
   box-shadow: 0 1px 3px rgba(30, 39, 64, 0.08);
@@ -11967,6 +12032,9 @@ body.wl-dragging, body.wl-dragging * { cursor: grabbing !important; user-select:
 /* Anonymize toggle: hide the whole identity box in the diagram (and print).
    The quantitative title block is separate and stays visible. */
 .vd-overlay--anon .vd-identity { display: none; }
+/* CF slides: hide the email line but keep its space so the header/footer
+   layout does not shift when printing anonymized */
+.vd-overlay--anon .cf-identity { visibility: hidden; }
 
 .vd-identity-toggle {
   display: inline-flex;

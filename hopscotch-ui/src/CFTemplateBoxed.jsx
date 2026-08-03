@@ -1,5 +1,7 @@
 // src/CFTemplateBoxed.jsx
 import React from "react";
+import HopGridLoader from "./HopGridLoader";
+import VDCitation from "./VDCitation";
 
 /**
  * Template 2: Boxed/card layout - rectangular sections with a flowchart
@@ -13,12 +15,10 @@ export default function CFTemplateBoxed({ d, upd, updTopic, updFramework, E }) {
         {/* ── Header row: email/date left, CF name right ── */}
         <div className="cfb-header">
           <div className="cfb-header__meta">
-            <div>Email: <E value={d.email} onChange={(v) => upd("email", v)} className="cfb-text--meta" /></div>
-            <div>Date: <E value={d.date} onChange={(v) => upd("date", v)} className="cfb-text--meta" /></div>
+            <div className="cf-identity">Email: <E value={d.email} onChange={(v) => upd("email", v)} className="cfb-text--meta" /></div>
+            <div className="cf-identity">Date: <E value={d.date} onChange={(v) => upd("date", v)} className="cfb-text--meta" /></div>
           </div>
-          <div className="cfb-header__title">
-            Conceptual Framework:&nbsp;&nbsp;<E value={d.name} onChange={(v) => upd("name", v)} className="cfb-text--name" />
-          </div>
+          <div className="cfb-header__title">Conceptual Framework</div>
         </div>
 
         {/* ── Main content area: sidebar + main flow ── */}
@@ -123,17 +123,8 @@ export default function CFTemplateBoxed({ d, upd, updTopic, updFramework, E }) {
         {/* ── Footer ── */}
         <div className="cfb-footer">
           <img src="/Hopscotch-4-all-logo-alpha.png" alt="Hopscotch" className="cfb-footer__logo" />
-          <svg className="cfb-footer__grid" viewBox="0 0 128 46" xmlns="http://www.w3.org/2000/svg" shapeRendering="geometricPrecision" fill="none">
-            <rect x="0"  y="0"  width="18" height="22" rx="6" fill="#2B5EA7"/>
-            <rect x="0"  y="24" width="18" height="22" rx="6" fill="#E8618C"/>
-            <rect x="22" y="12" width="18" height="22" rx="6" fill="#D94040"/>
-            <rect x="44" y="0"  width="18" height="22" rx="6" fill="#1A8A7D"/>
-            <rect x="44" y="24" width="18" height="22" rx="6" fill="#B0A47A"/>
-            <rect x="66" y="12" width="18" height="22" rx="6" fill="#00AEEF"/>
-            <rect x="88" y="0"  width="18" height="22" rx="6" fill="#F0B429"/>
-            <rect x="88" y="24" width="18" height="22" rx="6" fill="#F5922A"/>
-            <path d="M110,7 A16,16 0 0,1 110,39 Z" fill="#7B8794"/>
-          </svg>
+          <HopGridLoader className="cfb-footer__grid" />
+          <div className="cf-footer-cite"><VDCitation /></div>
         </div>
       </div>
     </div>

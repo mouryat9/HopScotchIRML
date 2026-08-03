@@ -1,5 +1,7 @@
 // src/CFTemplateExtended.jsx
 import React from "react";
+import HopGridLoader from "./HopGridLoader";
+import VDCitation from "./VDCitation";
 
 /**
  * Template 3: Extended 3-column layout with central circle infographic.
@@ -13,27 +15,14 @@ export default function CFTemplateExtended({ d, upd, updTopic, updFramework, E }
         {/* ── Header: email/date left, research topic center, logo right ── */}
         <div className="cfe-header">
           <div className="cfe-header__meta">
-            <div>Email: <E value={d.email} onChange={(v) => upd("email", v)} className="cfe-text--meta" /></div>
-            <div>Date: <E value={d.date} onChange={(v) => upd("date", v)} className="cfe-text--meta" /></div>
+            <div className="cf-identity">Email: <E value={d.email} onChange={(v) => upd("email", v)} className="cfe-text--meta" /></div>
+            <div className="cf-identity">Date: <E value={d.date} onChange={(v) => upd("date", v)} className="cfe-text--meta" /></div>
           </div>
           <div className="cfe-header__topic">
             <strong>Research Topic:</strong>&nbsp;
             <E value={d.topic} onChange={(v) => upd("topic", v)} placeholder="<<Define your research topic>>" className="cfe-text--topic" />
           </div>
-          <div className="cfe-header__logo">
-            <img src="/Hopscotch-4-all-logo-alpha.png" alt="Hopscotch" className="cfe-header__logo-img" />
-            <svg className="cfe-header__grid" viewBox="0 0 128 46" xmlns="http://www.w3.org/2000/svg" shapeRendering="geometricPrecision" fill="none">
-              <rect x="0"  y="0"  width="18" height="22" rx="6" fill="#2B5EA7"/>
-              <rect x="0"  y="24" width="18" height="22" rx="6" fill="#E8618C"/>
-              <rect x="22" y="12" width="18" height="22" rx="6" fill="#D94040"/>
-              <rect x="44" y="0"  width="18" height="22" rx="6" fill="#1A8A7D"/>
-              <rect x="44" y="24" width="18" height="22" rx="6" fill="#B0A47A"/>
-              <rect x="66" y="12" width="18" height="22" rx="6" fill="#00AEEF"/>
-              <rect x="88" y="0"  width="18" height="22" rx="6" fill="#F0B429"/>
-              <rect x="88" y="24" width="18" height="22" rx="6" fill="#F5922A"/>
-              <path d="M110,7 A16,16 0 0,1 110,39 Z" fill="#7B8794"/>
-            </svg>
-          </div>
+          <div className="cfe-header__spacer" aria-hidden="true" />
         </div>
 
         {/* ── 3-column body ── */}
@@ -92,14 +81,17 @@ export default function CFTemplateExtended({ d, upd, updTopic, updFramework, E }
 
                 {/* Five components - text lives inside cards, cannot spill out */}
                 <div className="cfe-cf__grid">
+                  {/* b = the node color mixed 30% into #e4e7ec, precomputed:
+                      html2canvas cannot parse the color-mix() computed value,
+                      which broke the Save PDF capture on this template. */}
                   {[
-                    { c: "#1C4587", t: "Topical Research", d: "Empirical work in your area of interest - journals, books, and policy reports." },
-                    { c: "#1A8A7D", t: "Theoretical Frameworks", d: "Formal theories and constructs that examine relationships and guide the study." },
-                    { c: "#BF9730", t: "Problem Statement", d: "Establishes the intent of the study - clear, specific, and informative." },
-                    { c: "#8B3A3A", t: "Research Design", d: "The methods and procedures used: quantitative, qualitative, or mixed." },
-                    { c: "#6AA84F", t: "Personal Connection", d: "Your interests, goals, and the worldview you bring as a researcher." },
+                    { c: "#1C4587", b: "#A8B6CE", t: "Topical Research", d: "Empirical work in your area of interest - journals, books, and policy reports." },
+                    { c: "#1A8A7D", b: "#A7CBCB", t: "Theoretical Frameworks", d: "Formal theories and constructs that examine relationships and guide the study." },
+                    { c: "#BF9730", b: "#D9CFB4", t: "Problem Statement", d: "Establishes the intent of the study - clear, specific, and informative." },
+                    { c: "#8B3A3A", b: "#C9B3B7", t: "Research Design", d: "The methods and procedures used: quantitative, qualitative, or mixed." },
+                    { c: "#6AA84F", b: "#BFD4BD", t: "Personal Connection", d: "Your interests, goals, and the worldview you bring as a researcher." },
                   ].map((n) => (
-                    <div className="cfe-cf__node" key={n.t} style={{ "--node-color": n.c }}>
+                    <div className="cfe-cf__node" key={n.t} style={{ "--node-color": n.c, "--node-border": n.b }}>
                       <span className="cfe-cf__node-title">{n.t}</span>
                       <span className="cfe-cf__node-desc">{n.d}</span>
                     </div>
@@ -153,6 +145,15 @@ export default function CFTemplateExtended({ d, upd, updTopic, updFramework, E }
               </div>
             </div>
           </div>
+        </div>
+
+        {/* ── Footer strip: white space below the design with the logo + citation ── */}
+        <div className="cfe-footer">
+          <div className="cfe-footer__brand">
+            <img src="/Hopscotch-4-all-logo-alpha.png" alt="Hopscotch" className="cfe-header__logo-img" />
+            <HopGridLoader className="cfe-header__grid" />
+          </div>
+          <div className="cf-footer-cite"><VDCitation /></div>
         </div>
       </div>
     </div>

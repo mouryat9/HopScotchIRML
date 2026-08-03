@@ -391,6 +391,16 @@ export const API = {
     await saveBlob(await res.blob(), "Research_Design.pdf");
   },
 
+  async saveConceptualFrameworkData(session_id, fields) {
+    const res = await fetch(`${API_BASE}/session/${session_id}/conceptual-framework/data`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify({ fields }),
+    });
+    if (!res.ok) throw new Error(`saveConceptualFrameworkData failed: ${res.status}`);
+    return res.json();
+  },
+
   async getConceptualFrameworkData(session_id) {
     const res = await fetch(`${API_BASE}/session/${session_id}/export/conceptual-framework/data`, {
       headers: authHeaders(),

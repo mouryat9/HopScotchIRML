@@ -3017,8 +3017,19 @@ def _gather_cf_data(session_id: str, current_user: dict) -> dict:
         "research_design": research_design,
     }
 
-    # Always call LLM to structure the data properly
-    structured = _structure_cf_via_llm(sess, raw_fields)
+    # Structure via LLM, but cache the result keyed on the raw inputs: the
+    # model runs once per unique set of step notes, so reopening the editor
+    # is instant unless the student actually changed their notes.
+    import hashlib
+    raw_hash = hashlib.md5(
+        json.dumps(raw_fields, sort_keys=True).encode("utf-8")
+    ).hexdigest()
+    cache = (raw_doc or {}).get("cf_prefill_cache") or {}
+    if cache.get("hash") == raw_hash and isinstance(cache.get("structured"), dict):
+        structured = cache["structured"]
+    else:
+        structured = _structure_cf_via_llm(sess, raw_fields)
+        update_session(session_id, {"cf_prefill_cache": {"hash": raw_hash, "structured": structured}})
 
     # Extract topics/frameworks — only if the student wrote topical/theoretical data
     topics = []
@@ -3057,13 +3068,86 @@ def _gather_cf_data(session_id: str, current_user: dict) -> dict:
     }
 
 
+# Scalar fields the CF editor can save; topics/frameworks are 5-item lists.
+CF_FIELD_KEYS = [
+    "topic", "worldview", "personal_goals", "gaps", "problem_statement",
+    "research_questions", "research_design",
+]
+
+
+class ConceptualFrameworkSaveRequest(BaseModel):
+    fields: Dict[str, Any]
+
+
+def _cf_sanitize(fields: dict) -> dict:
+    """Whitelist + clamp the editor payload before persisting."""
+    clean = {}
+    for k in CF_FIELD_KEYS:
+        if k in fields:
+            clean[k] = str(fields.get(k) or "")[:2000]
+    for k in ("topics", "frameworks"):
+        if k in fields:
+            vals = fields.get(k) or []
+            if isinstance(vals, list):
+                clean[k] = [str(v or "")[:500] for v in vals[:5]]
+    return clean
+
+
+def _cf_effective_data(session_id: str, current_user: dict) -> dict:
+    """Saved editor fields win; otherwise prefill via the LLM gatherer.
+    When a save exists we skip the LLM entirely (fast reopen, and the
+    student's edits are authoritative). Identity/date always fresh."""
+    raw_doc = find_session(session_id)
+    stored = (raw_doc or {}).get("conceptual_framework_fields") or {}
+    if stored:
+        base = _gather_cf_identity(session_id, current_user)
+        base["topics"] = ((stored.get("topics") or []) + [""] * 5)[:5]
+        base["frameworks"] = ((stored.get("frameworks") or []) + [""] * 5)[:5]
+        for k in CF_FIELD_KEYS:
+            base[k] = str(stored.get(k) or "")
+        base["has_saved"] = True
+        return base
+    data = _gather_cf_data(session_id, current_user)
+    data["has_saved"] = False
+    return data
+
+
+def _gather_cf_identity(session_id: str, current_user: dict) -> dict:
+    """Just the owner identity + date (no LLM), same attribution rules as
+    _gather_cf_data."""
+    from datetime import datetime
+    _require_session(session_id)
+    raw_doc = find_session(session_id)
+    owner_id = raw_doc.get("user_id") if raw_doc else None
+    owner = find_user_by_id(owner_id) if owner_id else None
+    export_user = owner or current_user
+    return {
+        "email": export_user.get("email") or export_user.get("username") or "",
+        "name": export_user.get("name", "Student"),
+        "date": datetime.now().strftime("%B %d, %Y"),
+    }
+
+
 @app.get("/session/{session_id}/export/conceptual-framework/data")
 def get_conceptual_framework_data(
     session_id: str,
     current_user: dict = Depends(get_current_user)
 ):
-    """Return conceptual framework data as JSON for the web editor."""
-    return _gather_cf_data(session_id, current_user)
+    """Return conceptual framework data as JSON for the web editor
+    (saved editor fields win over the LLM-structured prefill)."""
+    return _cf_effective_data(session_id, current_user)
+
+
+@app.put("/session/{session_id}/conceptual-framework/data")
+def save_conceptual_framework_data(
+    session_id: str,
+    payload: ConceptualFrameworkSaveRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """Persist the student's conceptual framework edits (from the editor)."""
+    _require_session(session_id)
+    update_session(session_id, {"conceptual_framework_fields": _cf_sanitize(payload.fields)})
+    return {"ok": True}
 
 
 @app.get("/session/{session_id}/export/conceptual-framework")
@@ -3075,7 +3159,7 @@ def export_conceptual_framework(
     from pptx import Presentation as PptxPresentation
     import io
 
-    d = _gather_cf_data(session_id, current_user)
+    d = _cf_effective_data(session_id, current_user)
     topics = (d.get("topics", []) + [""] * 5)[:5]
     frameworks = (d.get("frameworks", []) + [""] * 5)[:5]
 

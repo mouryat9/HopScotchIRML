@@ -55,7 +55,7 @@ export default function VDCitation() {
   return (
     <div className="vd-citation">
       <span className="vd-citation__ref">
-        <strong>How to cite:</strong> {AUTHORS} (n.d.). <em>Hopscotch 4-All</em> [Web application]. {PUBLISHER} Retrieved {date}, from {URL}
+        <strong>Suggested citation:</strong> {AUTHORS} (n.d.). <em>Hopscotch 4-All</em> [Web application]. {PUBLISHER} Retrieved {date}, from {URL}
       </span>
       <span className="vd-citation__actions">
         <button type="button" className="vd-citation__copy" onClick={() => doCopy("ref", reference)}>

@@ -1,5 +1,7 @@
 // src/CFTemplatePolygon.jsx
 import React from "react";
+import HopGridLoader from "./HopGridLoader";
+import VDCitation from "./VDCitation";
 
 /**
  * Template 1: Angular polygon mosaic (matching PPTX Slide 3).
@@ -95,29 +97,22 @@ export default function CFTemplatePolygon({ d, upd, updTopic, updFramework, E })
           <E value={d.research_questions} onChange={(v) => upd("research_questions", v)} placeholder="Your research questions" className="cf-text--light cf-text--sm" />
         </div>
 
-        {/* Footer */}
+        {/* Footer: logo bottom-left, name + date centered, citation right */}
         <div className="cf-footer">
-          <span className="cf-footer__left">
-            Email: <E value={d.email} onChange={(v) => upd("email", v)} className="cf-text--footer" />
+          <div className="cf-footer__brand">
+            <img src="/Hopscotch-4-all-logo-alpha.png" alt="Hopscotch" className="cf-footer__logo" />
+            <HopGridLoader className="cf-footer__grid" />
+          </div>
+          <span className="cf-footer__center cf-footer__center--stacked">
+            <span className="cf-footer__doctitle">Conceptual Framework</span>
+            <span className="cf-identity cf-footer__name">
+              <E value={d.name} onChange={(v) => upd("name", v)} className="cf-text--footer" />
+            </span>
+            <span className="cf-identity">
+              <E value={d.date} onChange={(v) => upd("date", v)} className="cf-text--footer" />
+            </span>
           </span>
-          <span className="cf-footer__center">
-            Conceptual Framework: <E value={d.name} onChange={(v) => upd("name", v)} className="cf-text--name" />
-          </span>
-          <span className="cf-footer__right">
-            Date: <E value={d.date} onChange={(v) => upd("date", v)} className="cf-text--footer" />
-          </span>
-          <img src="/Hopscotch-4-all-logo-alpha.png" alt="Hopscotch" className="cf-footer__logo" />
-          <svg className="cf-footer__grid" viewBox="0 0 128 46" xmlns="http://www.w3.org/2000/svg" shapeRendering="geometricPrecision" fill="none">
-            <rect x="0"  y="0"  width="18" height="22" rx="6" fill="#2B5EA7"/>
-            <rect x="0"  y="24" width="18" height="22" rx="6" fill="#E8618C"/>
-            <rect x="22" y="12" width="18" height="22" rx="6" fill="#D94040"/>
-            <rect x="44" y="0"  width="18" height="22" rx="6" fill="#1A8A7D"/>
-            <rect x="44" y="24" width="18" height="22" rx="6" fill="#B0A47A"/>
-            <rect x="66" y="12" width="18" height="22" rx="6" fill="#00AEEF"/>
-            <rect x="88" y="0"  width="18" height="22" rx="6" fill="#F0B429"/>
-            <rect x="88" y="24" width="18" height="22" rx="6" fill="#F5922A"/>
-            <path d="M110,7 A16,16 0 0,1 110,39 Z" fill="#7B8794"/>
-          </svg>
+          <div className="cf-footer-cite"><VDCitation /></div>
         </div>
 
         {/* Color tile bar */}

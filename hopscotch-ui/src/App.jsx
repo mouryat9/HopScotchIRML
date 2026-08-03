@@ -1053,7 +1053,7 @@ function ConceptualFrameworkPage({ sessionId }) {
     );
   }
 
-  return <ConceptualFrameworkEditor data={data} onClose={handleClose} />;
+  return <ConceptualFrameworkEditor data={data} sessionId={sessionId} onClose={handleClose} />;
 }
 
 export default function App() {
