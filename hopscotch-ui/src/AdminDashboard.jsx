@@ -1,6 +1,7 @@
 // src/AdminDashboard.jsx - Superuser admin dashboard
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { API } from "./api";
+import { notify } from "./Toast";
 import { useAuth } from "./AuthContext";
 import { useTheme } from "./ThemeContext";
 import UserLocationMap from "./UserLocationMap";
@@ -211,7 +212,7 @@ export default function AdminDashboard() {
     try {
       await API.adminGlossaryDelete(t.id);
       loadGlossary();
-    } catch (e) { alert(e.message); }
+    } catch (e) { notify.error(e.message, { title: "Action failed" }); }
   }
 
   const loadResources = useCallback(() => {
@@ -280,7 +281,7 @@ export default function AdminDashboard() {
       });
       setStepResSaved(key);
       setTimeout(() => setStepResSaved((k) => (k === key ? "" : k)), 1800);
-    } catch (err) { alert(err.message); }
+    } catch (err) { notify.error(err.message, { title: "Action failed" }); }
     finally { setStepResSaving(""); }
   }
 
@@ -688,7 +689,7 @@ export default function AdminDashboard() {
                       await API.adminDeleteUser(deleteUser._id);
                       setDeleteUser(null);
                       loadUsers();
-                    } catch (e) { alert(e.message); }
+                    } catch (e) { notify.error(e.message, { title: "Action failed" }); }
                   }}
                 />
               )}
@@ -768,7 +769,7 @@ export default function AdminDashboard() {
                           await API.adminDeleteClass(deleteClass._id);
                           setDeleteClass(null);
                           loadClasses();
-                        } catch (e) { alert(e.message); }
+                        } catch (e) { notify.error(e.message, { title: "Action failed" }); }
                       }}>Delete</button>
                     </div>
                   </div>
@@ -1312,7 +1313,7 @@ export default function AdminDashboard() {
       await API.adminUpdateUser(u._id, { is_active: newActive });
       loadUsers();
     } catch (e) {
-      alert(e.message);
+      notify.error(e.message, { title: "Action failed" });
     }
   }
 }

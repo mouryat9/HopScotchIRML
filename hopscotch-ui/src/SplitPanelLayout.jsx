@@ -73,7 +73,6 @@ export default function SplitPanelLayout({
             sessionId={sessionId} activeStep={activeStep} refreshKey={chatRefreshKey}
             autoMessage={autoMessage} onAutoMessageSent={onAutoMessageSent} aiEnabled={aiEnabled}
           />
-          {status && <div className="badge" style={{ marginTop: 8 }}>{status}</div>}
           {!aiEnabled && (
             <div className="ai-off-overlay">
               <div className="ai-off-overlay__card">

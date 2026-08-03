@@ -2,6 +2,7 @@
 import "./App.css";
 import React, { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { API } from "./api";
+import { notify } from "./Toast";
 import SplitPanelLayout from "./SplitPanelLayout";
 import { useAuth } from "./AuthContext";
 import { useTheme } from "./ThemeContext";
@@ -375,7 +376,6 @@ function StudentApp({ onBackToDashboard }) {
   const [activeStep, setActiveStep] = useState(1);
   const [completedSteps, setCompletedSteps] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [status, setStatus] = useState("");
   const [chatRefreshKey, setChatRefreshKey] = useState(0);
   const [autoMessage, setAutoMessage] = useState(null);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -515,7 +515,7 @@ function StudentApp({ onBackToDashboard }) {
       } catch (e) {
         if (cancelled) return;
         console.error(e);
-        setStatus("Failed to start session. Check backend.");
+        notify.error("We couldn't start your session. Please check your connection and refresh.", { title: "Session error" });
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -582,7 +582,7 @@ function StudentApp({ onBackToDashboard }) {
       setCompletedSteps([]);
       setChatRefreshKey((k) => k + 1);
       setAutoMessage(null);
-      setStatus("Started a fresh session.");
+      notify.success("Started a fresh design. Good luck!");
     } catch (e) {
       console.error("resetSession error:", e);
       if (e.message?.includes("401")) {
@@ -590,7 +590,7 @@ function StudentApp({ onBackToDashboard }) {
         // this) so the user lands on the login screen instead of a broken UI.
         window.dispatchEvent(new CustomEvent("hopscotch:unauthorized"));
       } else {
-        setStatus(`Failed to reset session: ${e.message}`);
+        notify.error(e.message, { title: "Couldn't start a new design" });
       }
     } finally {
       setLoading(false);
@@ -603,7 +603,6 @@ function StudentApp({ onBackToDashboard }) {
     setCompletedSteps(session.completed_steps || []);
     setChatRefreshKey((k) => k + 1);
     setAutoMessage(null);
-    setStatus("");
   }
 
   const [downloadOpen, setDownloadOpen] = useState(false);
@@ -628,7 +627,7 @@ function StudentApp({ onBackToDashboard }) {
       await API.downloadResearchDesign(sessionId);
     } catch (e) {
       console.error("PDF download failed:", e);
-      setStatus("Failed to download research design PDF.");
+      notify.error("The research design PDF could not be downloaded. Please try again.", { title: "Download failed" });
     }
   }
 
@@ -806,7 +805,6 @@ function StudentApp({ onBackToDashboard }) {
           onAutoSend={setAutoMessage}
           onCompletedStepsChange={setCompletedSteps}
           loading={loading}
-          status={status}
           educationLevel={user?.education_level || "high_school"}
           tourActive={tourActive}
           leftOpen={leftOpen}

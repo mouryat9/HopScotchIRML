@@ -6,14 +6,16 @@ import React, { useState, useRef, useEffect, useCallback } from "react";
 import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
 import { API } from "./api";
+import { notify } from "./Toast";
 import VDTemplateHoneycomb from "./VDTemplateHoneycomb";
 import VDTemplatePentagonFlower from "./VDTemplatePentagonFlower";
 import VDTemplateMixed from "./VDTemplateMixed";
 import ChatBox from "./ChatBox";
 
 /* Form definitions per design. Field keys are shared with the backend
-   (VD_FIELD_KEYS) and with the PPTX export placeholders. */
-const VD_FORMS = {
+   (VD_FIELD_KEYS) and with the PPTX export placeholders. Exported so the
+   teacher's read-only viewer (VisualDesignReadOnly) can reuse the layouts. */
+export const VD_FORMS = {
   narrative: {
     designName: "Narrative Study",
     intro: "Answer the questions below to build the one-page visual design of your narrative study. Everything you write appears in the diagram on the right - and you can click any text in the diagram to edit it directly.",
@@ -1797,6 +1799,7 @@ export default function VisualDesignEditor({ sessionId, data, onClose, aiEnabled
     } catch (e) {
       console.error("Visual design save failed:", e);
       setSaveState("error");
+      notify.error("Your latest edits could not be saved. Check your connection - we'll keep retrying as you type.", { title: "Save failed" });
     }
   }, [sessionId]);
 

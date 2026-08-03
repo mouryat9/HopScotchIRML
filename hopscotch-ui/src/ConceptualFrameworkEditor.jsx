@@ -8,6 +8,7 @@ import React, { useState, useRef, useEffect, useCallback } from "react";
 import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
 import { API } from "./api";
+import { notify } from "./Toast";
 import CFTemplatePolygon from "./CFTemplatePolygon";
 import CFTemplateBoxed from "./CFTemplateBoxed";
 import CFTemplateExtended from "./CFTemplateExtended";
@@ -146,6 +147,7 @@ export default function ConceptualFrameworkEditor({ data, sessionId, onClose }) 
     } catch (e) {
       console.error("Conceptual framework save failed:", e);
       setSaveState("error");
+      notify.error("Your latest edits could not be saved. Check your connection - we'll keep retrying as you type.", { title: "Save failed" });
     }
   }, [sessionId]);
 
