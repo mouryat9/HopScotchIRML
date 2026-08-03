@@ -94,7 +94,26 @@ function ClickablePoints({ locations }) {
   return null;
 }
 
-export default function UserLocationMap({ locations = [] }) {
+/**
+ * Flies the map to the given focus: an array of [lat, lng] pairs.
+ * One point -> zoom in close; several -> fit their bounds.
+ */
+function FitBounds({ bounds }) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!bounds || !bounds.length) return;
+    if (bounds.length === 1) {
+      map.flyTo(bounds[0], 9, { duration: 0.8 });
+    } else {
+      map.flyToBounds(L.latLngBounds(bounds), { padding: [40, 40], maxZoom: 8, duration: 0.8 });
+    }
+  }, [bounds, map]);
+
+  return null;
+}
+
+export default function UserLocationMap({ locations = [], focusBounds = null }) {
   if (!locations.length) {
     return (
       <div className="ad-empty">
@@ -116,6 +135,7 @@ export default function UserLocationMap({ locations = [] }) {
       />
       <HeatLayer locations={locations} />
       <ClickablePoints locations={locations} />
+      <FitBounds bounds={focusBounds} />
     </MapContainer>
   );
 }

@@ -10,7 +10,7 @@ import ProfileMenu from "./ProfileMenu";
 import SettingsModal from "./SettingsModal";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, Legend, LineChart, Line,
+  PieChart, Pie, Cell, Legend, LineChart, Line, AreaChart, Area, ComposedChart,
 } from "recharts";
 
 function fmtBytes(n) {
@@ -48,6 +48,37 @@ const GEO_PALETTE = [
   "#2B5EA7", "#1A8A7D", "#E8618C", "#F0B429", "#7C3AED",
   "#00AEEF", "#F5922A", "#D94040", "#16A34A", "#B0A47A",
 ];
+
+// Audit log: human-readable action labels + verb-based colors
+const AUDIT_LABELS = {
+  create_user: "Created user", update_user: "Updated user", reset_password: "Reset password",
+  delete_user: "Deleted user", create_class: "Created class", update_class: "Updated class",
+  delete_class: "Deleted class", add_class_students: "Added students",
+  delete_session: "Deleted session", cleanup_sessions: "Cleaned up sessions",
+  create_glossary_term: "Added glossary term", update_glossary_term: "Updated glossary term",
+  delete_glossary_term: "Deleted glossary term", upload_resource: "Uploaded document",
+  delete_resource: "Deleted document", rebuild_knowledge_base: "Rebuilt knowledge base",
+  update_step_resource: "Updated step resource",
+};
+
+function auditLabel(action) {
+  return AUDIT_LABELS[action] || (action || "").replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase());
+}
+
+function auditColor(action = "") {
+  if (/^(create|add|upload)/.test(action)) return "#16A34A";
+  if (/^(delete|cleanup)/.test(action)) return "#DC2626";
+  if (/^(update|reset|rebuild)/.test(action)) return "#2B5EA7";
+  return "#7C3AED";
+}
+
+function auditDetailChips(details) {
+  if (!details || typeof details !== "object") return [];
+  return Object.entries(details).map(([k, v]) => {
+    const val = typeof v === "object" && v !== null ? JSON.stringify(v) : String(v);
+    return `${k.replace(/_/g, " ")}: ${val}`;
+  });
+}
 
 function timeAgo(dateStr) {
   if (!dateStr) return "";
@@ -90,15 +121,27 @@ export default function AdminDashboard() {
 
   // Overview tab
   const [signups, setSignups] = useState([]);
+  const [signupDays, setSignupDays] = useState(30);
   const [stepCompletion, setStepCompletion] = useState([]);
 
   // Users tab
   const [users, setUsers] = useState([]);
   const [userTotal, setUserTotal] = useState(0);
   const [userPage, setUserPage] = useState(0);
-  const [userSearch, setUserSearch] = useState("");
+  const [userSearchInput, setUserSearchInput] = useState("");
+  const [userSearch, setUserSearch] = useState(""); // debounced value that hits the API
   const [userRoleFilter, setUserRoleFilter] = useState("");
+  const [userSort, setUserSort] = useState({ by: "created_at", dir: "desc" });
   const PAGE_SIZE = 20;
+
+  // Debounce the search box so we don't query on every keystroke
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setUserSearch(userSearchInput);
+      setUserPage(0);
+    }, 300);
+    return () => clearTimeout(t);
+  }, [userSearchInput]);
 
   // User detail drill-down
   const [userDetail, setUserDetail] = useState(null);
@@ -111,36 +154,126 @@ export default function AdminDashboard() {
   const [deleteUser, setDeleteUser] = useState(null);
   const [modalError, setModalError] = useState("");
 
-  // Classes tab
+  // Classes tab - loads the full list once; search/filter/sort are client-side
   const [classes, setClasses] = useState([]);
-  const [classTotal, setClassTotal] = useState(0);
-  const [classPage, setClassPage] = useState(0);
-  const [classSearch, setClassSearch] = useState("");
+  const [classesLoading, setClassesLoading] = useState(false);
+  const [classSearchInput, setClassSearchInput] = useState("");
+  const [classTeacherFilter, setClassTeacherFilter] = useState("");
+  const [classSort, setClassSort] = useState({ by: "created_at", dir: "desc" });
   const [deleteClass, setDeleteClass] = useState(null);
+  const [teacherOptions, setTeacherOptions] = useState([]); // for reassign / create selects
+
+  // Class drill-down + CRUD modals
+  const [classDetail, setClassDetail] = useState(null);
+  const [classDetailLoading, setClassDetailLoading] = useState(false);
+  const [editingClass, setEditingClass] = useState(null);
+  const [addStudentsClass, setAddStudentsClass] = useState(null);
+  const [creatingClass, setCreatingClass] = useState(false);
+  const [classModalError, setClassModalError] = useState("");
+  const [classResetPw, setClassResetPw] = useState(null); // classroom student obj
 
   // Sessions tab
   const [sessions, setSessions] = useState([]);
   const [sessionTotal, setSessionTotal] = useState(0);
   const [sessionPage, setSessionPage] = useState(0);
+  const [sessionStats, setSessionStats] = useState(null); // { total, empty, orphaned }
+  const [sessionSearchInput, setSessionSearchInput] = useState("");
+  const [sessionSearch, setSessionSearch] = useState("");
+  const [sessionStatus, setSessionStatus] = useState("");
+  const [sessionStep, setSessionStep] = useState(0);
+  const [sessionSort, setSessionSort] = useState({ by: "updated_at", dir: "desc" });
+  const [cleanupOpen, setCleanupOpen] = useState(false);
   const [viewingSession, setViewingSession] = useState(null); // { sessionId, name }
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setSessionSearch(sessionSearchInput);
+      setSessionPage(0);
+    }, 300);
+    return () => clearTimeout(t);
+  }, [sessionSearchInput]);
 
   // Map tab
   const [mapLocations, setMapLocations] = useState([]);
   const [geoCountries, setGeoCountries] = useState([]);
   const [geoRegions, setGeoRegions] = useState([]);
+  const [geoDays, setGeoDays] = useState(0); // 0 = all time
+  const [loginTs, setLoginTs] = useState([]); // logins per day
+  const [geoCountryFilter, setGeoCountryFilter] = useState(""); // chart<->map cross-filter
+  const [geoFocus, setGeoFocus] = useState(null); // [[lat,lng], ...] -> map flies there
 
   // Activity tab
+  const ACT_PAGE = 25;
   const [loginActivity, setLoginActivity] = useState([]);
+  const [loginTotal, setLoginTotal] = useState(0);
+  const [loginPage, setLoginPage] = useState(0);
+  const [loginSearchInput, setLoginSearchInput] = useState("");
+  const [loginSearch, setLoginSearch] = useState("");
+  const [loginStatus, setLoginStatus] = useState(""); // "" | "ok" | "fail"
   const [auditLog, setAuditLog] = useState([]);
+  const [auditTotal, setAuditTotal] = useState(0);
+  const [auditPage, setAuditPage] = useState(0);
+  const [auditAction, setAuditAction] = useState("");
+  const [auditActions, setAuditActions] = useState([]);
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setLoginSearch(loginSearchInput);
+      setLoginPage(0);
+    }, 300);
+    return () => clearTimeout(t);
+  }, [loginSearchInput]);
+
+  useEffect(() => {
+    if (tab !== "activity") return;
+    API.adminGetLoginActivity({ limit: ACT_PAGE, skip: loginPage * ACT_PAGE, search: loginSearch, status: loginStatus })
+      .then((d) => { setLoginActivity(d.logins || []); setLoginTotal(d.total || 0); })
+      .catch(console.error);
+  }, [tab, loginPage, loginSearch, loginStatus]);
+
+  useEffect(() => {
+    if (tab !== "activity") return;
+    API.adminGetAuditLog({ limit: ACT_PAGE, skip: auditPage * ACT_PAGE, action: auditAction })
+      .then((d) => { setAuditLog(d.log || []); setAuditTotal(d.total || 0); setAuditActions(d.actions || []); })
+      .catch(console.error);
+  }, [tab, auditPage, auditAction]);
 
   // Health tab
   const [health, setHealth] = useState(null);
   const [healthLoading, setHealthLoading] = useState(false);
+  const [healthAuto, setHealthAuto] = useState(false);
+  const [healthCheckedAt, setHealthCheckedAt] = useState(null);
+  const [llmTest, setLlmTest] = useState(null);
+  const [llmTesting, setLlmTesting] = useState(false);
+
+  const reloadHealth = useCallback((silent = false) => {
+    if (!silent) setHealthLoading(true);
+    API.adminGetHealth()
+      .then((h) => { setHealth(h); setHealthCheckedAt(new Date()); })
+      .catch(console.error)
+      .finally(() => setHealthLoading(false));
+  }, []);
+
+  // Auto-refresh health every 30s while enabled and the tab is open
+  useEffect(() => {
+    if (tab !== "health" || !healthAuto) return;
+    const id = setInterval(() => reloadHealth(true), 30000);
+    return () => clearInterval(id);
+  }, [tab, healthAuto, reloadHealth]);
+
+  async function runLlmTest() {
+    setLlmTesting(true);
+    setLlmTest(null);
+    try { setLlmTest(await API.adminTestLLM()); }
+    catch (e) { setLlmTest({ ok: false, error: e.message }); }
+    finally { setLlmTesting(false); }
+  }
 
   // Glossary tab
   const [glossaryTerms, setGlossaryTerms] = useState([]);
   const [glossaryLoading, setGlossaryLoading] = useState(false);
   const [glossarySearch, setGlossarySearch] = useState("");
+  const [glossaryStep, setGlossaryStep] = useState(0); // 0 = all steps
   const [glossaryEditor, setGlossaryEditor] = useState(null); // term obj (edit) or blank (new)
   const [glossaryModalError, setGlossaryModalError] = useState("");
 
@@ -172,7 +305,6 @@ export default function AdminDashboard() {
   // Load tab-specific data
   useEffect(() => {
     if (tab === "overview") {
-      API.adminGetSignups(30).then((d) => setSignups(d.signups || [])).catch(console.error);
       API.adminGetStepCompletion().then((d) => setStepCompletion(d.steps || [])).catch(console.error);
     } else if (tab === "users") {
       loadUsers();
@@ -180,16 +312,8 @@ export default function AdminDashboard() {
       loadClasses();
     } else if (tab === "sessions") {
       loadSessions();
-    } else if (tab === "map") {
-      API.adminGetLoginMap().then((d) => setMapLocations(d.locations || [])).catch(console.error);
-      API.adminGetGeoCountries().then((d) => setGeoCountries(d.countries || [])).catch(console.error);
-      API.adminGetGeoRegions().then((d) => setGeoRegions(d.regions || [])).catch(console.error);
-    } else if (tab === "activity") {
-      API.adminGetLoginActivity(200).then((d) => setLoginActivity(d.logins || [])).catch(console.error);
-      API.adminGetAuditLog(200).then((d) => setAuditLog(d.log || [])).catch(console.error);
     } else if (tab === "health") {
-      setHealthLoading(true);
-      API.adminGetHealth().then(setHealth).catch(console.error).finally(() => setHealthLoading(false));
+      reloadHealth();
     } else if (tab === "glossary") {
       loadGlossary();
     } else if (tab === "resources") {
@@ -198,6 +322,39 @@ export default function AdminDashboard() {
       loadStepRes();
     }
   }, [tab]);
+
+  // Signups reload when the range toggle changes
+  useEffect(() => {
+    if (tab !== "overview") return;
+    API.adminGetSignups(signupDays).then((d) => setSignups(d.signups || [])).catch(console.error);
+  }, [tab, signupDays]);
+
+  // Geo data reloads when the map range toggle changes
+  useEffect(() => {
+    if (tab !== "map") return;
+    setGeoCountryFilter("");
+    setGeoFocus(null);
+    API.adminGetLoginMap(geoDays).then((d) => setMapLocations(d.locations || [])).catch(console.error);
+    API.adminGetGeoCountries(geoDays).then((d) => setGeoCountries(d.countries || [])).catch(console.error);
+    API.adminGetGeoRegions(geoDays).then((d) => setGeoRegions(d.regions || [])).catch(console.error);
+    API.adminGetLoginTimeseries(geoDays).then((d) => setLoginTs(d.series || [])).catch(console.error);
+  }, [tab, geoDays]);
+
+  // Chart -> map sync: focus a country (toggle) or fly to a single city
+  function focusCountry(country) {
+    if (!country || country === geoCountryFilter) {
+      setGeoCountryFilter("");
+      setGeoFocus(mapLocations.map((l) => [l.lat, l.lng]));
+      return;
+    }
+    setGeoCountryFilter(country);
+    const pts = mapLocations.filter((l) => l.country === country).map((l) => [l.lat, l.lng]);
+    if (pts.length) setGeoFocus(pts);
+  }
+  function focusCity(r) {
+    const loc = mapLocations.find((l) => l.city === r.city && (!r.country || l.country === r.country));
+    if (loc) setGeoFocus([[loc.lat, loc.lng]]);
+  }
 
   const loadGlossary = useCallback(() => {
     setGlossaryLoading(true);
@@ -302,44 +459,111 @@ export default function AdminDashboard() {
       limit: PAGE_SIZE,
       role: userRoleFilter,
       search: userSearch,
+      sortBy: userSort.by,
+      sortDir: userSort.dir,
     }).then((d) => {
       setUsers(d.users || []);
       setUserTotal(d.total || 0);
     }).catch(console.error);
-  }, [userPage, userRoleFilter, userSearch]);
+  }, [userPage, userRoleFilter, userSearch, userSort]);
+
+  function toggleUserSort(col) {
+    setUserPage(0);
+    setUserSort((s) => s.by === col
+      ? { by: col, dir: s.dir === "asc" ? "desc" : "asc" }
+      : { by: col, dir: col === "name" ? "asc" : "desc" });
+  }
 
   useEffect(() => {
     if (tab === "users") loadUsers();
   }, [loadUsers, tab]);
 
   const loadClasses = useCallback(() => {
-    API.adminGetClasses({
-      skip: classPage * PAGE_SIZE,
-      limit: PAGE_SIZE,
-      search: classSearch,
-    }).then((d) => {
-      setClasses(d.classes || []);
-      setClassTotal(d.total || 0);
-    }).catch(console.error);
-  }, [classPage, classSearch]);
+    setClassesLoading(true);
+    API.adminGetClasses({ skip: 0, limit: 500 })
+      .then((d) => setClasses(d.classes || []))
+      .catch(console.error)
+      .finally(() => setClassesLoading(false));
+    // Teacher list for the reassign / create-class selects
+    API.adminGetUsers({ role: "teacher", limit: 500, sortBy: "name", sortDir: "asc" })
+      .then((d) => setTeacherOptions(d.users || []))
+      .catch(console.error);
+  }, []);
 
   useEffect(() => {
     if (tab === "classes") loadClasses();
   }, [loadClasses, tab]);
 
+  function openClassDetail(classId) {
+    setClassDetailLoading(true);
+    setClassDetail(null);
+    API.adminGetClassDetail(classId)
+      .then(setClassDetail)
+      .catch((e) => { notify.error(e.message, { title: "Failed to load class" }); setClassDetailLoading(false); })
+      .finally(() => setClassDetailLoading(false));
+  }
+
+  function toggleClassSort(col) {
+    setClassSort((s) => s.by === col
+      ? { by: col, dir: s.dir === "asc" ? "desc" : "asc" }
+      : { by: col, dir: ["class_name", "teacher_name"].includes(col) ? "asc" : "desc" });
+  }
+
+  async function saveClassEdits(classId, fields) {
+    setClassModalError("");
+    try {
+      await API.adminUpdateClass(classId, fields);
+      setEditingClass(null);
+      loadClasses();
+      if (classDetail && classDetail._id === classId) openClassDetail(classId);
+      notify.success("Class updated.");
+    } catch (e) { setClassModalError(e.message); }
+  }
+
+  async function handleRemoveStudent(student) {
+    if (!window.confirm(`Remove ${student.username} and their work? This cannot be undone.`)) return;
+    try {
+      await API.adminDeleteUser(student._id);
+      if (classDetail) openClassDetail(classDetail._id);
+      loadClasses();
+    } catch (e) { notify.error(e.message, { title: "Action failed" }); }
+  }
+
   const loadSessions = useCallback(() => {
     API.adminGetSessions({
       skip: sessionPage * PAGE_SIZE,
       limit: PAGE_SIZE,
+      search: sessionSearch,
+      step: sessionStep,
+      status: sessionStatus,
+      sortBy: sessionSort.by,
+      sortDir: sessionSort.dir,
     }).then((d) => {
       setSessions(d.sessions || []);
       setSessionTotal(d.total || 0);
+      setSessionStats(d.stats || null);
     }).catch(console.error);
-  }, [sessionPage]);
+  }, [sessionPage, sessionSearch, sessionStep, sessionStatus, sessionSort]);
 
   useEffect(() => {
     if (tab === "sessions") loadSessions();
   }, [loadSessions, tab]);
+
+  function toggleSessionSort(col) {
+    setSessionPage(0);
+    setSessionSort((s) => s.by === col
+      ? { by: col, dir: s.dir === "asc" ? "desc" : "asc" }
+      : { by: col, dir: "desc" });
+  }
+
+  async function handleDeleteSession(s) {
+    const who = s.user_name || s.user_email || "unknown user";
+    if (!window.confirm(`Delete this session by ${who}? All their design work in it is lost. This cannot be undone.`)) return;
+    try {
+      await API.adminDeleteSession(s.session_id);
+      loadSessions();
+    } catch (e) { notify.error(e.message, { title: "Action failed" }); }
+  }
 
   // User detail drill-down
   function openUserDetail(userId) {
@@ -360,25 +584,177 @@ export default function AdminDashboard() {
       }))
     : [];
 
-  // Step completion bar data
-  const stepBarData = stepCompletion.map((s) => ({
-    name: STEP_LABELS[s.step - 1] || `S${s.step}`,
-    count: s.count,
-    fill: STEP_COLORS[s.step - 1] || "#999",
-  }));
+  // Signups: zero-fill every day in the selected range so gaps read as quiet
+  // days instead of the line skipping them
+  const signupSeries = (() => {
+    const byDate = Object.fromEntries(signups.map((s) => [s.date, s.count]));
+    const out = [];
+    for (let i = signupDays - 1; i >= 0; i--) {
+      const key = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10);
+      out.push({ date: key, count: byDate[key] || 0 });
+    }
+    return out;
+  })();
+  const signupTotal = signupSeries.reduce((s, d) => s + d.count, 0);
 
+  // Step completion: zero-fill steps 1-9
+  const stepCounts = Array.from({ length: 9 }, (_, i) =>
+    stepCompletion.find((s) => s.step === i + 1)?.count || 0);
+  const stepBarData = stepCounts.map((count, i) => ({
+    name: STEP_LABELS[i],
+    stepNum: i + 1,
+    count,
+    fill: STEP_COLORS[i],
+  }));
+  const stepMax = Math.max(...stepCounts, 1);
+  // Biggest funnel drop between consecutive steps -> where students stall
+  const dropOff = (() => {
+    let best = null;
+    for (let i = 1; i < 9; i++) {
+      const d = stepCounts[i - 1] - stepCounts[i];
+      if (d > 1 && (!best || d > best.lost)) best = { after: i, lost: d };
+    }
+    return best;
+  })();
+
+  // Classes: client-side search, teacher filter, and sort
+  const shownClasses = (() => {
+    const q = classSearchInput.trim().toLowerCase();
+    let list = classes.filter((c) =>
+      (!classTeacherFilter || c.teacher_id === classTeacherFilter) &&
+      (!q || [c.class_name, c.class_code, c.teacher_name, c.teacher_email]
+        .some((v) => (v || "").toLowerCase().includes(q))));
+    const dir = classSort.dir === "asc" ? 1 : -1;
+    const key = classSort.by;
+    list = [...list].sort((a, b) => {
+      let va = a[key], vb = b[key];
+      if (key === "students") { va = a.actual_students || 0; vb = b.actual_students || 0; }
+      if (va == null && vb == null) return 0;
+      if (va == null) return 1;         // nulls (e.g. no activity) always last
+      if (vb == null) return -1;
+      if (typeof va === "string") return va.localeCompare(vb, undefined, { sensitivity: "base" }) * dir;
+      return (va - vb) * dir;
+    });
+    return list;
+  })();
+  const classTeachers = [...new Map(classes.map((c) => [c.teacher_id, { id: c.teacher_id, name: c.teacher_name, email: c.teacher_email }])).values()]
+    .sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+
+  // Map tab: zero-filled login series + cross-filtered locations/cities
+  const loginSeries = (() => {
+    if (!loginTs.length) return [];
+    const byDate = Object.fromEntries(loginTs.map((d) => [d.date, d]));
+    const start = geoDays
+      ? new Date(Date.now() - (geoDays - 1) * 86400000)
+      : new Date(loginTs[0].date + "T00:00:00Z");
+    const today = new Date();
+    const out = [];
+    for (let d = new Date(start); d <= today; d = new Date(d.getTime() + 86400000)) {
+      const key = d.toISOString().slice(0, 10);
+      out.push({ date: key, success: byDate[key]?.success || 0, failed: byDate[key]?.failed || 0 });
+    }
+    return out;
+  })();
+  const failedTotal = loginSeries.reduce((s, d) => s + d.failed, 0);
+  const countryFiltered = geoCountryFilter
+    ? mapLocations.filter((l) => l.country === geoCountryFilter)
+    : mapLocations;
+  const shownMapLocations = countryFiltered.length ? countryFiltered : mapLocations;
+  const shownRegions = geoCountryFilter
+    ? geoRegions.filter((r) => r.country === geoCountryFilter)
+    : geoRegions;
+
+  const ic = (paths) => (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" dangerouslySetInnerHTML={{ __html: paths }} />
+  );
   const TABS = [
-    { id: "overview", label: "Overview" },
-    { id: "users", label: "Users" },
-    { id: "classes", label: "Classes" },
-    { id: "sessions", label: "Sessions" },
-    { id: "map", label: "Map" },
-    { id: "activity", label: "Activity" },
-    { id: "glossary", label: "Glossary" },
-    { id: "resources", label: "Knowledge Base" },
-    { id: "stepres", label: "Step Resources" },
-    { id: "health", label: "Health" },
+    { id: "overview", label: "Overview", sub: "Platform-wide signups, roles, and student progress at a glance.",
+      icon: ic('<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>') },
+    { id: "users", label: "Users", sub: "Search, filter, and manage every account on the platform.",
+      icon: ic('<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>') },
+    { id: "classes", label: "Classes", sub: "All teacher-created classes and their student accounts.",
+      icon: ic('<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/>') },
+    { id: "sessions", label: "Sessions", sub: "Browse every student research design on the platform.",
+      icon: ic('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>') },
+    { id: "map", label: "Map", sub: "Where users sign in from around the world.",
+      icon: ic('<circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>') },
+    { id: "activity", label: "Activity", sub: "Login history and the admin audit trail.",
+      icon: ic('<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>') },
+    { id: "glossary", label: "Glossary", sub: "Research terms students can look up across the 9 steps.",
+      icon: ic('<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>') },
+    { id: "resources", label: "Knowledge Base", sub: "Documents the AI assistant draws on when answering students.",
+      icon: ic('<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>') },
+    { id: "stepres", label: "Step Resources", sub: "Videos and interactives shown in each step's Resources panel.",
+      icon: ic('<circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/>') },
+    { id: "health", label: "Health", sub: "Server, database, LLM, and disk status.",
+      icon: ic('<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>') },
   ];
+  const activeTab = TABS.find((t) => t.id === tab) || TABS[0];
+
+  // Class CRUD modals - rendered from both the table view and the drill-down
+  function renderClassModals() {
+    return (
+      <>
+        {editingClass && (
+          <EditClassModal
+            cls={editingClass}
+            teachers={teacherOptions}
+            error={classModalError}
+            onClose={() => setEditingClass(null)}
+            onSave={(fields) => saveClassEdits(editingClass._id, fields)}
+          />
+        )}
+        {addStudentsClass && (
+          <AddStudentsModal
+            cls={addStudentsClass}
+            error={classModalError}
+            onClose={() => setAddStudentsClass(null)}
+            onSave={async (count) => {
+              setClassModalError("");
+              try {
+                const r = await API.adminAddClassStudents(addStudentsClass._id, count);
+                setAddStudentsClass(null);
+                loadClasses();
+                if (classDetail && classDetail._id === addStudentsClass._id) openClassDetail(addStudentsClass._id);
+                notify.success(`Added ${r.students.length} student account${r.students.length === 1 ? "" : "s"}.`);
+              } catch (e) { setClassModalError(e.message); }
+            }}
+          />
+        )}
+        {creatingClass && (
+          <CreateClassModal
+            teachers={teacherOptions}
+            error={classModalError}
+            onClose={() => setCreatingClass(false)}
+            onSave={async (fields) => {
+              setClassModalError("");
+              try {
+                const r = await API.adminCreateClass(fields);
+                setCreatingClass(false);
+                loadClasses();
+                notify.success(`Class created - code "${r.class_code}".`);
+              } catch (e) { setClassModalError(e.message); }
+            }}
+          />
+        )}
+        {classResetPw && (
+          <ResetPasswordModal
+            user={classResetPw}
+            error={classModalError}
+            onClose={() => setClassResetPw(null)}
+            onSave={async (pw) => {
+              setClassModalError("");
+              try {
+                await API.adminResetPassword(classResetPw._id, pw);
+                setClassResetPw(null);
+                notify.success("Student password reset.");
+              } catch (e) { setClassModalError(e.message); }
+            }}
+          />
+        )}
+      </>
+    );
+  }
 
   // If viewing a student design (session viewer), show that overlay
   if (viewingSession) {
@@ -416,8 +792,43 @@ export default function AdminDashboard() {
     );
   }
 
+  // If viewing class detail, show drill-down
+  if (classDetail || classDetailLoading) {
+    return (
+      <div className="ad-dashboard">
+        <header className="ad-header">
+          <div className="ad-header__left">
+            <button className="ad-back-btn" onClick={() => { setClassDetail(null); setClassDetailLoading(false); }}>&larr; Back to Classes</button>
+          </div>
+          <div className="ad-header__right">
+            <ProfileMenu
+              user={user}
+              onSignOut={logout}
+              onOpenSettings={() => setSettingsOpen(true)}
+              roleLabel="Administrator"
+            />
+          </div>
+        </header>
+        <div className="ad-body">
+          {classDetailLoading && <div className="ad-loading">Loading class...</div>}
+          {classDetail && (
+            <ClassDetailView
+              detail={classDetail}
+              onViewSession={(sid, name) => setViewingSession({ sessionId: sid, name })}
+              onEdit={() => { setEditingClass(classDetail); setClassModalError(""); }}
+              onAddStudents={() => { setAddStudentsClass(classDetail); setClassModalError(""); }}
+              onResetPw={(s) => { setClassResetPw(s); setClassModalError(""); }}
+              onRemoveStudent={handleRemoveStudent}
+            />
+          )}
+          {renderClassModals()}
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="ad-dashboard">
+    <div className="ad-dashboard ad-wrap">
       {/* Header */}
       <header className="ad-header">
         <div className="ad-header__left">
@@ -438,30 +849,66 @@ export default function AdminDashboard() {
         </div>
       </header>
 
-      <div className="ad-body">
-        {/* Stat cards */}
-        {stats && (
+      <div className="td td--shell">
+        {/* Sidebar nav (shared shell styles with the teacher dashboard) */}
+        <aside className="td-sidebar">
+          <nav className="td-sidebar__nav">
+            {TABS.map((t) => (
+              <button
+                key={t.id}
+                className={`td-sidebar__item${tab === t.id ? " td-sidebar__item--active" : ""}`}
+                onClick={() => setTab(t.id)}
+              >
+                <span className="td-sidebar__item-icon">{t.icon}</span>
+                <span>{t.label}</span>
+              </button>
+            ))}
+          </nav>
+        </aside>
+
+        <div className="td-main">
+        <header className="td-main__head">
+          <div className="td-main__headtext">
+            <h1 className="td-main__title">{activeTab.label}</h1>
+            <p className="td-main__sub">{activeTab.sub}</p>
+          </div>
+        </header>
+
+        {/* Stat tiles - each clicks through to its tab */}
+        {tab === "overview" && stats && (
           <div className="ad-stats">
-            <StatCard label="Total Users" value={stats.total_users} color="#2B5EA7" />
-            <StatCard label="Sessions" value={stats.total_sessions} color="#E8618C" />
-            <StatCard label="Classes" value={stats.total_classes} color="#1A8A7D" />
-            <StatCard label="Active (7d)" value={stats.active_users_7d} color="#F0B429" />
-            <StatCard label="Active (30d)" value={stats.active_users_30d} color="#F5922A" />
+            <StatTile
+              label="Total Users" value={stats.total_users} color="#2B5EA7"
+              hint={`${stats.role_counts?.teacher || 0} teachers · ${(stats.role_counts?.student || 0) + (stats.role_counts?.classroom_student || 0)} students`}
+              onClick={() => setTab("users")}
+              icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>}
+            />
+            <StatTile
+              label="Sessions" value={stats.total_sessions} color="#E8618C"
+              hint="student research designs"
+              onClick={() => setTab("sessions")}
+              icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>}
+            />
+            <StatTile
+              label="Classes" value={stats.total_classes} color="#1A8A7D"
+              hint="teacher-created classes"
+              onClick={() => setTab("classes")}
+              icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/></svg>}
+            />
+            <StatTile
+              label="Active (7d)" value={stats.active_users_7d} color="#F0B429"
+              hint="signed in this week"
+              onClick={() => setTab("activity")}
+              icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>}
+            />
+            <StatTile
+              label="Active (30d)" value={stats.active_users_30d} color="#F5922A"
+              hint="signed in this month"
+              onClick={() => setTab("activity")}
+              icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>}
+            />
           </div>
         )}
-
-        {/* Tabs */}
-        <nav className="ad-tabs">
-          {TABS.map((t) => (
-            <button
-              key={t.id}
-              className={`ad-tab${tab === t.id ? " ad-tab--active" : ""}`}
-              onClick={() => setTab(t.id)}
-            >
-              {t.label}
-            </button>
-          ))}
-        </nav>
 
         {/* Tab content */}
         <div className="ad-tab-content">
@@ -472,61 +919,181 @@ export default function AdminDashboard() {
             <div className="ad-overview">
               <div className="ad-chart-row">
                 <div className="ad-chart-card">
-                  <h4>Signups (Last 30 Days)</h4>
-                  {signups.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={220}>
-                      <LineChart data={signups}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="var(--hop-border, #e5e7eb)" />
-                        <XAxis dataKey="date" tick={{ fontSize: 10 }} />
-                        <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-                        <Tooltip contentStyle={tipStyle} labelStyle={tipLabelStyle} itemStyle={{ color: tipStyle.color }} />
-                        <Line type="monotone" dataKey="count" stroke="#2B5EA7" strokeWidth={2} dot={false} />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <p className="ad-empty">No signup data in the last 30 days.</p>
-                  )}
+                  <div className="ad-chart-card__header">
+                    <h4 className="ad-chart-card__title">
+                      <span className="ad-chart-card__ic" style={{ color: "#2B5EA7", background: "rgba(43,94,167,0.10)" }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+                      </span>
+                      New Signups
+                      <span className="ad-chart-count">{signupTotal}</span>
+                    </h4>
+                    <div className="ad-seg ad-seg--sm">
+                      {[[7, "7d"], [30, "30d"], [90, "90d"]].map(([d, label]) => (
+                        <button
+                          key={d}
+                          className={`ad-seg__btn${signupDays === d ? " ad-seg__btn--active" : ""}`}
+                          onClick={() => setSignupDays(d)}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <p className="ad-chart-card__desc">Accounts created per day over the last {signupDays} days</p>
+                  <ResponsiveContainer width="100%" height={220}>
+                    <AreaChart data={signupSeries} margin={{ top: 8, right: 8, bottom: 0, left: -18 }}>
+                      <defs>
+                        <linearGradient id="adSignupGrad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#2B5EA7" stopOpacity={0.28} />
+                          <stop offset="100%" stopColor="#2B5EA7" stopOpacity={0.02} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--hop-border, #e5e7eb)" />
+                      <XAxis
+                        dataKey="date" tick={{ fontSize: 10 }} minTickGap={24}
+                        tickFormatter={(d) => d.slice(5).replace("-", "/")}
+                      />
+                      <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+                      <Tooltip
+                        contentStyle={tipStyle} labelStyle={tipLabelStyle} itemStyle={{ color: tipStyle.color }}
+                        formatter={(v) => [`${v} signup${v === 1 ? "" : "s"}`]}
+                      />
+                      <Area type="monotone" dataKey="count" stroke="#2B5EA7" strokeWidth={2} fill="url(#adSignupGrad)" dot={false} activeDot={{ r: 4 }} />
+                    </AreaChart>
+                  </ResponsiveContainer>
                 </div>
 
                 <div className="ad-chart-card">
-                  <h4>Users by Role</h4>
+                  <h4 className="ad-chart-card__title">
+                    <span className="ad-chart-card__ic" style={{ color: "#7C3AED", background: "rgba(124,58,237,0.10)" }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>
+                    </span>
+                    Users by Role
+                  </h4>
+                  <p className="ad-chart-card__desc">How the {stats?.total_users ?? 0} accounts split across roles</p>
                   {rolePieData.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={220}>
-                      <PieChart>
-                        <Pie data={rolePieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label>
-                          {rolePieData.map((d, i) => (
-                            <Cell key={i} fill={d.color} />
-                          ))}
-                        </Pie>
-                        <Tooltip contentStyle={tipStyle} labelStyle={tipLabelStyle} itemStyle={{ color: tipStyle.color }} />
-                        <Legend />
-                      </PieChart>
-                    </ResponsiveContainer>
+                    <div className="ad-donut">
+                      <ResponsiveContainer width="100%" height={220}>
+                        <PieChart>
+                          <Pie data={rolePieData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={58} outerRadius={88} paddingAngle={2}>
+                            {rolePieData.map((d, i) => (
+                              <Cell key={i} fill={d.color} />
+                            ))}
+                          </Pie>
+                          <Tooltip
+                            contentStyle={tipStyle} labelStyle={tipLabelStyle} itemStyle={{ color: tipStyle.color }}
+                            formatter={(v, name) => [`${v} user${v === 1 ? "" : "s"}`, name]}
+                          />
+                          <Legend iconType="circle" wrapperStyle={{ fontSize: 12 }} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                      <div className="ad-donut__center">
+                        <span className="ad-donut__num">{stats?.total_users ?? 0}</span>
+                        <span className="ad-donut__cap">users</span>
+                      </div>
+                    </div>
                   ) : (
                     <p className="ad-empty">No user data.</p>
                   )}
                 </div>
               </div>
 
-              <div className="ad-chart-card ad-chart-card--wide">
-                <h4>Step Completion (All Students)</h4>
-                {stepBarData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height={220}>
-                    <BarChart data={stepBarData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="var(--hop-border, #e5e7eb)" />
-                      <XAxis dataKey="name" tick={{ fontSize: 10 }} />
-                      <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-                      <Tooltip contentStyle={tipStyle} labelStyle={tipLabelStyle} itemStyle={{ color: tipStyle.color }} />
-                      <Bar dataKey="count" radius={[4, 4, 0, 0]}>
-                        {stepBarData.map((d, i) => (
-                          <Cell key={i} fill={d.fill} />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <p className="ad-empty">No step completion data yet.</p>
-                )}
+              <div className="ad-chart-row" style={{ marginTop: 20 }}>
+                <div className="ad-chart-card">
+                  <h4 className="ad-chart-card__title">
+                    <span className="ad-chart-card__ic" style={{ color: "#1A8A7D", background: "rgba(26,138,125,0.10)" }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                    </span>
+                    Step Completion
+                  </h4>
+                  <p className="ad-chart-card__desc">Students across all sessions who completed each step</p>
+                  {dropOff && (
+                    <div className="td-bottleneck" style={{ cursor: "default" }}>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+                      Biggest drop-off after Step {dropOff.after}: {STEP_LABELS[dropOff.after - 1]} ({dropOff.lost} student{dropOff.lost === 1 ? "" : "s"} stall there)
+                    </div>
+                  )}
+                  {stepMax > 1 ? (
+                    <ResponsiveContainer width="100%" height={220}>
+                      <BarChart data={stepBarData} margin={{ top: 8, right: 8, bottom: 0, left: -18 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="var(--hop-border, #e5e7eb)" />
+                        <XAxis dataKey="stepNum" tick={{ fontSize: 11 }} tickFormatter={(n) => `S${n}`} />
+                        <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+                        <Tooltip
+                          contentStyle={tipStyle} labelStyle={tipLabelStyle} itemStyle={{ color: tipStyle.color }}
+                          formatter={(v, _, props) => [`${v} student${v === 1 ? "" : "s"}`, props.payload.name]}
+                          labelFormatter={(n) => `Step ${n}`}
+                        />
+                        <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+                          {stepBarData.map((d, i) => (
+                            <Cell key={i} fill={d.fill} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <p className="ad-empty">No step completion data yet.</p>
+                  )}
+                </div>
+
+                {/* All-students hopscotch court: opacity = share of the busiest step */}
+                <div className="ad-chart-card">
+                  <h4 className="ad-chart-card__title">
+                    <span className="ad-chart-card__ic" style={{ color: "#E8618C", background: "rgba(232,97,140,0.10)" }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/></svg>
+                    </span>
+                    Hopscotch Court
+                  </h4>
+                  <p className="ad-chart-card__desc">The brighter a square, the more students completed that step</p>
+                  <div className="td-court">
+                    <svg viewBox="-2 -8 132 62" className="td-court__svg" aria-label="All-student step completion court">
+                      {[
+                        { x: 0, y: 0 }, { x: 0, y: 24 }, { x: 22, y: 12 }, { x: 44, y: 0 },
+                        { x: 44, y: 24 }, { x: 66, y: 12 }, { x: 88, y: 0 }, { x: 88, y: 24 },
+                      ].map((p, i) => {
+                        const count = stepCounts[i];
+                        const pct = count / stepMax;
+                        return (
+                          <g key={i} className="td-court__sq" style={{ cursor: "default" }}>
+                            <rect x={p.x} y={p.y} width="18" height="22" rx="6"
+                              fill={STEP_COLORS[i]} fillOpacity={0.14 + 0.86 * pct}
+                              stroke={STEP_COLORS[i]} strokeWidth="1.2" strokeOpacity="0.75">
+                              <title>{`Step ${i + 1}: ${STEP_LABELS[i]} - ${count} student${count === 1 ? "" : "s"} completed`}</title>
+                            </rect>
+                            <text x={p.x + 9} y={p.y + 11} textAnchor="middle" dominantBaseline="central" fontSize="6.5" fontWeight="700"
+                              fill={pct > 0.55 ? "#fff" : "var(--hop-ink-secondary)"} pointerEvents="none">
+                              {count}
+                            </text>
+                          </g>
+                        );
+                      })}
+                      {(() => {
+                        const count = stepCounts[8];
+                        const pct = count / stepMax;
+                        return (
+                          <g className="td-court__sq" style={{ cursor: "default" }}>
+                            <path d="M110,7 A16,16 0 0,1 110,39 Z"
+                              fill={STEP_COLORS[8]} fillOpacity={0.14 + 0.86 * pct}
+                              stroke={STEP_COLORS[8]} strokeWidth="1.2" strokeOpacity="0.75">
+                              <title>{`Step 9: ${STEP_LABELS[8]} - ${count} student${count === 1 ? "" : "s"} completed`}</title>
+                            </path>
+                            <text x="116.8" y="23" textAnchor="middle" dominantBaseline="central" fontSize="6.5" fontWeight="700"
+                              fill={pct > 0.55 ? "#fff" : "var(--hop-ink-secondary)"} pointerEvents="none">
+                              {count}
+                            </text>
+                          </g>
+                        );
+                      })()}
+                    </svg>
+                    <div className="td-court__legend">
+                      {STEP_LABELS.map((l, i) => (
+                        <span key={i} className="td-court__leg" style={{ "--leg": STEP_COLORS[i] }}>
+                          <span className="td-court__leg-dot" />S{i + 1} {l}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -535,24 +1102,18 @@ export default function AdminDashboard() {
           {tab === "users" && (
             <div className="ad-users">
               <div className="ad-users__toolbar">
-                <input
-                  type="text"
-                  className="ad-users__search"
-                  placeholder="Search by name, email, or username..."
-                  value={userSearch}
-                  onChange={(e) => { setUserSearch(e.target.value); setUserPage(0); }}
-                />
-                <select
-                  className="ad-users__filter"
-                  value={userRoleFilter}
-                  onChange={(e) => { setUserRoleFilter(e.target.value); setUserPage(0); }}
-                >
-                  <option value="">All Roles</option>
-                  <option value="admin">Admin</option>
-                  <option value="teacher">Teacher</option>
-                  <option value="student">Student</option>
-                  <option value="classroom_student">Classroom</option>
-                </select>
+                <div className="ad-search">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                  <input
+                    type="text"
+                    placeholder="Search by name, email, or username..."
+                    value={userSearchInput}
+                    onChange={(e) => setUserSearchInput(e.target.value)}
+                  />
+                  {userSearchInput && (
+                    <button className="ad-search__clear" title="Clear search" onClick={() => setUserSearchInput("")}>&times;</button>
+                  )}
+                </div>
                 <button className="td-btn td-btn--outline td-btn--sm" onClick={() => API.adminExportCSV("users")}>
                   Export CSV
                 </button>
@@ -561,25 +1122,40 @@ export default function AdminDashboard() {
                 </button>
               </div>
 
+              {/* Role filter chips with live counts */}
+              <div className="ad-rolechips">
+                {[["", "All", stats?.total_users], ...Object.keys(ROLE_LABELS).map((r) => [r, ROLE_LABELS[r], stats?.role_counts?.[r] || 0])].map(([id, label, count]) => (
+                  <button
+                    key={id || "all"}
+                    className={`ad-rolechip${userRoleFilter === id ? " ad-rolechip--active" : ""}`}
+                    style={{ "--chip": id ? ROLE_COLORS[id] : "var(--hop-navy, #2B4C7E)" }}
+                    onClick={() => { setUserRoleFilter(id); setUserPage(0); }}
+                  >
+                    {id && <span className="ad-rolechip__dot" />}
+                    {label}
+                    <span className="ad-rolechip__count">{count ?? 0}</span>
+                  </button>
+                ))}
+              </div>
+
               <div className="td-table-wrap">
                 <table className="td-table">
                   <thead>
                     <tr>
-                      <th>User</th>
+                      <SortTh label="User" col="name" sort={userSort} onSort={toggleUserSort} />
                       <th>Role</th>
                       <th>Education</th>
                       <th>Status</th>
-                      <th>Last Login</th>
-                      <th>IP</th>
-                      <th>Created</th>
+                      <SortTh label="Last Login" col="last_login_at" sort={userSort} onSort={toggleUserSort} />
+                      <SortTh label="Created" col="created_at" sort={userSort} onSort={toggleUserSort} />
                       <th>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {users.map((u) => (
-                      <tr key={u._id}>
+                      <tr key={u._id} className="ad-row--clickable" onClick={() => openUserDetail(u._id)}>
                         <td>
-                          <div className="td-table__student" style={{ cursor: "pointer" }} onClick={() => openUserDetail(u._id)}>
+                          <div className="td-table__student">
                             <span className="td-table__student-avatar" style={{ background: ROLE_COLORS[u.role] || "#999" }}>
                               {(u.name || "?").charAt(0).toUpperCase()}
                             </span>
@@ -594,15 +1170,18 @@ export default function AdminDashboard() {
                             {ROLE_LABELS[u.role] || u.role}
                           </span>
                         </td>
-                        <td className="td-table__muted">{u.education_level === "higher_ed" ? "Higher Ed" : "High School"}</td>
+                        <td><span className="ad-edu-chip">{u.education_level === "higher_ed" ? "Higher Ed" : "High School"}</span></td>
                         <td>
-                          <span className={`ad-status-dot ${u.is_active === false ? "ad-status-dot--inactive" : "ad-status-dot--active"}`} />
-                          {u.is_active === false ? "Inactive" : "Active"}
+                          <span className={`ad-pill ${u.is_active === false ? "ad-pill--off" : "ad-pill--ok"}`}>
+                            {u.is_active === false ? "Inactive" : "Active"}
+                          </span>
                         </td>
-                        <td className="td-table__muted">{timeAgo(u.last_login_at)}</td>
-                        <td className="td-table__mono" style={{ fontSize: "0.75rem" }}>{u.last_login_ip || "\u2014"}</td>
-                        <td className="td-table__muted">{u.created_at ? new Date(u.created_at).toLocaleDateString() : ""}</td>
                         <td>
+                          <div className="td-table__muted">{timeAgo(u.last_login_at) || "Never"}</div>
+                          {u.last_login_ip && <div className="td-table__mono" style={{ fontSize: "0.7rem" }}>{u.last_login_ip}</div>}
+                        </td>
+                        <td className="td-table__muted">{u.created_at ? new Date(u.created_at).toLocaleDateString() : ""}</td>
+                        <td onClick={(e) => e.stopPropagation()}>
                           <div className="ad-actions">
                             <button className="ad-action-btn" title="Edit" onClick={() => { setEditingUser({ ...u }); setModalError(""); }}>
                               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
@@ -625,7 +1204,18 @@ export default function AdminDashboard() {
                       </tr>
                     ))}
                     {users.length === 0 && (
-                      <tr><td colSpan={8} className="ad-empty" style={{ textAlign: "center", padding: 24 }}>No users found.</td></tr>
+                      <tr>
+                        <td colSpan={7} className="ad-empty" style={{ textAlign: "center", padding: 32 }}>
+                          {userSearch || userRoleFilter ? (
+                            <>
+                              No users match{userSearch ? <> "<strong>{userSearch}</strong>"</> : ""}{userRoleFilter ? ` in ${ROLE_LABELS[userRoleFilter]}` : ""}.{" "}
+                              <button className="ad-linkbtn" onClick={() => { setUserSearchInput(""); setUserRoleFilter(""); setUserPage(0); }}>
+                                Clear filters
+                              </button>
+                            </>
+                          ) : "No users yet."}
+                        </td>
+                      </tr>
                     )}
                   </tbody>
                 </table>
@@ -633,7 +1223,9 @@ export default function AdminDashboard() {
 
               <div className="ad-pagination">
                 <button disabled={userPage === 0} onClick={() => setUserPage((p) => p - 1)}>Previous</button>
-                <span>Page {userPage + 1} of {Math.max(1, Math.ceil(userTotal / PAGE_SIZE))} ({userTotal} users)</span>
+                <span>
+                  {userTotal === 0 ? "0 users" : `${userPage * PAGE_SIZE + 1}\u2013${Math.min((userPage + 1) * PAGE_SIZE, userTotal)} of ${userTotal} user${userTotal === 1 ? "" : "s"}`}
+                </span>
                 <button disabled={(userPage + 1) * PAGE_SIZE >= userTotal} onClick={() => setUserPage((p) => p + 1)}>Next</button>
               </div>
 
@@ -700,42 +1292,87 @@ export default function AdminDashboard() {
           {tab === "classes" && (
             <div className="ad-users">
               <div className="ad-users__toolbar">
-                <input
-                  type="text"
-                  className="ad-users__search"
-                  placeholder="Search by class name or code..."
-                  value={classSearch}
-                  onChange={(e) => { setClassSearch(e.target.value); setClassPage(0); }}
-                />
+                <div className="ad-search">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                  <input
+                    type="text"
+                    placeholder="Search by class, code, or teacher..."
+                    value={classSearchInput}
+                    onChange={(e) => setClassSearchInput(e.target.value)}
+                  />
+                  {classSearchInput && (
+                    <button className="ad-search__clear" title="Clear search" onClick={() => setClassSearchInput("")}>&times;</button>
+                  )}
+                </div>
+                <select
+                  className="ad-users__filter"
+                  value={classTeacherFilter}
+                  onChange={(e) => setClassTeacherFilter(e.target.value)}
+                >
+                  <option value="">All teachers</option>
+                  {classTeachers.map((t) => (
+                    <option key={t.id} value={t.id}>{t.name || t.email || "Unknown"}</option>
+                  ))}
+                </select>
+                <span className="ad-glossary__count">
+                  {shownClasses.length} of {classes.length} class{classes.length === 1 ? "" : "es"}
+                </span>
+                <button className="td-btn td-btn--primary td-btn--sm" onClick={() => { setCreatingClass(true); setClassModalError(""); }}>
+                  + Create Class
+                </button>
               </div>
 
+              {classesLoading && <div className="ad-loading">Loading classes...</div>}
+
+              {!classesLoading && (
               <div className="td-table-wrap">
                 <table className="td-table">
                   <thead>
                     <tr>
-                      <th>Class Name</th>
-                      <th>Code</th>
-                      <th>Teacher</th>
-                      <th>Students</th>
-                      <th>Password</th>
-                      <th>Created</th>
+                      <SortTh label="Class" col="class_name" sort={classSort} onSort={toggleClassSort} />
+                      <SortTh label="Teacher" col="teacher_name" sort={classSort} onSort={toggleClassSort} />
+                      <SortTh label="Students" col="students" sort={classSort} onSort={toggleClassSort} />
+                      <SortTh label="Progress" col="avg_progress" sort={classSort} onSort={toggleClassSort} />
+                      <th>AI</th>
+                      <SortTh label="Last Activity" col="last_activity" sort={classSort} onSort={toggleClassSort} />
+                      <SortTh label="Created" col="created_at" sort={classSort} onSort={toggleClassSort} />
                       <th>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {classes.map((c) => (
-                      <tr key={c._id}>
-                        <td><strong>{c.class_name}</strong></td>
-                        <td className="td-table__mono">{c.class_code}</td>
+                    {shownClasses.map((c) => (
+                      <tr key={c._id} className="ad-row--clickable" onClick={() => openClassDetail(c._id)}>
                         <td>
-                          <div>{c.teacher_name}</div>
-                          <div className="td-table__mono" style={{ fontSize: "0.75rem" }}>{c.teacher_email}</div>
+                          <div className="td-table__name ad-clickable">{c.class_name}</div>
+                          <span className="ad-ccard__code">{c.class_code}</span>
                         </td>
-                        <td>{c.actual_students} / {c.student_count}</td>
-                        <td className="td-table__mono" style={{ fontSize: "0.75rem" }}>{c.password || "\u2014"}</td>
-                        <td className="td-table__muted">{c.created_at ? new Date(c.created_at).toLocaleDateString() : ""}</td>
                         <td>
+                          <div>{c.teacher_name || "\u2014"}</div>
+                          <div className="td-table__mono" style={{ fontSize: "0.72rem" }}>{c.teacher_email}</div>
+                        </td>
+                        <td>
+                          <div className="td-table__muted">{c.actual_students} / {c.student_count}</div>
+                          <div className="ad-minibar"><div className="ad-minibar__fill" style={{ width: `${c.student_count ? Math.min(100, Math.round((c.actual_students / c.student_count) * 100)) : 0}%` }} /></div>
+                        </td>
+                        <td>
+                          <div className="td-table__muted">{c.avg_progress || 0}%</div>
+                          <div className="ad-minibar"><div className="ad-minibar__fill ad-minibar__fill--progress" style={{ width: `${c.avg_progress || 0}%` }} /></div>
+                        </td>
+                        <td>
+                          <span className={`ad-pill ${c.settings?.ai_enabled === false ? "ad-pill--off" : "ad-pill--ok"}`}>
+                            {c.settings?.ai_enabled === false ? "Off" : "On"}
+                          </span>
+                        </td>
+                        <td className="td-table__muted">{c.last_activity ? timeAgo(c.last_activity) : "\u2014"}</td>
+                        <td className="td-table__muted">{c.created_at ? new Date(c.created_at).toLocaleDateString() : ""}</td>
+                        <td onClick={(e) => e.stopPropagation()}>
                           <div className="ad-actions">
+                            <button className="ad-action-btn" title="Edit class" onClick={() => { setEditingClass(c); setClassModalError(""); }}>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                            </button>
+                            <button className="ad-action-btn" title="Add students" onClick={() => { setAddStudentsClass(c); setClassModalError(""); }}>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+                            </button>
                             <button className="ad-action-btn ad-action-btn--danger" title="Delete class and students" onClick={() => setDeleteClass(c)}>
                               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                             </button>
@@ -743,18 +1380,22 @@ export default function AdminDashboard() {
                         </td>
                       </tr>
                     ))}
-                    {classes.length === 0 && (
-                      <tr><td colSpan={7} className="ad-empty" style={{ textAlign: "center", padding: 24 }}>No classes found.</td></tr>
+                    {shownClasses.length === 0 && (
+                      <tr>
+                        <td colSpan={8} className="ad-empty" style={{ textAlign: "center", padding: 32 }}>
+                          {classSearchInput || classTeacherFilter ? (
+                            <>
+                              No classes match your filters.{" "}
+                              <button className="ad-linkbtn" onClick={() => { setClassSearchInput(""); setClassTeacherFilter(""); }}>Clear filters</button>
+                            </>
+                          ) : "No classes yet - teachers create them from their dashboard."}
+                        </td>
+                      </tr>
                     )}
                   </tbody>
                 </table>
               </div>
-
-              <div className="ad-pagination">
-                <button disabled={classPage === 0} onClick={() => setClassPage((p) => p - 1)}>Previous</button>
-                <span>Page {classPage + 1} of {Math.max(1, Math.ceil(classTotal / PAGE_SIZE))} ({classTotal} classes)</span>
-                <button disabled={(classPage + 1) * PAGE_SIZE >= classTotal} onClick={() => setClassPage((p) => p + 1)}>Next</button>
-              </div>
+              )}
 
               {deleteClass && (
                 <div className="ad-modal-backdrop" onClick={() => setDeleteClass(null)}>
@@ -775,6 +1416,7 @@ export default function AdminDashboard() {
                   </div>
                 </div>
               )}
+              {renderClassModals()}
             </div>
           )}
 
@@ -782,12 +1424,51 @@ export default function AdminDashboard() {
           {tab === "sessions" && (
             <div className="ad-users">
               <div className="ad-users__toolbar">
-                <span style={{ color: "var(--hop-muted)", fontSize: "0.85rem" }}>
-                  Browse all student sessions. Click "View" to see their research design.
-                </span>
+                <div className="ad-search">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                  <input
+                    type="text"
+                    placeholder="Search by student name, email, or username..."
+                    value={sessionSearchInput}
+                    onChange={(e) => setSessionSearchInput(e.target.value)}
+                  />
+                  {sessionSearchInput && (
+                    <button className="ad-search__clear" title="Clear search" onClick={() => setSessionSearchInput("")}>&times;</button>
+                  )}
+                </div>
+                <select
+                  className="ad-users__filter"
+                  value={sessionStep}
+                  onChange={(e) => { setSessionStep(Number(e.target.value)); setSessionPage(0); }}
+                >
+                  <option value={0}>All steps</option>
+                  {STEP_LABELS.map((l, i) => (
+                    <option key={i} value={i + 1}>Step {i + 1}: {l}</option>
+                  ))}
+                </select>
                 <button className="td-btn td-btn--outline td-btn--sm" onClick={() => API.adminExportCSV("sessions")}>
                   Export CSV
                 </button>
+                {sessionStats && (sessionStats.empty > 0 || sessionStats.orphaned > 0) && (
+                  <button className="td-btn td-btn--outline td-btn--sm ad-btn--warn" onClick={() => setCleanupOpen(true)}>
+                    Clean up ({sessionStats.empty + sessionStats.orphaned})
+                  </button>
+                )}
+              </div>
+
+              {/* Status filter chips */}
+              <div className="ad-rolechips">
+                {[["", "All", "var(--hop-navy, #2B4C7E)"], ["active7", "Active (7d)", "#16A34A"], ["completed", "Completed", "#1A8A7D"], ["stale", "Stale (30d+)", "#F5922A"], ["empty", "Empty", "#7B8794"]].map(([id, label, color]) => (
+                  <button
+                    key={id || "all"}
+                    className={`ad-rolechip${sessionStatus === id ? " ad-rolechip--active" : ""}`}
+                    style={{ "--chip": color }}
+                    onClick={() => { setSessionStatus(id); setSessionPage(0); }}
+                  >
+                    {id && <span className="ad-rolechip__dot" />}
+                    {label}
+                  </button>
+                ))}
               </div>
 
               <div className="td-table-wrap">
@@ -795,12 +1476,12 @@ export default function AdminDashboard() {
                   <thead>
                     <tr>
                       <th>User</th>
-                      <th>Step</th>
+                      <th>Progress</th>
+                      <SortTh label="Step" col="active_step" sort={sessionSort} onSort={toggleSessionSort} />
                       <th>Worldview</th>
                       <th>Path</th>
-                      <th>Methodology</th>
-                      <th>Created</th>
-                      <th>Updated</th>
+                      <SortTh label="Created" col="created_at" sort={sessionSort} onSort={toggleSessionSort} />
+                      <SortTh label="Updated" col="updated_at" sort={sessionSort} onSort={toggleSessionSort} />
                       <th>Actions</th>
                     </tr>
                   </thead>
@@ -810,10 +1491,17 @@ export default function AdminDashboard() {
                         <td>
                           <div className="td-table__student">
                             <div>
-                              <div className="td-table__name">{s.user_name || "\u2014"}</div>
+                              <div className="td-table__name">
+                                {s.user_name || "\u2014"}
+                                {s.orphaned && <span className="ad-pill ad-pill--off" style={{ marginLeft: 6 }}>deleted user</span>}
+                              </div>
                               <div className="td-table__mono">{s.user_email || ""}</div>
                             </div>
                           </div>
+                        </td>
+                        <td>
+                          <div className="td-table__muted">{s.steps_done || 0}/9 steps</div>
+                          <div className="ad-minibar"><div className="ad-minibar__fill ad-minibar__fill--progress" style={{ width: `${Math.round(((s.steps_done || 0) / 9) * 100)}%` }} /></div>
                         </td>
                         <td>
                           <span className="ad-role-badge" style={{ background: STEP_COLORS[(s.active_step || 1) - 1] || "#999" }}>
@@ -822,21 +1510,36 @@ export default function AdminDashboard() {
                         </td>
                         <td className="td-table__muted">{s.worldview_label || "\u2014"}</td>
                         <td className="td-table__muted">{s.resolved_path || "\u2014"}</td>
-                        <td className="td-table__muted">{s.chosen_methodology || "\u2014"}</td>
                         <td className="td-table__muted">{timeAgo(s.created_at)}</td>
                         <td className="td-table__muted">{timeAgo(s.updated_at)}</td>
                         <td>
-                          <button
-                            className="td-btn td-btn--outline td-btn--sm"
-                            onClick={() => setViewingSession({ sessionId: s.session_id, name: s.user_name })}
-                          >
-                            View
-                          </button>
+                          <div className="ad-actions">
+                            <button
+                              className="td-btn td-btn--outline td-btn--sm"
+                              onClick={() => setViewingSession({ sessionId: s.session_id, name: s.user_name })}
+                            >
+                              View
+                            </button>
+                            <button className="ad-action-btn ad-action-btn--danger" title="Delete session" onClick={() => handleDeleteSession(s)}>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
                     {sessions.length === 0 && (
-                      <tr><td colSpan={8} className="ad-empty" style={{ textAlign: "center", padding: 24 }}>No sessions found.</td></tr>
+                      <tr>
+                        <td colSpan={8} className="ad-empty" style={{ textAlign: "center", padding: 32 }}>
+                          {sessionSearch || sessionStatus || sessionStep ? (
+                            <>
+                              No sessions match your filters.{" "}
+                              <button className="ad-linkbtn" onClick={() => { setSessionSearchInput(""); setSessionStatus(""); setSessionStep(0); setSessionPage(0); }}>
+                                Clear filters
+                              </button>
+                            </>
+                          ) : "No sessions yet."}
+                        </td>
+                      </tr>
                     )}
                   </tbody>
                 </table>
@@ -844,25 +1547,155 @@ export default function AdminDashboard() {
 
               <div className="ad-pagination">
                 <button disabled={sessionPage === 0} onClick={() => setSessionPage((p) => p - 1)}>Previous</button>
-                <span>Page {sessionPage + 1} of {Math.max(1, Math.ceil(sessionTotal / PAGE_SIZE))} ({sessionTotal} sessions)</span>
+                <span>
+                  {sessionTotal === 0 ? "0 sessions" : `${sessionPage * PAGE_SIZE + 1}\u2013${Math.min((sessionPage + 1) * PAGE_SIZE, sessionTotal)} of ${sessionTotal} session${sessionTotal === 1 ? "" : "s"}`}
+                </span>
                 <button disabled={(sessionPage + 1) * PAGE_SIZE >= sessionTotal} onClick={() => setSessionPage((p) => p + 1)}>Next</button>
               </div>
+
+              {cleanupOpen && sessionStats && (
+                <div className="ad-modal-backdrop" onClick={() => setCleanupOpen(false)}>
+                  <div className="ad-modal" onClick={(e) => e.stopPropagation()}>
+                    <h3>Clean Up Sessions</h3>
+                    <p style={{ fontSize: "0.9rem" }}>
+                      {sessionStats.empty > 0 && <>\u2022 <strong>{sessionStats.empty}</strong> empty session{sessionStats.empty === 1 ? "" : "s"} (created but no step work)<br /></>}
+                      {sessionStats.orphaned > 0 && <>\u2022 <strong>{sessionStats.orphaned}</strong> orphaned session{sessionStats.orphaned === 1 ? "" : "s"} (owner account deleted)</>}
+                    </p>
+                    <p style={{ color: "#DC2626", fontSize: "0.85rem" }}>Deletion is permanent and is recorded in the audit log.</p>
+                    <div className="ad-modal__actions">
+                      <button className="td-btn td-btn--outline td-btn--sm" onClick={() => setCleanupOpen(false)}>Cancel</button>
+                      {sessionStats.empty > 0 && (
+                        <button className="td-btn td-btn--sm" style={{ background: "#DC2626", color: "#fff" }} onClick={async () => {
+                          try {
+                            const r = await API.adminCleanupSessions("empty");
+                            notify.success(`Deleted ${r.deleted} empty session${r.deleted === 1 ? "" : "s"}.`);
+                            setCleanupOpen(false);
+                            loadSessions();
+                          } catch (e) { notify.error(e.message, { title: "Cleanup failed" }); }
+                        }}>Delete empty</button>
+                      )}
+                      {sessionStats.orphaned > 0 && (
+                        <button className="td-btn td-btn--sm" style={{ background: "#DC2626", color: "#fff" }} onClick={async () => {
+                          try {
+                            const r = await API.adminCleanupSessions("orphaned");
+                            notify.success(`Deleted ${r.deleted} orphaned session${r.deleted === 1 ? "" : "s"}.`);
+                            setCleanupOpen(false);
+                            loadSessions();
+                          } catch (e) { notify.error(e.message, { title: "Cleanup failed" }); }
+                        }}>Delete orphaned</button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
           {/* ===== MAP & GEO ANALYTICS ===== */}
           {tab === "map" && (
             <div className="ad-geo">
-              {/* Heatmap */}
-              <div className="ad-chart-card ad-chart-card--wide">
-                <h4>User Login Locations</h4>
-                <UserLocationMap locations={mapLocations} />
+              {/* Range toggle + summary tiles */}
+              <div className="ad-geo__bar">
+                <div className="ad-geo__tiles">
+                  <div className="ad-geo__tile">
+                    <span className="ad-geo__tile-num">{geoCountries.length}</span>
+                    <span className="ad-geo__tile-cap">countr{geoCountries.length === 1 ? "y" : "ies"}</span>
+                  </div>
+                  <div className="ad-geo__tile">
+                    <span className="ad-geo__tile-num">{geoRegions.length}</span>
+                    <span className="ad-geo__tile-cap">cit{geoRegions.length === 1 ? "y" : "ies"}</span>
+                  </div>
+                  <div className="ad-geo__tile">
+                    <span className="ad-geo__tile-num">{geoCountries.reduce((s, c) => s + (c.logins || 0), 0)}</span>
+                    <span className="ad-geo__tile-cap">logins</span>
+                  </div>
+                  {geoCountries.length > 0 && (() => {
+                    const top = [...geoCountries].sort((a, b) => (b.unique_users || 0) - (a.unique_users || 0))[0];
+                    return (
+                      <div className="ad-geo__tile">
+                        <span className="ad-geo__tile-num">{top.country}</span>
+                        <span className="ad-geo__tile-cap">top country · {top.unique_users} users</span>
+                      </div>
+                    );
+                  })()}
+                </div>
+                <div className="ad-seg ad-seg--sm">
+                  {[[0, "All time"], [90, "90d"], [30, "30d"], [7, "7d"]].map(([d, label]) => (
+                    <button
+                      key={d}
+                      className={`ad-seg__btn${geoDays === d ? " ad-seg__btn--active" : ""}`}
+                      onClick={() => setGeoDays(d)}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Login activity over time - the monitoring pulse */}
+              <div className="ad-chart-card ad-chart-card--wide" style={{ marginTop: 20 }}>
+                <h4 className="ad-chart-card__title">
+                  <span className="ad-chart-card__ic" style={{ color: "#16A34A", background: "rgba(22,163,74,0.10)" }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                  </span>
+                  Login Activity
+                  {failedTotal > 0 && <span className="ad-chart-count" style={{ color: "#DC2626" }}>{failedTotal} failed</span>}
+                </h4>
+                <p className="ad-chart-card__desc">Logins per day{geoDays ? ` over the last ${geoDays} days` : " since launch"} - spikes in failures are worth a look at the Activity tab</p>
+                {loginSeries.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={200}>
+                    <ComposedChart data={loginSeries} margin={{ top: 8, right: 8, bottom: 0, left: -18 }}>
+                      <defs>
+                        <linearGradient id="adLoginGrad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#16A34A" stopOpacity={0.25} />
+                          <stop offset="100%" stopColor="#16A34A" stopOpacity={0.02} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--hop-border, #e5e7eb)" />
+                      <XAxis dataKey="date" tick={{ fontSize: 10 }} minTickGap={28} tickFormatter={(d) => d.slice(5).replace("-", "/")} />
+                      <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+                      <Tooltip contentStyle={tipStyle} labelStyle={tipLabelStyle} itemStyle={{ color: tipStyle.color }} />
+                      <Legend iconType="circle" wrapperStyle={{ fontSize: 11 }} />
+                      <Area type="monotone" dataKey="success" name="Successful" stroke="#16A34A" strokeWidth={2} fill="url(#adLoginGrad)" dot={false} activeDot={{ r: 4 }} />
+                      <Line type="monotone" dataKey="failed" name="Failed" stroke="#DC2626" strokeWidth={1.6} dot={false} activeDot={{ r: 4 }} />
+                    </ComposedChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <p className="ad-empty">{geoDays ? `No logins in the last ${geoDays} days.` : "No login data yet."}</p>
+                )}
+              </div>
+
+              {/* Heatmap - stays in sync with chart clicks */}
+              <div className="ad-chart-card ad-chart-card--wide" style={{ marginTop: 20 }}>
+                <div className="ad-chart-card__header">
+                  <h4 className="ad-chart-card__title">
+                    <span className="ad-chart-card__ic" style={{ color: "#2B5EA7", background: "rgba(43,94,167,0.10)" }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                    </span>
+                    Login Heatmap
+                  </h4>
+                  {geoCountryFilter && (
+                    <button className="ad-rolechip ad-rolechip--active" style={{ "--chip": "var(--hop-navy, #2B4C7E)" }} onClick={() => focusCountry("")}>
+                      {geoCountryFilter} &times;
+                    </button>
+                  )}
+                </div>
+                <p className="ad-chart-card__desc">
+                  Where logins happen{geoDays ? ` in the last ${geoDays} days` : " (all time)"} - click a country or city in the charts below and the map flies there
+                </p>
+                <UserLocationMap locations={shownMapLocations} focusBounds={geoFocus} />
               </div>
 
               {/* Country donut + Country bar */}
               <div className="ad-chart-row" style={{ marginTop: 20 }}>
                 <div className="ad-chart-card">
-                  <h4>Users by Country</h4>
+                  <h4 className="ad-chart-card__title">
+                    <span className="ad-chart-card__ic" style={{ color: "#1A8A7D", background: "rgba(26,138,125,0.10)" }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                    </span>
+                    Users by Country
+                  </h4>
+                  <p className="ad-chart-card__desc">Click a slice to focus the map on that country</p>
                   {geoCountries.length > 0 ? (() => {
                     // Top 7 + grouped "Other" so the donut stays readable and still totals 100%
                     const sorted = [...geoCountries].sort((a, b) => (b.unique_users || 0) - (a.unique_users || 0));
@@ -873,9 +1706,17 @@ export default function AdminDashboard() {
                     return (
                       <ResponsiveContainer width="100%" height={280}>
                         <PieChart>
-                          <Pie data={pie} dataKey="value" nameKey="name" cx="50%" cy="48%" innerRadius={54} outerRadius={92} paddingAngle={2}>
+                          <Pie
+                            data={pie} dataKey="value" nameKey="name" cx="50%" cy="48%" innerRadius={54} outerRadius={92} paddingAngle={2}
+                            onClick={(d) => d && !String(d.name).startsWith("Other") && focusCountry(d.name)}
+                          >
                             {pie.map((d, i) => (
-                              <Cell key={i} fill={d.name.startsWith("Other") ? "#94a3b8" : GEO_PALETTE[i % GEO_PALETTE.length]} />
+                              <Cell
+                                key={i}
+                                fill={d.name.startsWith("Other") ? "#94a3b8" : GEO_PALETTE[i % GEO_PALETTE.length]}
+                                cursor={d.name.startsWith("Other") ? "default" : "pointer"}
+                                opacity={geoCountryFilter && d.name !== geoCountryFilter ? 0.35 : 1}
+                              />
                             ))}
                           </Pie>
                           <Tooltip contentStyle={tipStyle} labelStyle={tipLabelStyle} itemStyle={{ color: tipStyle.color }} formatter={(v) => [`${v} users`]} />
@@ -884,12 +1725,19 @@ export default function AdminDashboard() {
                       </ResponsiveContainer>
                     );
                   })() : (
-                    <p className="ad-empty">No country data yet.</p>
+                    <p className="ad-empty">{geoDays ? `No logins in the last ${geoDays} days.` : "No country data yet."}</p>
                   )}
                 </div>
 
                 <div className="ad-chart-card">
-                  <h4>Logins by Country <span className="ad-chart-count">{geoCountries.length}</span></h4>
+                  <h4 className="ad-chart-card__title">
+                    <span className="ad-chart-card__ic" style={{ color: "#7C3AED", background: "rgba(124,58,237,0.10)" }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                    </span>
+                    Logins by Country
+                    <span className="ad-chart-count">{geoCountries.length}</span>
+                  </h4>
+                  <p className="ad-chart-card__desc">Click a bar to focus the map - click again to clear</p>
                   {geoCountries.length > 0 ? (
                     <div className="td-chart-scroll" style={{ maxHeight: 320, overflowY: geoCountries.length > 8 ? "auto" : "visible" }}>
                       <ResponsiveContainer width="100%" height={Math.max(180, geoCountries.length * 34 + 16)}>
@@ -898,26 +1746,34 @@ export default function AdminDashboard() {
                           <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
                           <YAxis type="category" dataKey="country" width={90} interval={0} tick={{ fontSize: 11 }} tickFormatter={(n) => (n && n.length > 14 ? n.slice(0, 13) + "…" : n)} />
                           <Tooltip contentStyle={tipStyle} labelStyle={tipLabelStyle} itemStyle={{ color: tipStyle.color }} />
-                          <Bar dataKey="logins" name="Logins" fill="#2B5EA7" radius={[0, 4, 4, 0]} maxBarSize={18} />
-                          <Bar dataKey="unique_users" name="Users" fill="#1A8A7D" radius={[0, 4, 4, 0]} maxBarSize={18} />
+                          <Bar dataKey="logins" name="Logins" fill="#2B5EA7" radius={[0, 4, 4, 0]} maxBarSize={18} cursor="pointer" onClick={(d) => d && focusCountry(d.payload.country)} />
+                          <Bar dataKey="unique_users" name="Users" fill="#1A8A7D" radius={[0, 4, 4, 0]} maxBarSize={18} cursor="pointer" onClick={(d) => d && focusCountry(d.payload.country)} />
                         </BarChart>
                       </ResponsiveContainer>
                     </div>
                   ) : (
-                    <p className="ad-empty">No country data yet.</p>
+                    <p className="ad-empty">{geoDays ? `No logins in the last ${geoDays} days.` : "No country data yet."}</p>
                   )}
                 </div>
               </div>
 
               {/* Region/city bar chart - all rows, scrollable */}
               <div className="ad-chart-card ad-chart-card--wide" style={{ marginTop: 20 }}>
-                <h4>Cities / Regions <span className="ad-chart-count">{geoRegions.length}</span></h4>
-                {geoRegions.length > 0 ? (
-                  <div className="td-chart-scroll" style={{ maxHeight: 420, overflowY: geoRegions.length > 11 ? "auto" : "visible" }}>
-                    <ResponsiveContainer width="100%" height={Math.max(200, geoRegions.length * 32 + 16)}>
+                <h4 className="ad-chart-card__title">
+                  <span className="ad-chart-card__ic" style={{ color: "#E8618C", background: "rgba(232,97,140,0.10)" }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/></svg>
+                  </span>
+                  Cities / Regions
+                  {geoCountryFilter && <span style={{ fontWeight: 500, color: "var(--hop-muted)", fontSize: "0.82rem" }}>in {geoCountryFilter}</span>}
+                  <span className="ad-chart-count">{shownRegions.length}</span>
+                </h4>
+                <p className="ad-chart-card__desc">Click a city to fly the map to it</p>
+                {shownRegions.length > 0 ? (
+                  <div className="td-chart-scroll" style={{ maxHeight: 420, overflowY: shownRegions.length > 11 ? "auto" : "visible" }}>
+                    <ResponsiveContainer width="100%" height={Math.max(200, shownRegions.length * 32 + 16)}>
                       <BarChart
                         layout="vertical"
-                        data={[...geoRegions].sort((a, b) => (b.logins || 0) - (a.logins || 0)).map((r) => ({
+                        data={[...shownRegions].sort((a, b) => (b.logins || 0) - (a.logins || 0)).map((r) => ({
                           ...r,
                           label: `${r.city}${r.region ? `, ${r.region}` : ""}${r.country ? ` (${r.country})` : ""}`,
                         }))}
@@ -928,13 +1784,13 @@ export default function AdminDashboard() {
                         <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
                         <YAxis type="category" dataKey="label" width={190} interval={0} tick={{ fontSize: 10 }} tickFormatter={(n) => (n && n.length > 30 ? n.slice(0, 29) + "…" : n)} />
                         <Tooltip contentStyle={tipStyle} labelStyle={tipLabelStyle} itemStyle={{ color: tipStyle.color }} />
-                        <Bar dataKey="logins" name="Logins" fill="#E8618C" radius={[0, 4, 4, 0]} maxBarSize={16} />
-                        <Bar dataKey="unique_users" name="Users" fill="#F0B429" radius={[0, 4, 4, 0]} maxBarSize={16} />
+                        <Bar dataKey="logins" name="Logins" fill="#E8618C" radius={[0, 4, 4, 0]} maxBarSize={16} cursor="pointer" onClick={(d) => d && focusCity(d.payload)} />
+                        <Bar dataKey="unique_users" name="Users" fill="#F0B429" radius={[0, 4, 4, 0]} maxBarSize={16} cursor="pointer" onClick={(d) => d && focusCity(d.payload)} />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
                 ) : (
-                  <p className="ad-empty">No region data yet.</p>
+                  <p className="ad-empty">{geoDays ? `No logins in the last ${geoDays} days.` : "No region data yet."}</p>
                 )}
               </div>
             </div>
@@ -945,12 +1801,45 @@ export default function AdminDashboard() {
             <div className="ad-activity">
               <div className="ad-chart-card">
                 <div className="ad-chart-card__header">
-                  <h4>Login History</h4>
+                  <h4 className="ad-chart-card__title">
+                    <span className="ad-chart-card__ic" style={{ color: "#16A34A", background: "rgba(22,163,74,0.10)" }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+                    </span>
+                    Login History
+                    <span className="ad-chart-count">{loginTotal}</span>
+                  </h4>
                   <button className="td-btn td-btn--outline td-btn--sm" onClick={() => API.adminExportCSV("logins")}>
                     Export CSV
                   </button>
                 </div>
-                <div className="td-table-wrap" style={{ maxHeight: 400, overflowY: "auto" }}>
+                <div className="ad-users__toolbar" style={{ marginTop: 10 }}>
+                  <div className="ad-search">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    <input
+                      type="text"
+                      placeholder="Search by email, IP, or location..."
+                      value={loginSearchInput}
+                      onChange={(e) => setLoginSearchInput(e.target.value)}
+                    />
+                    {loginSearchInput && (
+                      <button className="ad-search__clear" title="Clear search" onClick={() => setLoginSearchInput("")}>&times;</button>
+                    )}
+                  </div>
+                  <div className="ad-rolechips" style={{ margin: 0 }}>
+                    {[["", "All", "var(--hop-navy, #2B4C7E)"], ["ok", "OK", "#16A34A"], ["fail", "Failed", "#DC2626"]].map(([id, label, color]) => (
+                      <button
+                        key={id || "all"}
+                        className={`ad-rolechip${loginStatus === id ? " ad-rolechip--active" : ""}`}
+                        style={{ "--chip": color }}
+                        onClick={() => { setLoginStatus(id); setLoginPage(0); }}
+                      >
+                        {id && <span className="ad-rolechip__dot" />}
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="td-table-wrap" style={{ maxHeight: 480, overflowY: "auto" }}>
                   <table className="td-table">
                     <thead>
                       <tr>
@@ -967,25 +1856,60 @@ export default function AdminDashboard() {
                           <td className="td-table__mono">{l.email}</td>
                           <td className="td-table__mono" style={{ fontSize: "0.75rem" }}>{l.ip}</td>
                           <td className="td-table__muted">{[l.city, l.region, l.country].filter(Boolean).join(", ") || "\u2014"}</td>
-                          <td className="td-table__muted">{timeAgo(l.login_at)}</td>
+                          <td className="td-table__muted" title={l.login_at ? new Date(l.login_at).toLocaleString() : ""}>{timeAgo(l.login_at)}</td>
                           <td>
-                            <span className={l.success ? "ad-role-badge" : "ad-role-badge ad-role-badge--fail"} style={l.success ? { background: "#16A34A" } : {}}>
+                            <span className={`ad-pill ${l.success ? "ad-pill--ok" : "ad-pill--fail"}`}>
                               {l.success ? "OK" : "FAIL"}
                             </span>
                           </td>
                         </tr>
                       ))}
                       {loginActivity.length === 0 && (
-                        <tr><td colSpan={5} className="ad-empty" style={{ textAlign: "center", padding: 24 }}>No login activity yet.</td></tr>
+                        <tr>
+                          <td colSpan={5} className="ad-empty" style={{ textAlign: "center", padding: 24 }}>
+                            {loginSearch || loginStatus ? (
+                              <>
+                                No logins match your filters.{" "}
+                                <button className="ad-linkbtn" onClick={() => { setLoginSearchInput(""); setLoginStatus(""); setLoginPage(0); }}>Clear filters</button>
+                              </>
+                            ) : "No login activity yet."}
+                          </td>
+                        </tr>
                       )}
                     </tbody>
                   </table>
                 </div>
+                <div className="ad-pagination">
+                  <button disabled={loginPage === 0} onClick={() => setLoginPage((p) => p - 1)}>Previous</button>
+                  <span>
+                    {loginTotal === 0 ? "0 logins" : `${loginPage * ACT_PAGE + 1}\u2013${Math.min((loginPage + 1) * ACT_PAGE, loginTotal)} of ${loginTotal} login${loginTotal === 1 ? "" : "s"}`}
+                  </span>
+                  <button disabled={(loginPage + 1) * ACT_PAGE >= loginTotal} onClick={() => setLoginPage((p) => p + 1)}>Next</button>
+                </div>
               </div>
 
               <div className="ad-chart-card" style={{ marginTop: 24 }}>
-                <h4>Admin Audit Log</h4>
-                <div className="td-table-wrap" style={{ maxHeight: 400, overflowY: "auto" }}>
+                <div className="ad-chart-card__header">
+                  <h4 className="ad-chart-card__title">
+                    <span className="ad-chart-card__ic" style={{ color: "#7C3AED", background: "rgba(124,58,237,0.10)" }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                    </span>
+                    Admin Audit Log
+                    <span className="ad-chart-count">{auditTotal}</span>
+                  </h4>
+                  <select
+                    className="ad-users__filter"
+                    value={auditAction}
+                    onChange={(e) => { setAuditAction(e.target.value); setAuditPage(0); }}
+                  >
+                    <option value="">All actions</option>
+                    {auditActions.map((a) => (
+                      <option key={a} value={a}>{auditLabel(a)}</option>
+                    ))}
+                  </select>
+                </div>
+                <p className="ad-chart-card__desc">Every admin change on the platform - who did what, to whom, and when</p>
+                <div className="td-table-wrap" style={{ maxHeight: 480, overflowY: "auto" }}>
                   <table className="td-table">
                     <thead>
                       <tr>
@@ -1001,20 +1925,40 @@ export default function AdminDashboard() {
                         <tr key={i}>
                           <td className="td-table__mono">{a.admin_email}</td>
                           <td>
-                            <span className="ad-role-badge" style={{ background: "#7C3AED" }}>{a.action}</span>
+                            <span className="ad-role-badge" style={{ background: auditColor(a.action) }}>{auditLabel(a.action)}</span>
                           </td>
-                          <td className="td-table__mono">{a.target_email}</td>
-                          <td className="td-table__muted" style={{ fontSize: "0.75rem" }}>
-                            {a.details ? JSON.stringify(a.details) : ""}
+                          <td className="td-table__mono">{a.target_email || "\u2014"}</td>
+                          <td>
+                            <div className="ad-audit-chips">
+                              {auditDetailChips(a.details).map((c, j) => (
+                                <span key={j} className="ad-audit-chip">{c}</span>
+                              ))}
+                            </div>
                           </td>
-                          <td className="td-table__muted">{timeAgo(a.timestamp)}</td>
+                          <td className="td-table__muted" title={a.timestamp ? new Date(a.timestamp).toLocaleString() : ""}>{timeAgo(a.timestamp)}</td>
                         </tr>
                       ))}
                       {auditLog.length === 0 && (
-                        <tr><td colSpan={5} className="ad-empty" style={{ textAlign: "center", padding: 24 }}>No admin actions yet.</td></tr>
+                        <tr>
+                          <td colSpan={5} className="ad-empty" style={{ textAlign: "center", padding: 24 }}>
+                            {auditAction ? (
+                              <>
+                                No "{auditLabel(auditAction)}" actions yet.{" "}
+                                <button className="ad-linkbtn" onClick={() => { setAuditAction(""); setAuditPage(0); }}>Show all</button>
+                              </>
+                            ) : "No admin actions yet."}
+                          </td>
+                        </tr>
                       )}
                     </tbody>
                   </table>
+                </div>
+                <div className="ad-pagination">
+                  <button disabled={auditPage === 0} onClick={() => setAuditPage((p) => p - 1)}>Previous</button>
+                  <span>
+                    {auditTotal === 0 ? "0 actions" : `${auditPage * ACT_PAGE + 1}\u2013${Math.min((auditPage + 1) * ACT_PAGE, auditTotal)} of ${auditTotal} action${auditTotal === 1 ? "" : "s"}`}
+                  </span>
+                  <button disabled={(auditPage + 1) * ACT_PAGE >= auditTotal} onClick={() => setAuditPage((p) => p + 1)}>Next</button>
                 </div>
               </div>
             </div>
@@ -1024,13 +1968,18 @@ export default function AdminDashboard() {
           {tab === "glossary" && (
             <div className="ad-users">
               <div className="ad-users__toolbar">
-                <input
-                  type="text"
-                  className="ad-users__search"
-                  placeholder="Search terms or definitions..."
-                  value={glossarySearch}
-                  onChange={(e) => setGlossarySearch(e.target.value)}
-                />
+                <div className="ad-search">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                  <input
+                    type="text"
+                    placeholder="Search terms or definitions..."
+                    value={glossarySearch}
+                    onChange={(e) => setGlossarySearch(e.target.value)}
+                  />
+                  {glossarySearch && (
+                    <button className="ad-search__clear" title="Clear search" onClick={() => setGlossarySearch("")}>&times;</button>
+                  )}
+                </div>
                 <span className="ad-glossary__count">
                   {glossaryTerms.length} term{glossaryTerms.length === 1 ? "" : "s"}
                 </span>
@@ -1042,17 +1991,48 @@ export default function AdminDashboard() {
                 </button>
               </div>
 
+              {/* Step filter chips */}
+              <div className="ad-rolechips">
+                <button
+                  className={`ad-rolechip${glossaryStep === 0 ? " ad-rolechip--active" : ""}`}
+                  style={{ "--chip": "var(--hop-navy, #2B4C7E)" }}
+                  onClick={() => setGlossaryStep(0)}
+                >
+                  All steps
+                </button>
+                {STEP_LABELS.map((l, i) => (
+                  <button
+                    key={i}
+                    className={`ad-rolechip${glossaryStep === i + 1 ? " ad-rolechip--active" : ""}`}
+                    style={{ "--chip": STEP_COLORS[i] }}
+                    onClick={() => setGlossaryStep(glossaryStep === i + 1 ? 0 : i + 1)}
+                    title={l}
+                  >
+                    <span className="ad-rolechip__dot" />
+                    S{i + 1}
+                  </button>
+                ))}
+              </div>
+
               {glossaryLoading && <div className="ad-loading">Loading glossary...</div>}
 
               <div className="ad-glossary__list">
                 {(() => {
                   const q = glossarySearch.trim().toLowerCase();
-                  const shown = q
+                  let shown = q
                     ? glossaryTerms.filter((t) =>
                         t.term.toLowerCase().includes(q) || (t.def || "").toLowerCase().includes(q))
                     : glossaryTerms;
+                  if (glossaryStep) shown = shown.filter((t) => (t.steps || []).includes(glossaryStep));
                   if (!glossaryLoading && shown.length === 0) {
-                    return <div className="ad-empty">No terms {q ? "match your search" : "yet"}.</div>;
+                    return (
+                      <div className="ad-empty">
+                        No terms {q || glossaryStep ? "match your filters" : "yet"}.{" "}
+                        {(q || glossaryStep) && (
+                          <button className="ad-linkbtn" onClick={() => { setGlossarySearch(""); setGlossaryStep(0); }}>Clear filters</button>
+                        )}
+                      </div>
+                    );
                   }
                   return shown.map((t) => (
                     <div className="ad-glossary__row" key={t.id}>
@@ -1145,6 +2125,12 @@ export default function AdminDashboard() {
 
               {resourcesLoading && <div className="ad-loading">Loading documents…</div>}
 
+              {!resourcesLoading && resources.length > 0 && (
+                <h4 className="ad-chart-card__title" style={{ margin: "18px 0 8px" }}>
+                  Documents
+                  <span className="ad-chart-count">{resources.length}</span>
+                </h4>
+              )}
               <div className="ad-res__list">
                 {!resourcesLoading && resources.length === 0 && (
                   <div className="ad-empty">No documents yet. Upload a PDF, TXT, or Markdown file.</div>
@@ -1183,15 +2169,21 @@ export default function AdminDashboard() {
               </p>
 
               <div className="ad-seg ad-stepres__levels">
-                {[["high_school", "High / Middle School"], ["higher_ed", "Higher Ed"]].map(([id, label]) => (
-                  <button
-                    key={id}
-                    className={`ad-seg__btn${stepResLevel === id ? " ad-seg__btn--active" : ""}`}
-                    onClick={() => setStepResLevel(id)}
-                  >
-                    {label}
-                  </button>
-                ))}
+                {[["high_school", "High / Middle School"], ["higher_ed", "Higher Ed"]].map(([id, label]) => {
+                  const filled = stepRes
+                    ? Object.values(stepRes[id] || {}).filter((e) => e?.video_url || e?.interactive_url).length
+                    : 0;
+                  return (
+                    <button
+                      key={id}
+                      className={`ad-seg__btn${stepResLevel === id ? " ad-seg__btn--active" : ""}`}
+                      onClick={() => setStepResLevel(id)}
+                    >
+                      {label}
+                      {stepRes && <span className="ad-seg__count">{filled}/9</span>}
+                    </button>
+                  );
+                })}
               </div>
 
               {stepResLoading && <div className="ad-loading">Loading step resources…</div>}
@@ -1248,30 +2240,92 @@ export default function AdminDashboard() {
           {/* ===== HEALTH ===== */}
           {tab === "health" && (
             <div className="ad-health">
-              {healthLoading && <div className="ad-loading">Checking system health...</div>}
+              <div className="ad-users__toolbar" style={{ marginBottom: 16 }}>
+                {healthCheckedAt && (
+                  <span className="td-table__muted" style={{ fontSize: "0.82rem" }}>
+                    Last checked {healthCheckedAt.toLocaleTimeString()}
+                  </span>
+                )}
+                <label className="ad-modal__checkbox" style={{ margin: 0, fontSize: "0.84rem" }}>
+                  <input type="checkbox" checked={healthAuto} onChange={(e) => setHealthAuto(e.target.checked)} />
+                  Auto-refresh (30s)
+                </label>
+                <button className="td-btn td-btn--outline td-btn--sm" disabled={healthLoading} onClick={() => reloadHealth()}>
+                  {healthLoading ? "Checking…" : "Refresh"}
+                </button>
+              </div>
+
+              {healthLoading && !health && <div className="ad-loading">Checking system health...</div>}
               {health && (
                 <div className="ad-health__grid">
                   <HealthCard
                     title="Server"
                     status={health.server === "ok" ? "ok" : "error"}
                     items={[
-                      { label: "Status", value: health.server },
                       { label: "Uptime", value: formatUptime(health.uptime_seconds) },
+                      { label: "Load Avg", value: (health.load_avg || []).join(" / ") || "—" },
                     ]}
-                  />
+                  >
+                    {health.cpu_percent != null && (
+                      <Meter label="CPU" pct={health.cpu_percent} text={`${health.cpu_percent}% of ${health.cpu_count} cores`} />
+                    )}
+                    {health.ram_percent != null && (
+                      <Meter label="RAM" pct={health.ram_percent} text={`${health.ram_used_gb} / ${health.ram_total_gb} GB`} />
+                    )}
+                  </HealthCard>
                   <HealthCard
                     title="MongoDB"
                     status={health.mongodb === "ok" ? "ok" : "error"}
-                    items={[{ label: "Connection", value: health.mongodb }]}
-                  />
-                  <HealthCard
-                    title="Ollama LLM"
-                    status={health.ollama === "ok" ? "ok" : "error"}
                     items={[
-                      { label: "Connection", value: health.ollama },
-                      { label: "Models", value: (health.ollama_models || []).join(", ") || "None" },
+                      { label: "Connection", value: health.mongodb },
+                      { label: "Users", value: health.db_users ?? "—" },
+                      { label: "Sessions", value: health.db_sessions ?? "—" },
                     ]}
                   />
+                  <HealthCard
+                    title="LLM"
+                    status={health.ollama === "ok" ? "ok" : "error"}
+                    items={[
+                      { label: "Backend", value: health.llm_backend || "—" },
+                      { label: "Ollama", value: health.ollama },
+                      { label: "vLLM", value: health.vllm || "—" },
+                      { label: "Models", value: (health.ollama_models || []).join(", ") || "None" },
+                    ]}
+                  >
+                    <div className="ad-llmtest">
+                      <button className="td-btn td-btn--outline td-btn--sm" disabled={llmTesting} onClick={runLlmTest}>
+                        {llmTesting ? "Testing…" : "Test latency"}
+                      </button>
+                      {llmTest && (
+                        <span className={`ad-llmtest__result${llmTest.ok ? "" : " ad-llmtest__result--fail"}`}>
+                          {llmTest.ok
+                            ? `${llmTest.latency_seconds}s round-trip`
+                            : `Failed: ${llmTest.error || "no response"}`}
+                        </span>
+                      )}
+                    </div>
+                  </HealthCard>
+                  <HealthCard
+                    title="GPUs"
+                    status={(health.gpus || []).length > 0 ? "ok" : "warn"}
+                    items={(health.gpus || []).length === 0
+                      ? [{ label: "nvidia-smi", value: "unavailable" }]
+                      : []}
+                  >
+                    {(health.gpus || []).length === 0 && (
+                      <p className="ad-health-card__note">
+                        No GPUs visible - if this machine has GPUs, the driver may need a reboot and Ollama is likely running on CPU (slow chat).
+                      </p>
+                    )}
+                    {(health.gpus || []).map((g, i) => (
+                      <Meter
+                        key={i}
+                        label={`GPU ${i} · ${g.util_percent}% · ${g.temp_c}°C`}
+                        pct={Math.round((g.mem_used_mb / g.mem_total_mb) * 100)}
+                        text={`${(g.mem_used_mb / 1024).toFixed(1)} / ${(g.mem_total_mb / 1024).toFixed(0)} GB VRAM`}
+                      />
+                    ))}
+                  </HealthCard>
                   <HealthCard
                     title="RAG System"
                     status={health.rag_available && health.rag_index_loaded ? "ok" : "warn"}
@@ -1283,23 +2337,19 @@ export default function AdminDashboard() {
                   <HealthCard
                     title="Disk Space"
                     status={health.disk_free_gb > 5 ? "ok" : health.disk_free_gb > 1 ? "warn" : "error"}
-                    items={[
-                      { label: "Total", value: `${health.disk_total_gb} GB` },
-                      { label: "Free", value: `${health.disk_free_gb} GB` },
-                    ]}
-                  />
+                    items={[{ label: "Free", value: `${health.disk_free_gb} GB of ${health.disk_total_gb} GB` }]}
+                  >
+                    <Meter
+                      label="Used"
+                      pct={Math.round(((health.disk_total_gb - health.disk_free_gb) / health.disk_total_gb) * 100)}
+                      text={`${(health.disk_total_gb - health.disk_free_gb).toFixed(1)} GB used`}
+                    />
+                  </HealthCard>
                 </div>
-              )}
-              {health && (
-                <button className="td-btn td-btn--outline td-btn--sm" style={{ marginTop: 16 }} onClick={() => {
-                  setHealthLoading(true);
-                  API.adminGetHealth().then(setHealth).catch(console.error).finally(() => setHealthLoading(false));
-                }}>
-                  Refresh
-                </button>
               )}
             </div>
           )}
+        </div>
         </div>
       </div>
 
@@ -1321,17 +2371,264 @@ export default function AdminDashboard() {
 
 /* ===== Sub-components ===== */
 
-function StatCard({ label, value, color }) {
+function SortTh({ label, col, sort, onSort }) {
+  const active = sort.by === col;
   return (
-    <div className="ad-stat-card" style={{ borderTopColor: color }}>
-      <div className="ad-stat-card__value">{value ?? "\u2014"}</div>
-      <div className="ad-stat-card__label">{label}</div>
+    <th className={`ad-sort-th${active ? " ad-sort-th--active" : ""}`} onClick={() => onSort(col)} title={`Sort by ${label.toLowerCase()}`}>
+      {label}
+      <span className="ad-sort-th__arrow">{active ? (sort.dir === "asc" ? "▲" : "▼") : "↕"}</span>
+    </th>
+  );
+}
+
+function ClassDetailView({ detail: c, onViewSession, onEdit, onAddStudents, onResetPw, onRemoveStudent }) {
+  const [showPw, setShowPw] = useState(false);
+  return (
+    <div className="ad-user-detail">
+      {/* Class header */}
+      <div className="ad-user-detail__header">
+        <span className="ad-user-detail__avatar" style={{ background: "#1A8A7D" }}>
+          {(c.class_name || "?").charAt(0).toUpperCase()}
+        </span>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <h2>{c.class_name}</h2>
+          <p className="td-table__mono">{c.class_code}</p>
+          <div className="ad-user-detail__meta">
+            <span>Teacher: <strong>{c.teacher_name || "—"}</strong>{c.teacher_email ? ` (${c.teacher_email})` : ""}</span>
+            <span className={`ad-pill ${c.settings?.ai_enabled === false ? "ad-pill--off" : "ad-pill--ok"}`}>
+              AI {c.settings?.ai_enabled === false ? "Off" : "On"}
+            </span>
+            <span className="ad-edu-chip">Access: {c.settings?.access_mode || "full"}</span>
+            {c.password && (
+              <button className="ad-ccard__pw" title={showPw ? "Hide password" : "Show class password"} onClick={() => setShowPw((s) => !s)}>
+                {showPw ? c.password : "••••••"}
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  {showPw
+                    ? <><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></>
+                    : <><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></>}
+                </svg>
+              </button>
+            )}
+            <span>Created {c.created_at ? new Date(c.created_at).toLocaleDateString() : "—"}</span>
+          </div>
+        </div>
+        <div className="ad-actions" style={{ marginLeft: "auto", flexShrink: 0 }}>
+          <button className="td-btn td-btn--outline td-btn--sm" onClick={onAddStudents}>+ Add Students</button>
+          <button className="td-btn td-btn--primary td-btn--sm" onClick={onEdit}>Edit Class</button>
+        </div>
+      </div>
+
+      {/* Students */}
+      <div className="ad-chart-card" style={{ marginTop: 20 }}>
+        <h4>Students ({c.students.length})</h4>
+        {c.students.length > 0 ? (
+          <div className="td-table-wrap" style={{ maxHeight: 480, overflowY: "auto" }}>
+            <table className="td-table">
+              <thead>
+                <tr>
+                  <th>Username</th>
+                  <th>Name</th>
+                  <th>Progress</th>
+                  <th>Working on</th>
+                  <th>Last Login</th>
+                  <th>Last Activity</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {c.students.map((s) => (
+                  <tr key={s._id}>
+                    <td className="td-table__mono">{s.username}</td>
+                    <td>{s.name}</td>
+                    <td>
+                      <div className="td-table__muted">{s.steps_done}/9 steps</div>
+                      <div className="ad-minibar"><div className="ad-minibar__fill ad-minibar__fill--progress" style={{ width: `${Math.round((s.steps_done / 9) * 100)}%` }} /></div>
+                    </td>
+                    <td>
+                      {s.active_step ? (
+                        <span className="ad-role-badge" style={{ background: STEP_COLORS[(s.active_step || 1) - 1] || "#999" }}>
+                          Step {s.active_step}
+                        </span>
+                      ) : <span className="td-table__muted">Not started</span>}
+                    </td>
+                    <td className="td-table__muted">{timeAgo(s.last_login_at) || "Never"}</td>
+                    <td className="td-table__muted">{s.last_activity ? timeAgo(s.last_activity) : "—"}</td>
+                    <td>
+                      <div className="ad-actions">
+                        {s.session_id && (
+                          <button className="td-btn td-btn--outline td-btn--sm" onClick={() => onViewSession(s.session_id, s.name || s.username)}>
+                            View
+                          </button>
+                        )}
+                        <button className="ad-action-btn" title="Reset password" onClick={() => onResetPw(s)}>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                        </button>
+                        <button className="ad-action-btn ad-action-btn--danger" title="Remove student" onClick={() => onRemoveStudent(s)}>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="ad-empty">No student accounts in this class.</p>
+        )}
+      </div>
     </div>
   );
 }
 
 
-function HealthCard({ title, status, items }) {
+function EditClassModal({ cls, teachers, error, onClose, onSave }) {
+  const [form, setForm] = useState({
+    class_name: cls.class_name || "",
+    password: "",
+    teacher_id: cls.teacher_id || "",
+    ai_enabled: cls.settings?.ai_enabled !== false,
+    access_mode: cls.settings?.access_mode || "full",
+  });
+  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+  return (
+    <div className="ad-modal-backdrop" onClick={onClose}>
+      <div className="ad-modal" onClick={(e) => e.stopPropagation()}>
+        <h3>Edit Class: {cls.class_code}</h3>
+        {error && <div className="ad-modal__error">{error}</div>}
+        <label>Class Name<input value={form.class_name} onChange={(e) => set("class_name", e.target.value)} /></label>
+        <label>New Class Password
+          <input
+            value={form.password}
+            onChange={(e) => set("password", e.target.value)}
+            placeholder="Leave blank to keep current password"
+          />
+        </label>
+        {form.password && (
+          <p style={{ margin: "-6px 0 10px", fontSize: "0.78rem", color: "#C0842A" }}>
+            Changing the password updates the login for every student in this class.
+          </p>
+        )}
+        <label>Teacher
+          <select value={form.teacher_id} onChange={(e) => set("teacher_id", e.target.value)}>
+            {teachers.map((t) => (
+              <option key={t._id} value={t._id}>{t.name || t.email}</option>
+            ))}
+          </select>
+        </label>
+        <label>AI Access Mode
+          <select value={form.access_mode} onChange={(e) => set("access_mode", e.target.value)}>
+            <option value="full">Full (all steps)</option>
+            <option value="step">Step-limited</option>
+            <option value="phase">Phase-limited</option>
+          </select>
+        </label>
+        <label className="ad-modal__checkbox">
+          <input type="checkbox" checked={form.ai_enabled} onChange={(e) => set("ai_enabled", e.target.checked)} />
+          AI assistant enabled
+        </label>
+        <div className="ad-modal__actions">
+          <button className="td-btn td-btn--outline td-btn--sm" onClick={onClose}>Cancel</button>
+          <button
+            className="td-btn td-btn--primary td-btn--sm"
+            disabled={!form.class_name.trim()}
+            onClick={() => {
+              const fields = { ai_enabled: form.ai_enabled, access_mode: form.access_mode };
+              if (form.class_name.trim() !== cls.class_name) fields.class_name = form.class_name.trim();
+              if (form.password) fields.password = form.password;
+              if (form.teacher_id && form.teacher_id !== cls.teacher_id) fields.teacher_id = form.teacher_id;
+              onSave(fields);
+            }}
+          >
+            Save
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+function AddStudentsModal({ cls, error, onClose, onSave }) {
+  const [count, setCount] = useState(5);
+  return (
+    <div className="ad-modal-backdrop" onClick={onClose}>
+      <div className="ad-modal" onClick={(e) => e.stopPropagation()}>
+        <h3>Add Students: {cls.class_name}</h3>
+        {error && <div className="ad-modal__error">{error}</div>}
+        <p style={{ fontSize: "0.85rem", color: "var(--hop-muted)" }}>
+          New accounts continue the numbering (e.g. {cls.class_code}_{String((cls.actual_students || cls.students?.length || 0) + 1).padStart(2, "0")})
+          and use the current class password.
+        </p>
+        <label>How many students?
+          <input type="number" min={1} max={100} value={count} onChange={(e) => setCount(Number(e.target.value))} />
+        </label>
+        <div className="ad-modal__actions">
+          <button className="td-btn td-btn--outline td-btn--sm" onClick={onClose}>Cancel</button>
+          <button
+            className="td-btn td-btn--primary td-btn--sm"
+            disabled={!(count >= 1 && count <= 100)}
+            onClick={() => onSave(count)}
+          >
+            Add
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+function CreateClassModal({ teachers, error, onClose, onSave }) {
+  const [form, setForm] = useState({ teacher_id: "", class_name: "", password: "", student_count: 10 });
+  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+  const canSave = form.teacher_id && form.class_name.trim() && form.password.length >= 4 &&
+    form.student_count >= 1 && form.student_count <= 100;
+  return (
+    <div className="ad-modal-backdrop" onClick={onClose}>
+      <div className="ad-modal" onClick={(e) => e.stopPropagation()}>
+        <h3>Create Class</h3>
+        {error && <div className="ad-modal__error">{error}</div>}
+        <label>On behalf of teacher
+          <select value={form.teacher_id} onChange={(e) => set("teacher_id", e.target.value)}>
+            <option value="">Select a teacher...</option>
+            {teachers.map((t) => (
+              <option key={t._id} value={t._id}>{t.name || t.email}</option>
+            ))}
+          </select>
+        </label>
+        <label>Class Name<input value={form.class_name} onChange={(e) => set("class_name", e.target.value)} placeholder="e.g. AP Research Period 2" /></label>
+        <label>Class Password<input value={form.password} onChange={(e) => set("password", e.target.value)} placeholder="Students use this to log in (min 4 chars)" /></label>
+        <label>Number of Students
+          <input type="number" min={1} max={100} value={form.student_count} onChange={(e) => set("student_count", Number(e.target.value))} />
+        </label>
+        <div className="ad-modal__actions">
+          <button className="td-btn td-btn--outline td-btn--sm" onClick={onClose}>Cancel</button>
+          <button className="td-btn td-btn--primary td-btn--sm" disabled={!canSave} onClick={() => onSave({ ...form, class_name: form.class_name.trim() })}>
+            Create
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+function StatTile({ label, value, hint, color, icon, onClick }) {
+  return (
+    <button className="ad-stat-card ad-stat-card--action" style={{ borderTopColor: color }} onClick={onClick}>
+      <span className="ad-stat-card__icon" style={{ color, background: `${color}1A` }}>{icon}</span>
+      <span className="ad-stat-card__text">
+        <span className="ad-stat-card__value">{value ?? "\u2014"}</span>
+        <span className="ad-stat-card__label">{label}</span>
+        {hint && <span className="ad-stat-card__hint">{hint}</span>}
+      </span>
+    </button>
+  );
+}
+
+
+function HealthCard({ title, status, items = [], children }) {
   const colors = { ok: "#16A34A", warn: "#F0B429", error: "#DC2626" };
   const labels = { ok: "Healthy", warn: "Warning", error: "Error" };
   return (
@@ -1349,6 +2646,24 @@ function HealthCard({ title, status, items }) {
             <span className="ad-health-card__value">{item.value}</span>
           </div>
         ))}
+        {children}
+      </div>
+    </div>
+  );
+}
+
+
+function Meter({ label, pct, text }) {
+  const clamped = Math.max(0, Math.min(100, pct || 0));
+  const color = clamped < 60 ? "#16A34A" : clamped < 85 ? "#F0B429" : "#DC2626";
+  return (
+    <div className="ad-meter">
+      <div className="ad-meter__head">
+        <span className="ad-meter__label">{label}</span>
+        <span className="ad-meter__text">{text}</span>
+      </div>
+      <div className="ad-meter__bar">
+        <div className="ad-meter__fill" style={{ width: `${clamped}%`, background: color }} />
       </div>
     </div>
   );

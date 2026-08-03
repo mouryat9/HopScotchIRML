@@ -61,6 +61,8 @@ from database import (
     record_admin_action, get_admin_audit_log,
     # Admin: classes, sessions, user detail, geo stats
     get_all_classes, delete_class_by_id,
+    get_class_detail, update_class_fields, set_class_students_password,
+    get_session_stats, delete_session_by_sid, delete_sessions_bulk,
     get_all_sessions, get_session_full,
     get_user_detail,
     get_login_stats_by_country, get_login_stats_by_region,
@@ -3579,28 +3581,39 @@ def admin_step_completion(admin: dict = Depends(require_admin)):
 def admin_login_activity(
     limit: int = Query(100),
     skip: int = Query(0),
+    search: str = Query(""),
+    status: str = Query(""),  # "ok" | "fail" | ""
     admin: dict = Depends(require_admin),
 ):
-    """Recent login history log."""
-    return {"logins": get_recent_logins(limit, skip)}
+    """Recent login history log with search and OK/FAIL filter."""
+    success = {"ok": True, "fail": False}.get(status)
+    logins, total = get_recent_logins(limit, skip, search or None, success)
+    return {"logins": logins, "total": total}
 
 
 @app.get("/admin/login-map")
-def admin_login_map(admin: dict = Depends(require_admin)):
-    """Geo-located login data for world map."""
-    return {"locations": get_login_locations()}
+def admin_login_map(days: int = Query(0), admin: dict = Depends(require_admin)):
+    """Geo-located login data for world map (days=0 means all time)."""
+    return {"locations": get_login_locations(days)}
+
+
+@app.get("/admin/login-timeseries")
+def admin_login_timeseries(days: int = Query(0), admin: dict = Depends(require_admin)):
+    """Logins per day, success/failed split (days=0 means all time)."""
+    from database import get_login_timeseries
+    return {"series": get_login_timeseries(days)}
 
 
 @app.get("/admin/geo/countries")
-def admin_geo_countries(admin: dict = Depends(require_admin)):
-    """User/login counts aggregated by country."""
-    return {"countries": get_login_stats_by_country()}
+def admin_geo_countries(days: int = Query(0), admin: dict = Depends(require_admin)):
+    """User/login counts aggregated by country (days=0 means all time)."""
+    return {"countries": get_login_stats_by_country(days)}
 
 
 @app.get("/admin/geo/regions")
-def admin_geo_regions(admin: dict = Depends(require_admin)):
-    """User/login counts aggregated by city/region."""
-    return {"regions": get_login_stats_by_region()}
+def admin_geo_regions(days: int = Query(0), admin: dict = Depends(require_admin)):
+    """User/login counts aggregated by city/region (days=0 means all time)."""
+    return {"regions": get_login_stats_by_region(days)}
 
 
 @app.get("/admin/users")
@@ -3609,10 +3622,12 @@ def admin_list_users(
     limit: int = Query(50),
     role: Optional[str] = Query(None),
     search: Optional[str] = Query(None),
+    sort_by: str = Query("created_at"),
+    sort_dir: str = Query("desc"),
     admin: dict = Depends(require_admin),
 ):
-    """Paginated user list with optional role filter and search."""
-    users, total = get_all_users(skip, limit, role, search)
+    """Paginated user list with optional role filter, search, and sorting."""
+    users, total = get_all_users(skip, limit, role, search, sort_by, sort_dir)
     for u in users:
         u["_id"] = str(u["_id"])
     return {"users": users, "total": total}
@@ -3748,9 +3763,12 @@ def admin_delete_user(user_id: str, admin: dict = Depends(require_admin)):
 def admin_audit_log(
     limit: int = Query(100),
     skip: int = Query(0),
+    action: str = Query(""),
     admin: dict = Depends(require_admin),
 ):
-    return {"log": get_admin_audit_log(limit, skip)}
+    from database import get_audit_action_types
+    log, total = get_admin_audit_log(limit, skip, action or None)
+    return {"log": log, "total": total, "actions": get_audit_action_types()}
 
 
 # ── Glossary ────────────────────────────────────────────
@@ -3974,6 +3992,156 @@ def admin_delete_class(class_id: str, admin: dict = Depends(require_admin)):
     return {"ok": True}
 
 
+class AdminClassPatchReq(BaseModel):
+    class_name: Optional[str] = None
+    password: Optional[str] = None
+    teacher_id: Optional[str] = None
+    ai_enabled: Optional[bool] = None
+    access_mode: Optional[str] = None
+
+
+class AdminAddStudentsReq(BaseModel):
+    count: int
+
+
+class AdminCreateClassReq(BaseModel):
+    teacher_id: str
+    class_name: str
+    password: str
+    student_count: int
+
+
+@app.get("/admin/classes/{class_id}")
+def admin_get_class_detail(class_id: str, admin: dict = Depends(require_admin)):
+    """Class drill-down: class info + per-student progress."""
+    detail = get_class_detail(class_id)
+    if not detail:
+        raise HTTPException(status_code=404, detail="Class not found")
+    return detail
+
+
+@app.patch("/admin/classes/{class_id}")
+def admin_update_class(
+    class_id: str,
+    req: AdminClassPatchReq,
+    admin: dict = Depends(require_admin),
+):
+    """Admin class fixes: rename, change password (re-hashes all student
+    logins), reassign teacher, override AI settings."""
+    cls = find_class_by_id(class_id)
+    if not cls:
+        raise HTTPException(status_code=404, detail="Class not found")
+
+    updates: dict = {}
+    details: dict = {}
+    if req.class_name is not None and req.class_name.strip():
+        updates["class_name"] = req.class_name.strip()
+        details["class_name"] = updates["class_name"]
+    if req.password:
+        if len(req.password) < 4:
+            raise HTTPException(status_code=400, detail="Password must be at least 4 characters")
+        pw_hash = hash_password(req.password)
+        updates["password"] = req.password
+        updates["password_hash"] = pw_hash
+        details["students_rehashed"] = set_class_students_password(class_id, pw_hash)
+        details["password_changed"] = True
+    if req.teacher_id:
+        target = find_user_by_id(req.teacher_id)
+        if not target or target.get("role") != "teacher":
+            raise HTTPException(status_code=400, detail="Target user is not a teacher")
+        updates["teacher_id"] = req.teacher_id
+        details["reassigned_to"] = target.get("email", "")
+
+    settings_updates: dict = {}
+    if req.ai_enabled is not None:
+        settings_updates["ai_enabled"] = req.ai_enabled
+    if req.access_mode is not None:
+        if req.access_mode not in ("full", "step", "phase"):
+            raise HTTPException(status_code=400, detail="access_mode must be full, step, or phase")
+        settings_updates["access_mode"] = req.access_mode
+
+    if not updates and not settings_updates:
+        raise HTTPException(status_code=400, detail="Nothing to update")
+    if updates:
+        update_class_fields(class_id, updates)
+    if settings_updates:
+        update_class_settings(class_id, settings_updates)
+        details["settings"] = settings_updates
+
+    record_admin_action(
+        str(admin["_id"]), admin.get("email", ""),
+        "update_class", class_id, cls.get("class_code", ""), details)
+    return {"ok": True}
+
+
+@app.post("/admin/classes/{class_id}/students")
+def admin_add_class_students(
+    class_id: str,
+    req: AdminAddStudentsReq,
+    admin: dict = Depends(require_admin),
+):
+    """Add student slots to an existing class, continuing the numbering."""
+    cls = find_class_by_id(class_id)
+    if not cls:
+        raise HTTPException(status_code=404, detail="Class not found")
+    if not (1 <= req.count <= 100):
+        raise HTTPException(status_code=400, detail="Count must be between 1 and 100")
+
+    code = cls.get("class_code", "")
+    max_n = 0
+    for s in get_students_in_class(class_id):
+        m = re.match(rf"^{re.escape(code)}_(\d+)$", s.get("username", ""))
+        if m:
+            max_n = max(max_n, int(m.group(1)))
+    teacher = find_user_by_id(cls.get("teacher_id", ""))
+    edu = (teacher or {}).get("education_level", "high_school")
+    pw_hash = cls["password_hash"]
+    created = []
+    for i in range(max_n + 1, max_n + 1 + req.count):
+        username = f"{code}_{i:02d}"
+        create_classroom_student(username, pw_hash, f"Student {i:02d}", class_id, education_level=edu)
+        created.append({"username": username, "name": f"Student {i:02d}"})
+    update_class_fields(class_id, {"student_count": int(cls.get("student_count", 0)) + req.count})
+
+    record_admin_action(
+        str(admin["_id"]), admin.get("email", ""),
+        "add_class_students", class_id, code, {"count": req.count})
+    return {"ok": True, "students": created}
+
+
+@app.post("/admin/classes")
+def admin_create_class(req: AdminCreateClassReq, admin: dict = Depends(require_admin)):
+    """Create a class on behalf of a teacher (same flow as /teacher/create-class)."""
+    teacher = find_user_by_id(req.teacher_id)
+    if not teacher or teacher.get("role") != "teacher":
+        raise HTTPException(status_code=400, detail="Target user is not a teacher")
+    if not (1 <= req.student_count <= 100):
+        raise HTTPException(status_code=400, detail="Student count must be between 1 and 100")
+    if len(req.password) < 4:
+        raise HTTPException(status_code=400, detail="Password must be at least 4 characters")
+
+    raw = re.sub(r'[^a-z0-9]', '', req.class_name.lower().replace(' ', ''))
+    class_code = raw[:20] or "class"
+    base_code, counter = class_code, 1
+    while find_class_by_code(class_code):
+        class_code = f"{base_code}{counter}"
+        counter += 1
+
+    pw_hash = hash_password(req.password)
+    class_id = create_class_doc(
+        str(teacher["_id"]), req.class_name, class_code, pw_hash, req.password, req.student_count)
+    edu = teacher.get("education_level", "high_school")
+    for i in range(1, req.student_count + 1):
+        create_classroom_student(
+            f"{class_code}_{i:02d}", pw_hash, f"Student {i:02d}", class_id, education_level=edu)
+
+    record_admin_action(
+        str(admin["_id"]), admin.get("email", ""),
+        "create_class", class_id, class_code,
+        {"teacher": teacher.get("email", ""), "students": req.student_count})
+    return {"ok": True, "class_id": class_id, "class_code": class_code}
+
+
 # ── Admin: Session / Design Viewer ──────────────────────
 
 @app.get("/admin/sessions")
@@ -3981,10 +4149,48 @@ def admin_list_sessions(
     skip: int = Query(0),
     limit: int = Query(50),
     user_id: str = Query(""),
+    search: str = Query(""),
+    step: int = Query(0),
+    status: str = Query(""),
+    sort_by: str = Query("updated_at"),
+    sort_dir: str = Query("desc"),
     admin: dict = Depends(require_admin),
 ):
-    sessions, total = get_all_sessions(skip, limit, user_id or None)
-    return {"sessions": sessions, "total": total}
+    sessions, total = get_all_sessions(
+        skip, limit, user_id or None, search or None,
+        step or None, status or None, sort_by, sort_dir)
+    return {"sessions": sessions, "total": total, "stats": get_session_stats()}
+
+
+@app.delete("/admin/sessions/{session_id}")
+def admin_delete_session(session_id: str, admin: dict = Depends(require_admin)):
+    sess = find_session(session_id)
+    if not sess:
+        raise HTTPException(status_code=404, detail="Session not found")
+    owner = find_user_by_id(sess.get("user_id", ""))
+    record_admin_action(
+        str(admin["_id"]), admin.get("email", ""),
+        "delete_session", session_id,
+        (owner or {}).get("email") or (owner or {}).get("username", ""),
+        {"active_step": sess.get("active_step")})
+    delete_session_by_sid(session_id)
+    return {"ok": True}
+
+
+class SessionCleanupReq(BaseModel):
+    mode: str  # "empty" | "orphaned"
+
+
+@app.post("/admin/sessions/cleanup")
+def admin_cleanup_sessions(req: SessionCleanupReq, admin: dict = Depends(require_admin)):
+    """Bulk-delete empty (no step work) or orphaned (owner deleted) sessions."""
+    if req.mode not in ("empty", "orphaned"):
+        raise HTTPException(status_code=400, detail="mode must be 'empty' or 'orphaned'")
+    deleted = delete_sessions_bulk(req.mode)
+    record_admin_action(
+        str(admin["_id"]), admin.get("email", ""),
+        "cleanup_sessions", req.mode, "", {"deleted": deleted})
+    return {"ok": True, "deleted": deleted}
 
 
 @app.get("/admin/sessions/{session_id}")
@@ -4057,7 +4263,71 @@ def admin_system_health(admin: dict = Depends(require_admin)):
     health["disk_total_gb"] = round(usage.total / (1024**3), 1)
     health["disk_free_gb"] = round(usage.free / (1024**3), 1)
 
+    # CPU / RAM / load
+    try:
+        import psutil
+        health["cpu_percent"] = psutil.cpu_percent(interval=0.2)
+        health["cpu_count"] = psutil.cpu_count()
+        mem = psutil.virtual_memory()
+        health["ram_total_gb"] = round(mem.total / (1024**3), 1)
+        health["ram_used_gb"] = round(mem.used / (1024**3), 1)
+        health["ram_percent"] = mem.percent
+        health["load_avg"] = [round(x, 2) for x in os.getloadavg()]
+    except Exception:
+        pass
+
+    # GPUs (empty list when nvidia-smi is unavailable/broken - itself a signal,
+    # since a stale driver silently pushes Ollama onto CPU)
+    health["gpus"] = []
+    try:
+        import subprocess
+        out = subprocess.run(
+            ["nvidia-smi", "--query-gpu=name,memory.used,memory.total,utilization.gpu,temperature.gpu",
+             "--format=csv,noheader,nounits"],
+            capture_output=True, text=True, timeout=5)
+        if out.returncode == 0:
+            for line in out.stdout.strip().splitlines():
+                parts = [p.strip() for p in line.split(",")]
+                if len(parts) == 5:
+                    health["gpus"].append({
+                        "name": parts[0],
+                        "mem_used_mb": int(float(parts[1])),
+                        "mem_total_mb": int(float(parts[2])),
+                        "util_percent": int(float(parts[3])),
+                        "temp_c": int(float(parts[4])),
+                    })
+    except Exception:
+        pass
+
+    # Data volumes
+    try:
+        health["db_users"] = sum(get_user_counts_by_role().values())
+        health["db_sessions"] = get_total_sessions_count()
+    except Exception:
+        pass
+
     return health
+
+
+@app.post("/admin/health/llm-test")
+def admin_llm_latency_test(admin: dict = Depends(require_admin)):
+    """Round-trip a tiny prompt through the active LLM backend and time it."""
+    import time as _time
+    start = _time.time()
+    try:
+        r = requests.post(f"{OLLAMA_BASE}/api/generate", json={
+            "model": LLM_MODEL,
+            "prompt": "Reply with the single word: ok",
+            "stream": False,
+            "options": {"num_predict": 5},
+        }, timeout=60)
+        r.raise_for_status()
+        latency = round(_time.time() - start, 2)
+        return {"ok": True, "latency_seconds": latency, "model": LLM_MODEL,
+                "reply": (r.json().get("response") or "").strip()[:40]}
+    except Exception as e:
+        return {"ok": False, "latency_seconds": round(_time.time() - start, 2),
+                "model": LLM_MODEL, "error": str(e)[:200]}
 
 
 # ── Admin: CSV Data Export ──────────────────────────────

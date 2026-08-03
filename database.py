@@ -297,16 +297,35 @@ def record_login(user_id: str, email_or_username: str, ip: str,
     })
 
 
-def get_recent_logins(limit: int = 100, skip: int = 0) -> List[Dict]:
-    return list(login_history_col.find(
-        {}, {"_id": 0}
-    ).sort("login_at", -1).skip(skip).limit(limit))
+def get_recent_logins(limit: int = 100, skip: int = 0,
+                      search: Optional[str] = None,
+                      success: Optional[bool] = None) -> tuple:
+    """Return (logins, total) with optional email/IP search and OK/FAIL filter."""
+    query: Dict[str, Any] = {}
+    if search:
+        rx = {"$regex": search, "$options": "i"}
+        query["$or"] = [{"email": rx}, {"ip": rx}, {"city": rx}, {"country": rx}]
+    if success is not None:
+        query["success"] = success
+    cursor = login_history_col.find(query, {"_id": 0}) \
+        .sort("login_at", -1).skip(skip).limit(limit)
+    return list(cursor), login_history_col.count_documents(query)
 
 
-def get_login_locations() -> List[Dict]:
+def _geo_cutoff_match(days: int) -> Dict:
+    """Extra $match constraint limiting logins to the last N days (0 = all time)."""
+    if not days:
+        return {}
+    from datetime import timedelta
+    cutoff = (datetime.utcnow() - timedelta(days=days)).isoformat()
+    return {"login_at": {"$gte": cutoff}}
+
+
+def get_login_locations(days: int = 0) -> List[Dict]:
     """Aggregate login locations for world map."""
     return list(login_history_col.aggregate([
-        {"$match": {"lat": {"$ne": None}, "lng": {"$ne": None}, "success": True}},
+        {"$match": {"lat": {"$ne": None}, "lng": {"$ne": None}, "success": True,
+                    **_geo_cutoff_match(days)}},
         {"$group": {
             "_id": {"lat": "$lat", "lng": "$lng"},
             "city": {"$first": "$city"},
@@ -332,10 +351,27 @@ def get_logins_for_user(user_id: str, limit: int = 50) -> List[Dict]:
     ).sort("login_at", -1).limit(limit))
 
 
-def get_login_stats_by_country() -> List[Dict]:
+def get_login_timeseries(days: int = 0) -> List[Dict]:
+    """Logins per day (success/failed split) for the monitoring chart."""
+    pipeline = [
+        {"$match": _geo_cutoff_match(days) or {}},
+        {"$project": {"date": {"$substr": ["$login_at", 0, 10]}, "success": 1}},
+        {"$group": {
+            "_id": "$date",
+            "success": {"$sum": {"$cond": ["$success", 1, 0]}},
+            "failed": {"$sum": {"$cond": ["$success", 0, 1]}},
+        }},
+        {"$sort": {"_id": 1}},
+    ]
+    return [{"date": d["_id"], "success": d["success"], "failed": d["failed"]}
+            for d in login_history_col.aggregate(pipeline)]
+
+
+def get_login_stats_by_country(days: int = 0) -> List[Dict]:
     """Aggregate unique users and total logins per country."""
     return list(login_history_col.aggregate([
-        {"$match": {"country": {"$ne": ""}, "success": True}},
+        {"$match": {"country": {"$ne": ""}, "success": True,
+                    **_geo_cutoff_match(days)}},
         {"$group": {
             "_id": "$country",
             "logins": {"$sum": 1},
@@ -351,10 +387,11 @@ def get_login_stats_by_country() -> List[Dict]:
     ]))
 
 
-def get_login_stats_by_region() -> List[Dict]:
+def get_login_stats_by_region(days: int = 0) -> List[Dict]:
     """Aggregate unique users and total logins per city/region."""
     return list(login_history_col.aggregate([
-        {"$match": {"city": {"$ne": ""}, "success": True}},
+        {"$match": {"city": {"$ne": ""}, "success": True,
+                    **_geo_cutoff_match(days)}},
         {"$group": {
             "_id": {"city": "$city", "region": "$region", "country": "$country"},
             "logins": {"$sum": 1},
@@ -377,7 +414,9 @@ def get_login_stats_by_region() -> List[Dict]:
 
 def get_all_users(skip: int = 0, limit: int = 50,
                   role_filter: Optional[str] = None,
-                  search: Optional[str] = None):
+                  search: Optional[str] = None,
+                  sort_by: str = "created_at",
+                  sort_dir: str = "desc"):
     """Return (users, total) for admin dashboard."""
     query: Dict[str, Any] = {}
     if role_filter:
@@ -388,7 +427,13 @@ def get_all_users(skip: int = 0, limit: int = 50,
             {"username": {"$regex": search, "$options": "i"}},
             {"name": {"$regex": search, "$options": "i"}},
         ]
-    cursor = users_col.find(query, {"password_hash": 0}).sort("created_at", -1).skip(skip).limit(limit)
+    if sort_by not in ("created_at", "last_login_at", "name"):
+        sort_by = "created_at"
+    direction = 1 if sort_dir == "asc" else -1
+    cursor = users_col.find(query, {"password_hash": 0}).sort(sort_by, direction)
+    if sort_by == "name":  # case-insensitive name ordering
+        cursor = cursor.collation({"locale": "en", "strength": 2})
+    cursor = cursor.skip(skip).limit(limit)
     total = users_col.count_documents(query)
     return list(cursor), total
 
@@ -474,10 +519,19 @@ def record_admin_action(admin_user_id: str, admin_email: str, action: str,
     })
 
 
-def get_admin_audit_log(limit: int = 100, skip: int = 0) -> List[Dict]:
-    return list(admin_audit_col.find(
-        {}, {"_id": 0}
-    ).sort("timestamp", -1).skip(skip).limit(limit))
+def get_admin_audit_log(limit: int = 100, skip: int = 0,
+                        action: Optional[str] = None) -> tuple:
+    """Return (entries, total) with optional action-type filter."""
+    query: Dict[str, Any] = {}
+    if action:
+        query["action"] = action
+    cursor = admin_audit_col.find(query, {"_id": 0}) \
+        .sort("timestamp", -1).skip(skip).limit(limit)
+    return list(cursor), admin_audit_col.count_documents(query)
+
+
+def get_audit_action_types() -> List[str]:
+    return sorted(admin_audit_col.distinct("action"))
 
 
 # --------------- Admin: Class Management ---------------
@@ -496,16 +550,88 @@ def get_all_classes(skip: int = 0, limit: int = 50,
     results = []
     for cls in cursor:
         cls["_id"] = str(cls["_id"])
-        # Count actual students
-        cls["actual_students"] = users_col.count_documents({
-            "class_id": cls["_id"], "role": "classroom_student"
-        })
+        # Students + class-wide progress from their sessions
+        student_ids = [str(s["_id"]) for s in users_col.find(
+            {"class_id": cls["_id"], "role": "classroom_student"}, {"_id": 1})]
+        cls["actual_students"] = len(student_ids)
+        per_user: Dict[str, int] = {}
+        last_activity = None
+        if student_ids:
+            for sess in sessions_col.find(
+                    {"user_id": {"$in": student_ids}},
+                    {"user_id": 1, "step_notes": 1, "updated_at": 1}):
+                done = sum(1 for v in (sess.get("step_notes") or {}).values() if v)
+                uid = sess.get("user_id", "")
+                per_user[uid] = max(per_user.get(uid, 0), done)
+                ua = sess.get("updated_at")
+                if ua and (last_activity is None or ua > last_activity):
+                    last_activity = ua
+        cls["avg_progress"] = (
+            round(sum(per_user.values()) / (len(student_ids) * 9) * 100)
+            if student_ids else 0)
+        cls["active_students"] = len(per_user)
+        cls["last_activity"] = last_activity
         # Resolve teacher name
         teacher = find_user_by_id(cls.get("teacher_id", ""))
         cls["teacher_name"] = teacher.get("name", "") if teacher else ""
         cls["teacher_email"] = teacher.get("email", "") if teacher else ""
         results.append(cls)
     return results, total
+
+
+def update_class_fields(class_id: str, fields: Dict) -> bool:
+    """Update arbitrary top-level fields on a class document."""
+    from bson import ObjectId
+    result = classes_col.update_one({"_id": ObjectId(class_id)}, {"$set": fields})
+    return result.matched_count > 0
+
+
+def set_class_students_password(class_id: str, password_hash: str) -> int:
+    """Classroom students log in with the class password; re-hash them all."""
+    result = users_col.update_many(
+        {"class_id": class_id, "role": "classroom_student"},
+        {"$set": {"password_hash": password_hash}},
+    )
+    return result.modified_count
+
+
+def get_class_detail(class_id: str) -> Optional[Dict]:
+    """Class doc + teacher info + per-student progress for the admin drill-down."""
+    cls = find_class_by_id(class_id)
+    if not cls:
+        return None
+    cls["_id"] = str(cls["_id"])
+    cls.pop("password_hash", None)
+    teacher = find_user_by_id(cls.get("teacher_id", ""))
+    cls["teacher_name"] = teacher.get("name", "") if teacher else ""
+    cls["teacher_email"] = teacher.get("email", "") if teacher else ""
+    cls["settings"] = get_class_settings(cls)
+
+    students = get_students_in_class(cls["_id"])
+    sids = [str(s["_id"]) for s in students]
+    latest_by_user: Dict[str, Dict] = {}
+    if sids:
+        for sess in sessions_col.find(
+                {"user_id": {"$in": sids}},
+                {"user_id": 1, "session_id": 1, "step_notes": 1,
+                 "active_step": 1, "updated_at": 1}).sort("updated_at", -1):
+            latest_by_user.setdefault(sess.get("user_id", ""), sess)
+    cls["students"] = []
+    for s in students:
+        sid = str(s["_id"])
+        sess = latest_by_user.get(sid)
+        done = sum(1 for v in (sess.get("step_notes") or {}).values() if v) if sess else 0
+        cls["students"].append({
+            "_id": sid,
+            "username": s.get("username", ""),
+            "name": s.get("name", ""),
+            "last_login_at": s.get("last_login_at"),
+            "steps_done": done,
+            "active_step": (sess or {}).get("active_step"),
+            "session_id": (sess or {}).get("session_id"),
+            "last_activity": (sess or {}).get("updated_at"),
+        })
+    return cls
 
 
 def delete_class_by_id(class_id: str) -> bool:
@@ -521,23 +647,117 @@ def delete_class_by_id(class_id: str) -> bool:
 
 # --------------- Admin: Session Browsing ---------------
 
+# How many steps hold real work: step_notes entries that aren't null/""/{}
+STEPS_DONE_EXPR = {"$size": {"$filter": {
+    "input": {"$objectToArray": {"$ifNull": ["$step_notes", {}]}},
+    "cond": {"$and": [
+        {"$ne": ["$$this.v", None]},
+        {"$ne": ["$$this.v", ""]},
+        {"$ne": ["$$this.v", {}]},
+    ]},
+}}}
+
+
 def get_all_sessions(skip: int = 0, limit: int = 50,
-                     user_id: Optional[str] = None) -> tuple:
-    """Return (sessions, total) for admin."""
-    query: Dict[str, Any] = {}
+                     user_id: Optional[str] = None,
+                     search: Optional[str] = None,
+                     step: Optional[int] = None,
+                     status: Optional[str] = None,
+                     sort_by: str = "updated_at",
+                     sort_dir: str = "desc") -> tuple:
+    """Return (sessions, total) for admin, with search/filter/sort.
+
+    status: "empty" (no step work) | "completed" (all 9) |
+            "active7" (updated last 7d) | "stale" (no update in 30d)
+    """
+    from datetime import timedelta
+    match: Dict[str, Any] = {}
     if user_id:
-        query["user_id"] = user_id
-    cursor = sessions_col.find(query, {"chat": 0}).sort("created_at", -1).skip(skip).limit(limit)
-    total = sessions_col.count_documents(query)
-    results = []
-    for sess in cursor:
-        sess["_id"] = str(sess["_id"])
-        # Resolve user
-        owner = find_user_by_id(sess.get("user_id", ""))
+        match["user_id"] = user_id
+    elif search:
+        rx = {"$regex": search, "$options": "i"}
+        uids = [str(u["_id"]) for u in users_col.find(
+            {"$or": [{"email": rx}, {"username": rx}, {"name": rx}]}, {"_id": 1})]
+        match["user_id"] = {"$in": uids}
+    if step:
+        match["active_step"] = step
+    now = datetime.utcnow()
+    if status == "active7":
+        match["updated_at"] = {"$gte": (now - timedelta(days=7)).isoformat()}
+    elif status == "stale":
+        match["updated_at"] = {"$lt": (now - timedelta(days=30)).isoformat()}
+
+    pipeline: List[Dict] = [
+        {"$match": match},
+        {"$addFields": {"steps_done": STEPS_DONE_EXPR}},
+    ]
+    if status == "empty":
+        pipeline.append({"$match": {"steps_done": 0}})
+    elif status == "completed":
+        pipeline.append({"$match": {"steps_done": 9}})
+
+    if sort_by not in ("created_at", "updated_at", "active_step", "steps_done"):
+        sort_by = "updated_at"
+    count_result = list(sessions_col.aggregate(pipeline + [{"$count": "n"}]))
+    total = count_result[0]["n"] if count_result else 0
+
+    pipeline += [
+        {"$sort": {sort_by: 1 if sort_dir == "asc" else -1}},
+        {"$skip": skip},
+        {"$limit": limit},
+        {"$project": {"_id": 0, "session_id": 1, "user_id": 1, "active_step": 1,
+                      "worldview_label": 1, "resolved_path": 1, "chosen_methodology": 1,
+                      "created_at": 1, "updated_at": 1, "steps_done": 1}},
+    ]
+    results = list(sessions_col.aggregate(pipeline))
+    owners: Dict[str, Optional[Dict]] = {}
+    for sess in results:
+        uid = sess.get("user_id", "")
+        if uid not in owners:
+            owners[uid] = find_user_by_id(uid)
+        owner = owners[uid]
         sess["user_name"] = (owner.get("username") or owner.get("name", "")) if owner else ""
         sess["user_email"] = (owner.get("email") or owner.get("username", "")) if owner else ""
-        results.append(sess)
+        sess["orphaned"] = owner is None
     return results, total
+
+
+def get_session_stats() -> Dict:
+    """Counts for the admin sessions header + cleanup button."""
+    total = sessions_col.count_documents({})
+    empty_result = list(sessions_col.aggregate([
+        {"$addFields": {"steps_done": STEPS_DONE_EXPR}},
+        {"$match": {"steps_done": 0}},
+        {"$count": "n"},
+    ]))
+    empty = empty_result[0]["n"] if empty_result else 0
+    user_ids = {str(u["_id"]) for u in users_col.find({}, {"_id": 1})}
+    orphaned = sum(1 for s in sessions_col.find({}, {"user_id": 1})
+                   if str(s.get("user_id")) not in user_ids)
+    return {"total": total, "empty": empty, "orphaned": orphaned}
+
+
+def delete_session_by_sid(session_id: str) -> bool:
+    return sessions_col.delete_one({"session_id": session_id}).deleted_count > 0
+
+
+def delete_sessions_bulk(mode: str) -> int:
+    """Bulk-delete sessions: mode 'empty' (no step work) or 'orphaned' (owner gone)."""
+    if mode == "empty":
+        ids = [s["_id"] for s in sessions_col.aggregate([
+            {"$addFields": {"steps_done": STEPS_DONE_EXPR}},
+            {"$match": {"steps_done": 0}},
+            {"$project": {"_id": 1}},
+        ])]
+    elif mode == "orphaned":
+        user_ids = {str(u["_id"]) for u in users_col.find({}, {"_id": 1})}
+        ids = [s["_id"] for s in sessions_col.find({}, {"user_id": 1})
+               if str(s.get("user_id")) not in user_ids]
+    else:
+        return 0
+    if not ids:
+        return 0
+    return sessions_col.delete_many({"_id": {"$in": ids}}).deleted_count
 
 
 def get_session_full(session_id: str) -> Optional[Dict]:
