@@ -5,6 +5,25 @@ const path = require('path');
 const HOME = process.env.HOME || '/home/aietlab';
 const ROOT = path.join(HOME, 'hopscotch');
 
+// Load ROOT/.env into process.env so secrets (MONGO_URI = the production
+// Atlas cluster, RESEND_API_KEY) are always set when this config starts the
+// apps - even from a shell that never sourced .env (e.g. `pm2 resurrect`
+// after a reboot). Without this the backend silently falls back to the local
+// stale Mongo, which has caused two production incidents. Only fills in vars
+// that are not already set.
+(function loadEnvFile() {
+  const fs = require('fs');
+  try {
+    const txt = fs.readFileSync(path.join(ROOT, '.env'), 'utf8');
+    for (const line of txt.split('\n')) {
+      const m = line.match(/^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$/);
+      if (!m) continue;
+      const val = m[2].trim().replace(/^["']|["']$/g, '');
+      if (process.env[m[1]] === undefined || process.env[m[1]] === '') process.env[m[1]] = val;
+    }
+  } catch (e) { /* .env is optional */ }
+})();
+
 module.exports = {
   apps: [
     {
@@ -22,7 +41,7 @@ module.exports = {
       env: {
         PATH: `${path.join(ROOT, 'hopscotchenv', 'bin')}:${process.env.PATH}`,
         VIRTUAL_ENV: path.join(ROOT, 'hopscotchenv'),
-        RESEND_API_KEY: 're_MTF9paKE_2fgoJmnaSG4Qe9M5iR8JVUd8',
+        RESEND_API_KEY: process.env.RESEND_API_KEY || '',
         // MongoDB Atlas — shared between Lambda and GPU cluster
         // Set the real URI via shell env (do not commit the password)
         MONGO_URI: process.env.MONGO_URI || 'mongodb://127.0.0.1:27017',
