@@ -271,26 +271,31 @@ WORLDVIEW_DESCRIPTIONS = {
     "positivist": (
         "Positivist: Believes in an objective, knowable reality. Knowledge is gained through "
         "observation, measurement, and empirical testing. Research should be value-free and "
-        "generalizable. Favours quantitative methods — experiments, surveys, statistical analysis. "
-        "The researcher remains detached and neutral."
+        "generalizable. Most often associated with quantitative methods — experiments, surveys, "
+        "statistical analysis. The researcher remains detached and neutral."
     ),
     "post_positivist": (
         "Post-Positivist: Acknowledges that reality exists but can only be imperfectly known. "
         "All observation is fallible and theory-laden. Emphasises falsification, triangulation, "
-        "and critical multiplism. Uses primarily quantitative methods but recognises limitations "
-        "of absolute objectivity. The researcher strives for objectivity while acknowledging bias."
+        "and critical multiplism. Most often associated with quantitative methods but recognises "
+        "limitations of absolute objectivity. The researcher strives for objectivity while "
+        "acknowledging bias."
     ),
     "constructivist": (
         "Constructivist (Interpretivist): Believes reality is socially constructed and that "
         "multiple, equally valid realities exist. Knowledge is co-created between researcher "
         "and participants. Values deep understanding of lived experiences, meaning-making, and "
-        "context. Favours qualitative methods — interviews, observations, narrative analysis. "
-        "The researcher is an active participant in the research process."
+        "context. Most often associated with qualitative methods — interviews, observations, "
+        "narrative analysis — though constructivist researchers also legitimately conduct "
+        "quantitative and mixed methods studies (e.g. validated surveys or quasi-experiments "
+        "on constructivist learning environments). The researcher is an active participant "
+        "in the research process."
     ),
     "transformative": (
         "Transformative: Centres issues of power, justice, and equity. Reality is shaped by "
         "social, political, cultural, and economic forces. Research should serve marginalised "
-        "communities and promote social change. Uses qualitative and participatory methods. "
+        "communities and promote social change. Most often associated with qualitative and "
+        "participatory methods, though quantitative evidence is also used to expose inequities. "
         "The researcher is an advocate who collaborates with communities."
     ),
     "pragmatist": (
@@ -313,8 +318,18 @@ def _render_worldview_profile(sess: SessionData) -> str:
     label = sess.worldview_label or band.replace("_", " ").title()
     desc = WORLDVIEW_DESCRIPTIONS.get(band, "")
     path = sess.resolved_path or "not yet determined"
+    chosen = sess.chosen_methodology
     parts = [f"Student's worldview: {label}"]
-    parts.append(f"Research methodology pathway: {path}")
+    if chosen and chosen != path:
+        parts.append(
+            f"Research methodology pathway: {chosen} (the student's own choice; "
+            f"their worldview's usual pathway would be {path} - support their choice)"
+        )
+    else:
+        parts.append(
+            f"Research methodology pathway: {path} (the usual default for this worldview - "
+            f"NOT a requirement; the student may choose a different pathway in Step 4)"
+        )
     if desc:
         parts.append(f"Worldview description: {desc}")
     return "\n".join(parts)
@@ -856,6 +871,15 @@ def build_ollama_payload(worldview_profile, step_context, user_msg, passages,
         "YOUR APPROACH:\n"
         "- When explaining a worldview (Step 1), be substantive: discuss its ontology, "
         "epistemology, axiology, and methodology implications with concrete examples.\n"
+        "- Worldviews are lenses, NOT locks: the research question ultimately drives the "
+        "choice of methodology. A constructivist may legitimately conduct quantitative "
+        "research (e.g. validated surveys, quasi-experiments on constructivist learning "
+        "environments) and a post-positivist may conduct qualitative research. When a "
+        "student asks whether they can use a methodology that differs from their "
+        "worldview's usual pairing, or resists the usual pairing, do NOT insist on the "
+        "default: acknowledge the legitimacy of their direction, present the options with "
+        "their trade-offs, and let the student reason to their own choice. Tell them they "
+        "can switch their methodology pathway in Step 4 if they wish.\n"
         "- For Steps 2-4: lead with guiding questions, then give feedback ONLY after "
         "the student has written their own content in 'My Research Design'.\n"
         "- For Steps 5-9: be substantive in EXPLAINING concepts and giving feedback on "
@@ -1522,6 +1546,14 @@ def get_teacher_student_step_config(
                               directions="Student has not selected a worldview yet.")
 
     all_paths = paths_cfg.get("paths", {})
+    default_path = resolved  # the worldview's usual pathway
+    # Non-mixed path where the student chose the other methodology at Step 4:
+    # serve the chosen pathway's configuration (worldviews are defaults, not
+    # locks - mirrors the LLM-guidance override in _step_llm_guidance)
+    if (resolved != "mixed" and sess.chosen_methodology
+            and sess.chosen_methodology != resolved
+            and sess.chosen_methodology in all_paths):
+        resolved = sess.chosen_methodology
     path_data = all_paths.get(resolved, {})
     step_key = str(step)
     step_cfg = path_data.get("steps", {}).get(step_key, {})
@@ -1555,6 +1587,7 @@ def get_teacher_student_step_config(
 
     return StepConfigResp(
         step=step, path=resolved,
+        default_path=default_path,
         title=step_cfg.get("title", f"Step {step}"),
         directions=step_cfg.get("directions", ""),
         field_type=step_cfg.get("field_type"),
@@ -1865,6 +1898,7 @@ class StepConfigResp(BaseModel):
     quantitative_options: Optional[List[Dict[str, Any]]] = None
     qualitative_options: Optional[List[Dict[str, Any]]] = None
     recommended_methodology: Optional[str] = None  # "quantitative" or "qualitative"
+    default_path: Optional[str] = None  # the worldview's usual pathway (path may differ if the student switched)
 
 
 @app.get("/step/config", response_model=StepConfigResp)
@@ -2007,11 +2041,19 @@ def set_methodology(req: SetMethodologyReq, user: dict = Depends(get_current_use
             detail="methodology must be 'quantitative' or 'qualitative'",
         )
 
-    # If changing from a previous choice, clear steps 5-9 data
+    # If changing pathways, clear the now-mismatched later-step data. For
+    # non-mixed paths the baseline is the worldview's resolved path, so the
+    # FIRST switch away from the default also clears (the saved Step 4 design
+    # and steps 5-9 belong to the other pathway).
     prev = sess.chosen_methodology
-    if prev and prev != meth:
+    prev_effective = prev or (sess.resolved_path if sess.resolved_path != "mixed" else None)
+    if prev_effective and prev_effective != meth:
         for s in range(5, 10):
             sess.step_notes.pop(str(s), None)
+        if sess.resolved_path != "mixed":
+            s4_old = sess.step_notes.get("4") or {}
+            s4_old.pop("design", None)
+            sess.step_notes["4"] = s4_old
 
     sess.chosen_methodology = meth
     s4 = sess.step_notes.get("4") or {}
