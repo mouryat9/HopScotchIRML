@@ -27,7 +27,7 @@ import json
 import logging
 
 import requests
-from fastapi import FastAPI, HTTPException, Body, Query, Depends, Request, UploadFile, File
+from fastapi import FastAPI, HTTPException, Body, Query, Depends, Request, UploadFile, File, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, Response
 from pydantic import BaseModel, Field
@@ -69,6 +69,7 @@ from database import (
     # Glossary
     get_all_glossary_terms, count_glossary_terms, create_glossary_term,
     update_glossary_term, delete_glossary_term, seed_glossary_if_empty,
+    set_glossary_translation, get_glossary_ids_missing_es, get_glossary_term_by_id,
     # Step resources
     get_step_resources, get_step_resources_all, upsert_step_resource,
     seed_step_resources_if_empty,
@@ -3939,9 +3940,66 @@ def admin_audit_log(
 # ── Glossary ────────────────────────────────────────────
 
 @app.get("/glossary")
-def public_glossary():
-    """All glossary terms — read by the student Dictionary tab. Public."""
-    return {"terms": get_all_glossary_terms()}
+def public_glossary(lang: Optional[str] = Query(None)):
+    """All glossary terms — read by the student Dictionary tab. Public.
+    Spanish terms are served from stored auto-translations, falling back to
+    English per term while a translation is pending."""
+    lang = lang if lang in SUPPORTED_LANGUAGES else "en"
+    return {"terms": get_all_glossary_terms(lang), "lang": lang}
+
+
+def _translate_glossary_term(term: str, definition: str) -> Optional[dict]:
+    """One-shot LLM translation of a glossary entry into Spanish. Returns
+    {'term_es', 'def_es'} or None if both backends fail."""
+    prompt = (
+        "You translate research-methods glossary entries from English to Spanish "
+        "for high-school and university students. Use the standard Spanish term "
+        "used in research-methodology courses (not a literal word-for-word "
+        "rendering). Keep the definition's plain, student-friendly tone. If the "
+        "English term includes a parenthetical, keep an equivalent parenthetical.\n\n"
+        f"TERM: {term}\n"
+        f"DEFINITION: {definition}\n\n"
+        "Respond with ONLY valid JSON, no markdown, no explanation:\n"
+        '{"term_es": "", "def_es": ""}'
+    )
+    messages = [{"role": "user", "content": prompt}]
+    raw = None
+    if LLM_BACKEND == "vllm":
+        raw = _call_vllm(messages, temperature=0.2, max_tokens=500, timeout=60)
+    if raw is None:
+        raw = _call_ollama({
+            "model": LLM_MODEL,
+            "messages": messages,
+            "stream": False,
+            "options": {"temperature": 0.2, "num_predict": 500},
+        }, timeout=60)
+    if not raw:
+        return None
+    try:
+        match = re.search(r'\{[\s\S]*\}', raw)
+        data = _json.loads(match.group()) if match else None
+        if data and (data.get("term_es") or "").strip() and (data.get("def_es") or "").strip():
+            return {"term_es": data["term_es"].strip(), "def_es": data["def_es"].strip()}
+    except Exception as e:
+        logger.warning("Glossary translation parse failed for %r: %s", term, e)
+    return None
+
+
+def _translate_glossary_ids(term_ids: List[str]):
+    """Background worker: translate the given glossary terms into Spanish.
+    Skips terms already translated (or deleted) by the time it runs."""
+    done = failed = 0
+    for tid in term_ids:
+        doc = get_glossary_term_by_id(tid)
+        if not doc or (doc.get("term_es") and doc.get("def_es")):
+            continue
+        result = _translate_glossary_term(doc.get("term", ""), doc.get("def", ""))
+        if result and set_glossary_translation(tid, result["term_es"], result["def_es"]):
+            done += 1
+        else:
+            failed += 1
+    if done or failed:
+        logger.info("[glossary] Auto-translated %d term(s) to Spanish (%d failed)", done, failed)
 
 
 class GlossaryTermReq(BaseModel):
@@ -3952,15 +4010,22 @@ class GlossaryTermReq(BaseModel):
 
 @app.get("/admin/glossary")
 def admin_list_glossary(admin: dict = Depends(require_admin)):
-    return {"terms": get_all_glossary_terms(), "total": count_glossary_terms()}
+    terms = get_all_glossary_terms()
+    return {
+        "terms": terms,
+        "total": count_glossary_terms(),
+        "missing_es": sum(1 for t in terms if not t.get("has_es")),
+    }
 
 
 @app.post("/admin/glossary")
-def admin_create_glossary(req: GlossaryTermReq, admin: dict = Depends(require_admin)):
+def admin_create_glossary(req: GlossaryTermReq, background_tasks: BackgroundTasks,
+                          admin: dict = Depends(require_admin)):
     if not (req.term or "").strip() or not (req.definition or "").strip():
         raise HTTPException(status_code=400, detail="Term and definition are required")
     steps = [int(s) for s in (req.steps or []) if 1 <= int(s) <= 9]
     term_id = create_glossary_term(req.term, req.definition, steps)
+    background_tasks.add_task(_translate_glossary_ids, [term_id])
     record_admin_action(
         str(admin["_id"]), admin.get("email", ""),
         "create_glossary_term", term_id, "", {"term": req.term.strip()}
@@ -3969,7 +4034,8 @@ def admin_create_glossary(req: GlossaryTermReq, admin: dict = Depends(require_ad
 
 
 @app.patch("/admin/glossary/{term_id}")
-def admin_update_glossary(term_id: str, req: GlossaryTermReq, admin: dict = Depends(require_admin)):
+def admin_update_glossary(term_id: str, req: GlossaryTermReq, background_tasks: BackgroundTasks,
+                          admin: dict = Depends(require_admin)):
     fields: dict = {}
     if req.term is not None:
         fields["term"] = req.term
@@ -3982,11 +4048,28 @@ def admin_update_glossary(term_id: str, req: GlossaryTermReq, admin: dict = Depe
     ok = update_glossary_term(term_id, fields)
     if not ok:
         raise HTTPException(status_code=404, detail="Term not found")
+    # English text changed → stored Spanish was cleared; refresh it
+    if "term" in fields or "def" in fields:
+        background_tasks.add_task(_translate_glossary_ids, [term_id])
     record_admin_action(
         str(admin["_id"]), admin.get("email", ""),
         "update_glossary_term", term_id, "", {"term": fields.get("term")}
     )
     return {"ok": True}
+
+
+@app.post("/admin/glossary/translate-missing")
+def admin_glossary_translate_missing(background_tasks: BackgroundTasks,
+                                     admin: dict = Depends(require_admin)):
+    """Queue Spanish translations for every glossary term that lacks one."""
+    ids = get_glossary_ids_missing_es()
+    if ids:
+        background_tasks.add_task(_translate_glossary_ids, ids)
+    record_admin_action(
+        str(admin["_id"]), admin.get("email", ""),
+        "translate_glossary", "", "", {"queued": len(ids)}
+    )
+    return {"ok": True, "queued": len(ids)}
 
 
 @app.delete("/admin/glossary/{term_id}")

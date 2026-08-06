@@ -804,20 +804,62 @@ def get_user_detail(user_id: str) -> Optional[Dict]:
 
 # --------------- Glossary CRUD ---------------
 
-def _glossary_public(doc: Dict) -> Dict:
-    """Shape a glossary doc for API responses."""
-    return {
+def _glossary_public(doc: Dict, lang: str = "en") -> Dict:
+    """Shape a glossary doc for API responses. For Spanish, serve the stored
+    translation and fall back to English per field while one is pending."""
+    out = {
         "id": str(doc["_id"]),
         "term": doc.get("term", ""),
         "def": doc.get("def", ""),
         "steps": doc.get("steps", []),
+        "has_es": bool(doc.get("term_es") and doc.get("def_es")),
     }
+    if lang == "es":
+        out["term"] = doc.get("term_es") or out["term"]
+        out["def"] = doc.get("def_es") or out["def"]
+    return out
 
 
-def get_all_glossary_terms() -> List[Dict]:
-    """All glossary terms, alphabetical by term. Used by students and admin."""
+def get_all_glossary_terms(lang: str = "en") -> List[Dict]:
+    """All glossary terms, alphabetical by (localized) term. Students and admin."""
     cursor = glossary_col.find({}).collation({"locale": "en"}).sort("term", 1)
-    return [_glossary_public(d) for d in cursor]
+    terms = [_glossary_public(d, lang) for d in cursor]
+    if lang != "en":
+        terms.sort(key=lambda t: t["term"].casefold())
+    return terms
+
+
+def set_glossary_translation(term_id: str, term_es: str, def_es: str) -> bool:
+    from bson import ObjectId
+    try:
+        res = glossary_col.update_one(
+            {"_id": ObjectId(term_id)},
+            {"$set": {
+                "term_es": (term_es or "").strip(),
+                "def_es": (def_es or "").strip(),
+                "translated_at": datetime.utcnow().isoformat() + "Z",
+            }},
+        )
+        return res.matched_count > 0
+    except Exception:
+        return False
+
+
+def get_glossary_ids_missing_es() -> List[str]:
+    """Ids of terms with no Spanish translation yet."""
+    cursor = glossary_col.find(
+        {"$or": [{"term_es": {"$in": [None, ""]}}, {"def_es": {"$in": [None, ""]}}]},
+        {"_id": 1},
+    )
+    return [str(d["_id"]) for d in cursor]
+
+
+def get_glossary_term_by_id(term_id: str) -> Optional[Dict]:
+    from bson import ObjectId
+    try:
+        return glossary_col.find_one({"_id": ObjectId(term_id)})
+    except Exception:
+        return None
 
 
 def count_glossary_terms() -> int:
@@ -847,6 +889,11 @@ def update_glossary_term(term_id: str, fields: Dict[str, Any]) -> bool:
         updates["steps"] = fields["steps"]
     if not updates:
         return False
+    # English text changed → the stored Spanish translation is stale; clear it
+    # so readers fall back to English until the re-translation lands.
+    if "term" in updates or "def" in updates:
+        updates["term_es"] = ""
+        updates["def_es"] = ""
     updates["updated_at"] = datetime.utcnow().isoformat() + "Z"
     try:
         res = glossary_col.update_one({"_id": ObjectId(term_id)}, {"$set": updates})

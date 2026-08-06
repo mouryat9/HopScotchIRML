@@ -51,17 +51,19 @@ function TermCard({ term, def, related }) {
 }
 
 function Dictionary({ activeStep }) {
+  const { lang, t } = useLang();
   const [query, setQuery] = useState("");
-  // Live glossary from the database; falls back to the bundled list so the
-  // tab renders instantly and still works if the fetch fails.
+  // Live glossary from the database, in the user's language (Spanish entries
+  // are auto-translated server-side and fall back to English while pending);
+  // the bundled English list covers the moment before the fetch lands.
   const [terms, setTerms] = useState(GLOSSARY);
   useEffect(() => {
     let alive = true;
-    API.getGlossary()
+    API.getGlossary(lang)
       .then((d) => { if (alive && Array.isArray(d.terms) && d.terms.length) setTerms(d.terms); })
       .catch(() => {});
     return () => { alive = false; };
-  }, []);
+  }, [lang]);
   const q = query.trim().toLowerCase();
 
   const { related, others } = useMemo(() => {
@@ -89,10 +91,10 @@ function Dictionary({ activeStep }) {
         <input
           type="text"
           className="dict__input"
-          placeholder="Search a term or definition…"
+          placeholder={t("dict.search")}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          aria-label="Search the dictionary"
+          aria-label={t("dict.search")}
         />
         {query && (
           <button className="dict__clear" onClick={() => setQuery("")} aria-label="Clear search">×</button>
@@ -101,23 +103,23 @@ function Dictionary({ activeStep }) {
 
       <div className="dict__list">
         {total === 0 && (
-          <p className="dict__empty">No terms match “{query}”. Try a simpler keyword.</p>
+          <p className="dict__empty">{t("dict.noMatch", { q: query })}</p>
         )}
 
         {related.length > 0 && (
           <>
-            <div className="dict__heading">For this step</div>
-            {related.map((t) => (
-              <TermCard key={t.term} term={t.term} def={t.def} related />
+            <div className="dict__heading">{t("dict.forStep")}</div>
+            {related.map((tm) => (
+              <TermCard key={tm.term} term={tm.term} def={tm.def} related />
             ))}
           </>
         )}
 
         {others.length > 0 && (
           <>
-            <div className="dict__heading">{q ? "Other matches" : "All terms"}</div>
-            {others.map((t) => (
-              <TermCard key={t.term} term={t.term} def={t.def} />
+            <div className="dict__heading">{q ? t("dict.otherMatches") : t("dict.allTerms")}</div>
+            {others.map((tm) => (
+              <TermCard key={tm.term} term={tm.term} def={tm.def} />
             ))}
           </>
         )}

@@ -738,8 +738,8 @@ export const API = {
 
   // ---------- Glossary ----------
 
-  async getGlossary() {
-    const res = await fetch(`${API_BASE}/glossary`);
+  async getGlossary(lang = "en") {
+    const res = await fetch(`${API_BASE}/glossary?lang=${encodeURIComponent(lang)}`);
     if (!res.ok) throw new Error(`Failed to load glossary: ${res.status}`);
     return res.json();
   },
@@ -772,6 +772,18 @@ export const API = {
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       throw new Error(data.detail || `Failed to update term: ${res.status}`);
+    }
+    return res.json();
+  },
+
+  async adminGlossaryTranslateMissing() {
+    const res = await fetch(`${API_BASE}/admin/glossary/translate-missing`, {
+      method: "POST",
+      headers: authHeaders(),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.detail || `Failed to queue translations: ${res.status}`);
     }
     return res.json();
   },

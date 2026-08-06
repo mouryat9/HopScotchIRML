@@ -56,7 +56,8 @@ const AUDIT_LABELS = {
   delete_class: "Deleted class", add_class_students: "Added students",
   delete_session: "Deleted session", cleanup_sessions: "Cleaned up sessions",
   create_glossary_term: "Added glossary term", update_glossary_term: "Updated glossary term",
-  delete_glossary_term: "Deleted glossary term", upload_resource: "Uploaded document",
+  delete_glossary_term: "Deleted glossary term", translate_glossary: "Queued glossary Spanish translation",
+  upload_resource: "Uploaded document",
   delete_resource: "Deleted document", rebuild_knowledge_base: "Rebuilt knowledge base",
   update_step_resource: "Updated step resource",
 };
@@ -364,6 +365,18 @@ export default function AdminDashboard() {
       .catch(console.error)
       .finally(() => setGlossaryLoading(false));
   }, []);
+
+  async function handleTranslateMissing() {
+    try {
+      const r = await API.adminGlossaryTranslateMissing();
+      notify.success(
+        r.queued
+          ? `Queued ${r.queued} term${r.queued === 1 ? "" : "s"} for Spanish translation. They'll appear translated within a few minutes - refresh to check.`
+          : "All glossary terms already have a Spanish translation.",
+        { title: "Glossary translation" }
+      );
+    } catch (e) { notify.error(e.message, { title: "Action failed" }); }
+  }
 
   async function handleDeleteTerm(t) {
     if (!window.confirm(`Delete the term "${t.term}"? This cannot be undone.`)) return;
@@ -1989,7 +2002,16 @@ export default function AdminDashboard() {
                 </div>
                 <span className="ad-glossary__count">
                   {glossaryTerms.length} term{glossaryTerms.length === 1 ? "" : "s"}
+                  {(() => {
+                    const missing = glossaryTerms.filter((t) => !t.has_es).length;
+                    return missing > 0 ? ` · ${missing} without Spanish` : "";
+                  })()}
                 </span>
+                {glossaryTerms.some((t) => !t.has_es) && (
+                  <button className="td-btn td-btn--ghost td-btn--sm" onClick={handleTranslateMissing}>
+                    Translate missing to Spanish
+                  </button>
+                )}
                 <button
                   className="td-btn td-btn--primary td-btn--sm"
                   onClick={() => { setGlossaryEditor({ term: "", def: "", steps: [] }); setGlossaryModalError(""); }}
@@ -2044,7 +2066,10 @@ export default function AdminDashboard() {
                   return shown.map((t) => (
                     <div className="ad-glossary__row" key={t.id}>
                       <div className="ad-glossary__main">
-                        <div className="ad-glossary__term">{t.term}</div>
+                        <div className="ad-glossary__term">
+                          {t.term}
+                          {!t.has_es && <span className="ad-glossary__noes" title="No Spanish translation yet - students using Spanish see the English text">ES pending</span>}
+                        </div>
                         <div className="ad-glossary__def">{t.def}</div>
                         {t.steps && t.steps.length > 0 && (
                           <div className="ad-glossary__steps">
