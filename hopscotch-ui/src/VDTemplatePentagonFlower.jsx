@@ -42,6 +42,7 @@ function isLightFill(hex) {
 }
 
 function Slider({ label, value, onChange }) {
+  const { t } = useLang();
   const trackRef = React.useRef(null);
   const clamped = Math.max(0, Math.min(1, value));
   const pct = clamped * 100;
@@ -72,11 +73,11 @@ function Slider({ label, value, onChange }) {
     <div className="vdq-slider">
       <div className="vdq-slider__label">{label}</div>
       <div className="vdq-slider__track">
-        <button type="button" className="vdq-slider__pole" onClick={() => step(-0.1)} title="Move towards the descriptive end">-</button>
-        <div className="vdq-slider__line" ref={trackRef} onPointerDown={onPointerDown} title="Drag or click to position your study on the continuum">
+        <button type="button" className="vdq-slider__pole" onClick={() => step(-0.1)} title={t("vd.sliderDesc")}>-</button>
+        <div className="vdq-slider__line" ref={trackRef} onPointerDown={onPointerDown} title={t("vd.sliderDrag")}>
           <span className="vdq-slider__marker" style={{ left: `${pct}%` }} />
         </div>
-        <button type="button" className="vdq-slider__pole" onClick={() => step(0.1)} title="Move towards the experimental end">+</button>
+        <button type="button" className="vdq-slider__pole" onClick={() => step(0.1)} title={t("vd.sliderExp")}>+</button>
       </div>
     </div>
   );
@@ -103,8 +104,9 @@ function Pent({ pos, focusKeys, activeKey, flip = false, centerFill, children })
 }
 
 function Label({ k, jump, children }) {
+  const { t } = useLang();
   return (
-    <div className="vdq-label" onClick={() => jump(k)} title="Edit in the form">{children}</div>
+    <div className="vdq-label" onClick={() => jump(k)} title={t("vd.editInForm")}>{children}</div>
   );
 }
 
@@ -138,17 +140,17 @@ export default function VDTemplatePentagonFlower({ layout, name, email, fields, 
             value={fields.study_type}
             onChange={(v) => upd("study_type", v)}
             className="vdq-title__type"
-            placeholder="Type of study…"
+            placeholder={t("tpl.typeOfStudyPh")}
           />
         </div>
       )}
 
       {/* Top pentagon: Hypothesis / Variables + Research Question */}
       <Pent activeKey={activeKey} pos="top" focusKeys={["variables", "question"]}>
-        <Label jump={jump} k="variables">Hypothesis: Variables</Label>
+        <Label jump={jump} k="variables">{t("tpl.hypothesisVars")}</Label>
         <E value={fields.variables} onChange={(v) => upd("variables", v)} className="vdq-text" placeholder={t("vd.clickWrite")} />
         <div className="vdq-divider" />
-        <Label jump={jump} k="question">Research Question</Label>
+        <Label jump={jump} k="question">{t("tpl.researchQuestion")}</Label>
         <E value={fields.question} onChange={(v) => upd("question", v)} className="vdq-text vdq-text--grow" placeholder={t("vd.clickWrite")} />
       </Pent>
 
