@@ -6,40 +6,36 @@ import { API } from "./api";
 import { notify } from "./Toast";
 import VisualDesignReadOnly from "./VisualDesignReadOnly";
 import ConceptualFrameworkReadOnly from "./ConceptualFrameworkReadOnly";
-
-const STEP_LABELS = [
-  "Worldview", "Topic & Goals", "Framework", "Design", "Research Questions",
-  "Data Collection", "Analysis", "Trustworthiness", "Ethics",
-];
+import { useLang } from "./i18n.jsx";
 
 const STEP_COLORS = [
   "#2B5EA7", "#E8618C", "#D94040", "#1A8A7D", "#B0A47A",
   "#00AEEF", "#F0B429", "#F5922A", "#7B8794",
 ];
 
-const WORLDVIEW_LABELS = {
-  positivist: "Positivist",
-  post_positivist: "Post Positivist",
-  constructivist: "Constructivist",
-  transformative: "Transformative",
-  pragmatist: "Pragmatist",
-};
+// Localized labels live in i18n.jsx (worldview.* keys)
+const KNOWN_WORLDVIEWS = ["positivist", "post_positivist", "constructivist", "transformative", "pragmatist"];
 
-function timeAgo(dateStr) {
+function timeAgo(dateStr, t, lang) {
   if (!dateStr) return "";
   const ts = dateStr.endsWith("Z") ? dateStr : dateStr + "Z";
   const diff = Date.now() - new Date(ts).getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "Just now";
-  if (mins < 60) return `${mins}m ago`;
+  if (mins < 1) return t("time.justNow");
+  if (mins < 60) return t("time.mAgo", { n: mins });
   const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
+  if (hrs < 24) return t("time.hAgo", { n: hrs });
   const days = Math.floor(hrs / 24);
-  if (days < 7) return `${days}d ago`;
-  return new Date(dateStr).toLocaleDateString();
+  if (days < 7) return t("time.dAgo", { n: days });
+  return new Date(dateStr).toLocaleDateString(lang === "es" ? "es-ES" : "en-US");
 }
 
 export default function StudentDesignView({ sessionId, studentName, className: classNameProp, onClose }) {
+  const { lang, t } = useLang();
+  const STEP_LABELS = [
+    t("strip.1"), t("sdv.step2"), t("strip.3"), t("strip.4"), t("strip.5"),
+    t("sdv.step6"), t("strip.7"), t("strip.8"), t("strip.9"),
+  ];
   const [sessionData, setSessionData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -65,7 +61,7 @@ export default function StudentDesignView({ sessionId, studentName, className: c
         setViewStep(data.active_step || 1);
       })
       .catch((e) => {
-        if (!cancelled) setError(e.message || "Failed to load student session");
+        if (!cancelled) setError(e.message || t("sdv.errLoadSession"));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -121,7 +117,7 @@ export default function StudentDesignView({ sessionId, studentName, className: c
     setVdError("");
     API.getVisualDesignData(sessionId)
       .then(setVdData)
-      .catch((e) => setVdError(e.message || "The visual design could not be loaded."))
+      .catch((e) => setVdError(e.message || t("sdv.vdError")))
       .finally(() => setVdLoading(false));
   }
 
@@ -132,7 +128,7 @@ export default function StudentDesignView({ sessionId, studentName, className: c
     setCfError("");
     API.getConceptualFrameworkData(sessionId)
       .then(setCfData)
-      .catch((e) => setCfError(e.message || "The conceptual framework could not be loaded."))
+      .catch((e) => setCfError(e.message || t("sdv.cfError")))
       .finally(() => setCfLoading(false));
   }
 
@@ -144,7 +140,7 @@ export default function StudentDesignView({ sessionId, studentName, className: c
       await API.downloadResearchDesign(sessionId);
     } catch (e) {
       console.error("PDF download failed:", e);
-      setDownloadError("Couldn't generate the PDF. Please try again.");
+      setDownloadError(t("sdv.pdfError"));
     } finally {
       setDownloading(null);
     }
@@ -174,7 +170,7 @@ export default function StudentDesignView({ sessionId, studentName, className: c
       pdf.save(`Conceptual_Framework_${(studentName || "Student").replace(/[^\w-]+/g, "_")}.pdf`);
     } catch (e) {
       console.error("CF PDF capture failed:", e);
-      notify.error("The conceptual framework PDF could not be generated. Please try again.", { title: "Download failed" });
+      notify.error(t("sdv.cfPdfError"), { title: t("toast.downloadFailTitle") });
     } finally {
       diagrams.forEach((el) => el.classList.remove("vd-diagram--print-freeze"));
       stage && stage.classList.remove("sdv-vd__stage--capture");
@@ -196,8 +192,8 @@ export default function StudentDesignView({ sessionId, studentName, className: c
       {/* Header */}
       <div className="sdv-header">
         <div className="sdv-header__left">
-          <button className="sdv-close" onClick={onClose}>&larr; Back</button>
-          <h2 className="sdv-header__name">{studentName || sessionData?.student_name || "Student"}</h2>
+          <button className="sdv-close" onClick={onClose}>{t("vd.back")}</button>
+          <h2 className="sdv-header__name">{studentName || sessionData?.student_name || t("sdv.student")}</h2>
           {classNameProp && <span className="sdv-header__class">{classNameProp}</span>}
           {sessionData?.worldview_label && (
             <span className="sdv-badge" style={{ background: "#2B5EA7" }}>{sessionData.worldview_label}</span>
@@ -214,40 +210,40 @@ export default function StudentDesignView({ sessionId, studentName, className: c
             className={`sdv-dl-btn${contentView === "visual" ? " sdv-dl-btn--active" : ""}`}
             onClick={() => (contentView === "visual" ? setContentView("steps") : showVisualDesign())}
             disabled={!!downloading}
-            title="See the student's visual design diagram here, next to your feedback"
+            title={t("sdv.vdBtnTitle")}
           >
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-            {contentView === "visual" ? "Back to Steps" : "Visual Design"}
+            {contentView === "visual" ? t("sdv.backToSteps") : t("vd.title")}
           </button>
           <button
             className={`sdv-dl-btn${contentView === "cf" ? " sdv-dl-btn--active" : ""}`}
             onClick={() => (contentView === "cf" ? setContentView("steps") : showConceptualFramework())}
             disabled={!!downloading}
-            title="See the student's conceptual framework here, next to your feedback"
+            title={t("sdv.cfBtnTitle")}
           >
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-            {contentView === "cf" ? "Back to Steps" : "Conceptual Framework"}
+            {contentView === "cf" ? t("sdv.backToSteps") : t("cf.title")}
           </button>
-          <button className="sdv-dl-btn sdv-dl-btn--primary" onClick={handleDownloadPDF} disabled={!!downloading} title="Generate & download the research design (.pdf)">
+          <button className="sdv-dl-btn sdv-dl-btn--primary" onClick={handleDownloadPDF} disabled={!!downloading} title={t("sdv.pdfBtnTitle")}>
             {downloading === "pdf" ? (
-              <><span className="sdv-dl-spinner sdv-dl-spinner--light" />Generating…</>
+              <><span className="sdv-dl-spinner sdv-dl-spinner--light" />{t("sdv.generating")}</>
             ) : (
               <>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                Download PDF
+                {t("sdv.downloadPdf")}
               </>
             )}
           </button>
         </div>
       </div>
 
-      {loading && <div className="sdv-loading">Loading student design...</div>}
+      {loading && <div className="sdv-loading">{t("sdv.loadingDesign")}</div>}
       {error && <div className="td-alert td-alert--error" style={{ margin: 16 }}>{error}</div>}
 
       {!loading && !error && sessionData && (
         <div className="sdv-body sdv-body--v">
           {/* Left sidebar - step navigator */}
-          <div className="sdv-strip" role="tablist" aria-label="Research steps">
+          <div className="sdv-strip" role="tablist" aria-label={t("sdv.stepsAria")}>
             {STEP_LABELS.map((label, i) => {
               const num = i + 1;
               const isActive = num === viewStep;
@@ -260,7 +256,7 @@ export default function StudentDesignView({ sessionId, studentName, className: c
                   onClick={() => { setViewStep(num); setContentView("steps"); }}
                   role="tab"
                   aria-selected={isActive}
-                  title={`Step ${num}: ${label}`}
+                  title={t("panel.stepTip", { n: num, label })}
                 >
                   <span className="sdv-chip__num">{isDone ? "\u2713" : num}</span>
                   <span className="sdv-chip__label">{label}</span>
@@ -276,12 +272,12 @@ export default function StudentDesignView({ sessionId, studentName, className: c
               {contentView === "cf" ? (
                 <div className="sdv-vd">
                   <div className="sdv-vd__bar">
-                    <span className="sdv-vd__title">Conceptual Framework - all three layouts, read only</span>
-                    <button className="sdv-vd__open" onClick={handleDownloadCFPdf} disabled={!!downloading} title="Download all three layouts as a PDF (one page each)">
-                      {downloading === "cf" ? "Capturing…" : "⬇ Save PDF"}
+                    <span className="sdv-vd__title">{t("sdv.cfBarTitle")}</span>
+                    <button className="sdv-vd__open" onClick={handleDownloadCFPdf} disabled={!!downloading} title={t("sdv.cfSaveTitle")}>
+                      {downloading === "cf" ? t("vd.capturing") : t("vd.savePdf")}
                     </button>
                   </div>
-                  {cfLoading && <div className="sdv-loading">Loading conceptual framework… (structuring the student's notes may take a moment)</div>}
+                  {cfLoading && <div className="sdv-loading">{t("sdv.cfLoading")}</div>}
                   {cfError && <div className="sdv-vd-unsupported">{cfError}</div>}
                   {cfData && (
                     <div className="sdv-vd__stage">
@@ -292,12 +288,12 @@ export default function StudentDesignView({ sessionId, studentName, className: c
               ) : contentView === "visual" ? (
                 <div className="sdv-vd">
                   <div className="sdv-vd__bar">
-                    <span className="sdv-vd__title">Visual Design - read only</span>
-                    <button className="sdv-vd__open" onClick={handleOpenVD} title="Open the full-size visual design in a new tab">
-                      Open full size ↗
+                    <span className="sdv-vd__title">{t("sdv.vdBarTitle")}</span>
+                    <button className="sdv-vd__open" onClick={handleOpenVD} title={t("sdv.vdOpenTitle")}>
+                      {t("sdv.openFull")}
                     </button>
                   </div>
-                  {vdLoading && <div className="sdv-loading">Loading visual design…</div>}
+                  {vdLoading && <div className="sdv-loading">{t("sdv.vdLoading")}</div>}
                   {vdError && <div className="sdv-vd-unsupported">{vdError}</div>}
                   {vdData && (
                     <div className="sdv-vd__stage">
@@ -309,10 +305,10 @@ export default function StudentDesignView({ sessionId, studentName, className: c
               <div className="sdv-doc">
                 <div className="sdv-doc__eyebrow" style={{ color: STEP_COLORS[viewStep - 1] }}>
                   <span className="sdv-doc__dot" style={{ background: STEP_COLORS[viewStep - 1] }} />
-                  Step {viewStep} of 9
+                  {t("sdv.stepOf", { n: viewStep })}
                   {completed.includes(viewStep)
-                    ? <span className="sdv-doc__status sdv-doc__status--done">Completed</span>
-                    : <span className="sdv-doc__status">In progress</span>}
+                    ? <span className="sdv-doc__status sdv-doc__status--done">{t("sdv.completed")}</span>
+                    : <span className="sdv-doc__status">{t("sdv.inProgress")}</span>}
                 </div>
                 <h3 className="sdv-doc__title">{STEP_LABELS[viewStep - 1]}</h3>
 
@@ -334,8 +330,8 @@ export default function StudentDesignView({ sessionId, studentName, className: c
                   <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
                 </span>
                 <div className="sdv-fb__head-text">
-                  <h4 className="sdv-fb__title">Feedback</h4>
-                  <p className="sdv-fb__sub">Visible to {(studentName || "the student").split(" ")[0]} in their workspace.</p>
+                  <h4 className="sdv-fb__title">{t("sdv.fbTitle")}</h4>
+                  <p className="sdv-fb__sub">{t("sdv.fbSub", { name: (studentName || t("sdv.theStudent")).split(" ")[0] })}</p>
                 </div>
                 {feedbackList.length > 0 && <span className="sdv-fb__count">{feedbackList.length}</span>}
               </div>
@@ -344,8 +340,8 @@ export default function StudentDesignView({ sessionId, studentName, className: c
                 {feedbackList.length === 0 ? (
                   <div className="sdv-fb__empty">
                     <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                    <p className="sdv-fb__empty-title">No feedback yet</p>
-                    <span className="sdv-fb__empty-sub">Leave your first note on this research design below.</span>
+                    <p className="sdv-fb__empty-title">{t("fb.emptyTitle")}</p>
+                    <span className="sdv-fb__empty-sub">{t("sdv.fbEmptySub")}</span>
                   </div>
                 ) : (
                   [...feedbackList].reverse().map((fb) => (
@@ -354,7 +350,7 @@ export default function StudentDesignView({ sessionId, studentName, className: c
                       <div className="sdv-fb__bubble">
                         <div className="sdv-fb__meta">
                           <strong>{fb.teacher_name}</strong>
-                          <span className="sdv-fb__time">{timeAgo(fb.created_at)}</span>
+                          <span className="sdv-fb__time">{timeAgo(fb.created_at, t, lang)}</span>
                         </div>
                         <p className="sdv-fb__text">{fb.text}</p>
                       </div>
@@ -367,7 +363,7 @@ export default function StudentDesignView({ sessionId, studentName, className: c
                 <textarea
                   className="sdv-fb__input"
                   rows={2}
-                  placeholder="Write feedback for this student…  (⌘/Ctrl + Enter to send)"
+                  placeholder={t("sdv.fbPh")}
                   value={feedbackText}
                   onChange={(e) => setFeedbackText(e.target.value)}
                   onKeyDown={(e) => {
@@ -378,14 +374,14 @@ export default function StudentDesignView({ sessionId, studentName, className: c
                   className="sdv-fb__send"
                   onClick={handleSubmitFeedback}
                   disabled={submitting || !feedbackText.trim()}
-                  title="Send feedback"
+                  title={t("sdv.sendTitle")}
                 >
                   {submitting ? (
                     <span className="sdv-fb__spinner" />
                   ) : (
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
                   )}
-                  <span>{submitting ? "Sending" : "Send"}</span>
+                  <span>{submitting ? t("sdv.sending") : t("chat.send")}</span>
                 </button>
               </div>
             </div>
@@ -399,20 +395,21 @@ export default function StudentDesignView({ sessionId, studentName, className: c
 
 /* Read-only rendering of a single step's data */
 function ReadOnlyStepContent({ step, data, stepConfig, configLoading, sessionData }) {
+  const { t } = useLang();
   const isEmpty = !data || Object.keys(data).length === 0;
 
   if (isEmpty) {
-    return <p className="sdv-empty">This step has not been completed yet.</p>;
+    return <p className="sdv-empty">{t("sdv.stepNotCompleted")}</p>;
   }
 
   // Step 1: Worldview
   if (step === 1) {
     const wv = data.worldview_id || data.worldview || "";
-    const label = WORLDVIEW_LABELS[wv] || wv || "Not selected";
+    const label = KNOWN_WORLDVIEWS.includes(wv) ? t(`worldview.${wv}`) : (wv || t("sdv.notSelected"));
     return (
       <div className="sdv-fields">
-        <ReadOnlyField label="Worldview" value={label} />
-        <ReadOnlyField label="Justification (Ontology & Epistemology)" value={data.worldview_justification} />
+        <ReadOnlyField label={t("strip.1")} value={label} />
+        <ReadOnlyField label={t("sdv.justification")} value={data.worldview_justification} />
       </div>
     );
   }
@@ -421,11 +418,11 @@ function ReadOnlyStepContent({ step, data, stepConfig, configLoading, sessionDat
   if (step === 2) {
     return (
       <div className="sdv-fields">
-        <ReadOnlyField label="Research Topic" value={data.topic} />
-        <ReadOnlyField label="Personal Goals" value={data.personalGoals || data.personal_goals} />
-        <ReadOnlyField label="Practical Goals" value={data.practicalGoals || data.practical_goals} />
-        <ReadOnlyField label="Intellectual Goals" value={data.intellectualGoals || data.intellectual_goals} />
-        {data.goals && !data.personalGoals && <ReadOnlyField label="Research Goals" value={data.goals} />}
+        <ReadOnlyField label={t("sdv.researchTopic")} value={data.topic} />
+        <ReadOnlyField label={t("sdv.personalGoals")} value={data.personalGoals || data.personal_goals} />
+        <ReadOnlyField label={t("sdv.practicalGoals")} value={data.practicalGoals || data.practical_goals} />
+        <ReadOnlyField label={t("sdv.intellectualGoals")} value={data.intellectualGoals || data.intellectual_goals} />
+        {data.goals && !data.personalGoals && <ReadOnlyField label={t("sdv.researchGoals")} value={data.goals} />}
       </div>
     );
   }
@@ -434,24 +431,24 @@ function ReadOnlyStepContent({ step, data, stepConfig, configLoading, sessionDat
   if (step === 3) {
     return (
       <div className="sdv-fields">
-        <ReadOnlyField label="Topical Research" value={data.topicalResearch || data.topical_research} />
-        <ReadOnlyField label="Theoretical Frameworks" value={data.theoreticalFrameworks || data.theoretical_frameworks} />
-        <ReadOnlyField label="Gaps Identified" value={data.gaps || data.gaps_identified} />
-        <ReadOnlyField label="Problem Statement" value={data.problem_statement || data.problemStatement} />
+        <ReadOnlyField label={t("sdv.topicalResearch")} value={data.topicalResearch || data.topical_research} />
+        <ReadOnlyField label={t("sdv.theoreticalFrameworks")} value={data.theoreticalFrameworks || data.theoretical_frameworks} />
+        <ReadOnlyField label={t("sdv.gapsIdentified")} value={data.gaps || data.gaps_identified} />
+        <ReadOnlyField label={t("sdv.problemStatement")} value={data.problem_statement || data.problemStatement} />
       </div>
     );
   }
 
   // Steps 4-9: config-driven
   if (configLoading) {
-    return <p className="sdv-empty">Loading step configuration...</p>;
+    return <p className="sdv-empty">{t("sdv.loadingConfig")}</p>;
   }
 
   if (stepConfig && stepConfig.path) {
     return (
       <div className="sdv-fields">
         <ReadOnlyConfigFields config={stepConfig} data={data} sessionData={sessionData} />
-        {data.notes && <ReadOnlyField label="Additional Notes" value={data.notes} />}
+        {data.notes && <ReadOnlyField label={t("sdv.additionalNotes")} value={data.notes} />}
       </div>
     );
   }
@@ -471,14 +468,15 @@ function ReadOnlyStepContent({ step, data, stepConfig, configLoading, sessionDat
 
 /* Render config-driven fields in read-only mode */
 function ReadOnlyConfigFields({ config, data, sessionData }) {
+  const { t } = useLang();
   const { field_type, field_key, options, fields } = config;
 
   if (field_type === "single_select") {
     const opt = (options || []).find((o) => o.id === data[field_key]);
     return (
       <ReadOnlyField
-        label="Selected"
-        value={opt ? `${opt.label}${opt.description ? ` - ${opt.description}` : ""}` : data[field_key] || "Not selected"}
+        label={t("sdv.selected")}
+        value={opt ? `${opt.label}${opt.description ? ` - ${opt.description}` : ""}` : data[field_key] || t("sdv.notSelected")}
       />
     );
   }
@@ -489,7 +487,7 @@ function ReadOnlyConfigFields({ config, data, sessionData }) {
       const opt = (options || []).find((o) => o.id === id);
       return opt ? opt.label : id;
     });
-    return <ReadOnlyField label="Selected" value={labels.join(", ") || "None selected"} />;
+    return <ReadOnlyField label={t("sdv.selected")} value={labels.join(", ") || t("sdv.noneSelected")} />;
   }
 
   if (field_type === "methodology_decision") {
@@ -497,10 +495,13 @@ function ReadOnlyConfigFields({ config, data, sessionData }) {
     const design = data[field_key];
     const optSet = chosen === "quantitative" ? config.quantitative_options : config.qualitative_options;
     const opt = (optSet || []).find((o) => o.id === design);
+    const chosenLabel = chosen === "quantitative" ? t("meth.quantitative")
+      : chosen === "qualitative" ? t("meth.qualitative")
+      : chosen ? chosen.charAt(0).toUpperCase() + chosen.slice(1) : t("sdv.notChosen");
     return (
       <>
-        <ReadOnlyField label="Primary Methodology" value={chosen ? chosen.charAt(0).toUpperCase() + chosen.slice(1) : "Not chosen"} />
-        {design && <ReadOnlyField label="Research Design" value={opt ? opt.label : design} />}
+        <ReadOnlyField label={t("sdv.primaryMethodology")} value={chosenLabel} />
+        {design && <ReadOnlyField label={t("dl.researchDesign")} value={opt ? opt.label : design} />}
       </>
     );
   }
@@ -512,7 +513,7 @@ function ReadOnlyConfigFields({ config, data, sessionData }) {
           let val = data[f.field_key] || "";
           if (f.type === "select" && f.options && val) {
             if (val === "other") {
-              val = data[f.field_key + "_other"] || "Other";
+              val = data[f.field_key + "_other"] || t("sdv.other");
             } else {
               const opt = f.options.find((o) => o.id === val);
               if (opt) val = opt.label;
@@ -529,6 +530,7 @@ function ReadOnlyConfigFields({ config, data, sessionData }) {
 
 
 function ReadOnlyField({ label, value }) {
+  const { t } = useLang();
   const display = value && String(value).trim() ? String(value) : null;
   return (
     <div className="sdv-field">
@@ -536,7 +538,7 @@ function ReadOnlyField({ label, value }) {
       {display ? (
         <div className="sdv-field__value">{display}</div>
       ) : (
-        <div className="sdv-field__empty">Not yet completed</div>
+        <div className="sdv-field__empty">{t("sdv.notYetCompleted")}</div>
       )}
     </div>
   );

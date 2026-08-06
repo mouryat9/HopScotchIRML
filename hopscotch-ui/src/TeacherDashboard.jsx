@@ -6,15 +6,11 @@ import { API } from "./api";
 import StudentDesignView from "./StudentDesignView";
 import ProfileMenu from "./ProfileMenu";
 import SettingsModal from "./SettingsModal";
+import { useLang } from "./i18n.jsx";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   Cell,
 } from "recharts";
-
-const STEP_LABELS = [
-  "Worldview", "Topic", "Framework", "Design", "Research Questions",
-  "Data", "Analysis", "Trustworthiness", "Ethics",
-];
 
 const STEP_COLORS = [
   "#2B5EA7", "#E8618C", "#D94040", "#1A8A7D", "#B0A47A",
@@ -39,34 +35,35 @@ function classColor(name = "") {
 }
 
 // Access/pacing (Phase 2) - 9 steps grouped into 3 phases (mirrors backend)
-const ACCESS_MODES = [
-  { id: "full", label: "Full access" },
-  { id: "step", label: "Step-by-step" },
-  { id: "phase", label: "Phase unlock" },
-];
+const ACCESS_MODES = ["full", "step", "phase"]; // labels come from t(`td.access.${id}`)
 const ACCESS_PHASES = [
-  { n: 1, label: "Phase 1", name: "Foundations", range: "Steps 1–3" },
-  { n: 2, label: "Phase 2", name: "Design & Data", range: "Steps 4–6" },
-  { n: 3, label: "Phase 3", name: "Analysis & Integrity", range: "Steps 7–9" },
+  { n: 1, a: 1, b: 3 }, // name via t(`td.phase${n}Name`), range via t("td.phaseRange")
+  { n: 2, a: 4, b: 6 },
+  { n: 3, a: 7, b: 9 },
 ];
 
-function timeAgo(dateStr) {
+function timeAgo(dateStr, t, lang) {
   if (!dateStr) return "";
   const ts = dateStr.endsWith("Z") ? dateStr : dateStr + "Z";
   const diff = Date.now() - new Date(ts).getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "Just now";
-  if (mins < 60) return `${mins}m ago`;
+  if (mins < 1) return t("time.justNow");
+  if (mins < 60) return t("time.mAgo", { n: mins });
   const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
+  if (hrs < 24) return t("time.hAgo", { n: hrs });
   const days = Math.floor(hrs / 24);
-  if (days < 7) return `${days}d ago`;
-  return new Date(dateStr).toLocaleDateString();
+  if (days < 7) return t("time.dAgo", { n: days });
+  return new Date(dateStr).toLocaleDateString(lang === "es" ? "es-ES" : "en-US");
 }
 
 export default function TeacherDashboard({ onOpenDesigns }) {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const { lang, t } = useLang();
+  const STEP_LABELS = [
+    t("strip.1"), t("strip.2"), t("strip.3"), t("strip.4"), t("strip.5"),
+    t("strip.6"), t("strip.7"), t("strip.8"), t("strip.9"),
+  ];
   const [tab, setTab] = useState("classes");
 
   // Class management state
@@ -141,7 +138,7 @@ export default function TeacherDashboard({ onOpenDesigns }) {
       const data = await API.getStudentSessions();
       setSessions(data.sessions || []);
     } catch (e) {
-      setSessionsError("Failed to load student sessions.");
+      setSessionsError(t("td.errLoadSessions"));
       console.error(e);
     } finally {
       setLoadingSessions(false);
@@ -177,7 +174,7 @@ export default function TeacherDashboard({ onOpenDesigns }) {
         setClasses(fresh.classes || []);
       } catch {}
     } catch (err) {
-      setClassError(err.message || "Failed to create class");
+      setClassError(err.message || t("td.errCreateClass"));
     } finally {
       creatingRef.current = false;
       setCreating(false);
@@ -231,7 +228,7 @@ export default function TeacherDashboard({ onOpenDesigns }) {
           ? { ...c, settings: { ...(c.settings || {}), ai_enabled: !next } }
           : c
       ));
-      setClassError(err.message || "Failed to update AI setting");
+      setClassError(err.message || t("td.errUpdateAI"));
     } finally {
       setSavingSettings(null);
     }
@@ -249,7 +246,7 @@ export default function TeacherDashboard({ onOpenDesigns }) {
         c.class_id === cls.class_id ? { ...c, settings: res.settings } : c
       ));
     } catch (err) {
-      setClassError(err.message || "Failed to update settings");
+      setClassError(err.message || t("td.errUpdateSettings"));
       try { const fresh = await API.getTeacherClasses(); setClasses(fresh.classes || []); } catch {}
     } finally {
       setSavingSettings(null);
@@ -262,7 +259,7 @@ export default function TeacherDashboard({ onOpenDesigns }) {
     const students = cls.students || [];
     const pw = cls.password || "N/A";
     win.document.write(`
-      <html><head><title>Class Credentials: ${cls.class_name}</title>
+      <html><head><title>${t("td.print.title", { name: cls.class_name })}</title>
       <style>
         body { font-family: system-ui, sans-serif; padding: 2rem; color: #1a2332; }
         h1 { font-size: 1.4rem; margin-bottom: 0.5rem; }
@@ -275,14 +272,14 @@ export default function TeacherDashboard({ onOpenDesigns }) {
         @media print { .note { page-break-before: avoid; } }
       </style></head><body>
       <h1>${cls.class_name}</h1>
-      <div class="meta">Class Code: <strong>${cls.class_code}</strong> &nbsp;|&nbsp; Password: <strong>${pw}</strong></div>
+      <div class="meta">${t("td.print.classCode")} <strong>${cls.class_code}</strong> &nbsp;|&nbsp; ${t("td.print.password")} <strong>${pw}</strong></div>
       <table>
-        <thead><tr><th>#</th><th>Username</th><th>Password</th><th>Student Name</th></tr></thead>
+        <thead><tr><th>#</th><th>${t("td.print.username")}</th><th>${t("td.print.passwordCol")}</th><th>${t("td.print.studentName")}</th></tr></thead>
         <tbody>
           ${students.map((s, i) => `<tr><td>${i + 1}</td><td>${s.username}</td><td>${pw}</td><td>${s.name}</td></tr>`).join("")}
         </tbody>
       </table>
-      <div class="note">Students log in at hopscotchai.us using their username and the shared class password.</div>
+      <div class="note">${t("td.print.note")}</div>
       </body></html>
     `);
     win.document.close();
@@ -323,7 +320,7 @@ export default function TeacherDashboard({ onOpenDesigns }) {
 
   // Chart click-to-filter: charts drive the student table below
   const [chartFilter, setChartFilter] = useState(null); // {type:"step",step} | {type:"band",code,name,band}
-  const BAND_LABELS = ["Not started", "Steps 1-3", "Steps 4-6", "Steps 7-9"];
+  const BAND_LABELS = [t("td.band0"), t("td.band1"), t("td.band2"), t("td.band3")];
   const BAND_COLORS = ["#B9C2CE", "#F0B429", "#00AEEF", "#1A8A7D"];
   const firstIncomplete = (s) => {
     const done = s.completed_steps || [];
@@ -363,9 +360,9 @@ export default function TeacherDashboard({ onOpenDesigns }) {
     // 1. Step completion: how many students completed each step
     const started = filteredSessions.filter((s) => s.session_id);
     const stepCompletion = STEP_LABELS.map((label, i) => ({
-      step: `S${i + 1}`,
+      step: t("td.stepAbbr", { n: i + 1 }),
       stepNum: i + 1,
-      fullLabel: `Step ${i + 1}: ${label}`,
+      fullLabel: t("panel.stepTip", { n: i + 1, label }),
       students: filteredSessions.filter((s) => (s.completed_steps || []).includes(i + 1)).length,
       pct: started.length ? filteredSessions.filter((s) => (s.completed_steps || []).includes(i + 1)).length / started.length : 0,
       color: STEP_COLORS[i],
@@ -403,7 +400,7 @@ export default function TeacherDashboard({ onOpenDesigns }) {
     // spread, so each class row shows how its students are distributed
     const classGroups = {};
     sessions.forEach((s) => {
-      const key = s.class_name || s.class_code || "Unknown";
+      const key = s.class_name || s.class_code || t("td.unknown");
       if (!classGroups[key]) classGroups[key] = { counts: [], latest: null, code: s.class_code || "" };
       classGroups[key].counts.push((s.completed_steps || []).length);
       const ts = s.updated_at || s.created_at;
@@ -428,20 +425,24 @@ export default function TeacherDashboard({ onOpenDesigns }) {
 
     const totalStudents = filteredSessions.length;
     return { stepCompletion, progressDist, classAvg, totalStudents, bottleneck, bottleneckCount, startedCount: started.length };
-  }, [filteredSessions, sessions]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filteredSessions, sessions, lang]);
 
   const NAV_ITEMS = [
-    { id: "classes", label: "My Classes", icon: (
+    { id: "classes", label: t("td.navClasses"), icon: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
     ) },
-    { id: "progress", label: "Student Progress", icon: (
+    { id: "progress", label: t("td.navProgress"), icon: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
     ) },
   ];
-  const pageTitle = tab === "classes" ? "My Classes" : "Student Progress";
+  const pageTitle = tab === "classes" ? t("td.navClasses") : t("td.navProgress");
   const pageSub = tab === "classes"
-    ? `${classes.length} ${classes.length === 1 ? "class" : "classes"} · ${totalStudents} ${totalStudents === 1 ? "student" : "students"} - create classes, share logins, and control AI access.`
-    : "Track how your students are progressing through the 9-step research design.";
+    ? t("td.pageSubClasses", {
+        a: `${classes.length} ${t(classes.length === 1 ? "td.word.class" : "td.word.classes")}`,
+        b: `${totalStudents} ${t(totalStudents === 1 ? "td.word.student" : "td.word.students")}`,
+      })
+    : t("td.pageSubProgress");
 
   return (
     <div className="td-wrap">
@@ -458,7 +459,7 @@ export default function TeacherDashboard({ onOpenDesigns }) {
           {onOpenDesigns && (
             <button className="td-btn td-btn--primary td-btn--sm" onClick={onOpenDesigns}>
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 5 }}><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              Create Design
+              {t("td.createDesign")}
             </button>
           )}
           <span className="hop-header__divider" />
@@ -466,7 +467,7 @@ export default function TeacherDashboard({ onOpenDesigns }) {
             user={user}
             onSignOut={logout}
             onOpenSettings={() => setSettingsOpen(true)}
-            roleLabel={user?.education_level === "higher_ed" ? "Faculty" : "Teacher"}
+            roleLabel={user?.education_level === "higher_ed" ? t("td.roleFaculty") : t("td.roleTeacher")}
           />
         </div>
       </header>
@@ -503,8 +504,8 @@ export default function TeacherDashboard({ onOpenDesigns }) {
           </span>
           <div className="td-stats__text">
             <span className="td-stats__number">{dashStats.week}</span>
-            <span className="td-stats__label">Active this week</span>
-            <span className="td-stats__hint">students working in the last 7 days</span>
+            <span className="td-stats__label">{t("td.tileWeek")}</span>
+            <span className="td-stats__hint">{t("td.tileWeekHint")}</span>
           </div>
         </button>
         <button className="td-stats__card td-stats__card--action" onClick={() => { setProgressFocus("feedback"); handleTabChange("progress"); }}>
@@ -513,8 +514,8 @@ export default function TeacherDashboard({ onOpenDesigns }) {
           </span>
           <div className="td-stats__text">
             <span className="td-stats__number">{dashStats.feedback}</span>
-            <span className="td-stats__label">Awaiting your feedback</span>
-            <span className="td-stats__hint">progressed since you last commented</span>
+            <span className="td-stats__label">{t("td.tileFeedback")}</span>
+            <span className="td-stats__hint">{t("td.tileFeedbackHint")}</span>
           </div>
         </button>
         <button className="td-stats__card td-stats__card--action" onClick={() => { setProgressFocus("done"); handleTabChange("progress"); }}>
@@ -523,8 +524,8 @@ export default function TeacherDashboard({ onOpenDesigns }) {
           </span>
           <div className="td-stats__text">
             <span className="td-stats__number">{dashStats.done}</span>
-            <span className="td-stats__label">Designs completed</span>
-            <span className="td-stats__hint">all 9 steps finished</span>
+            <span className="td-stats__label">{t("td.tileDone")}</span>
+            <span className="td-stats__hint">{t("td.tileDoneHint")}</span>
           </div>
         </button>
       </div>
@@ -539,7 +540,7 @@ export default function TeacherDashboard({ onOpenDesigns }) {
             <section className="td-section">
               <div className="td-section__head">
                 <h2 className="td-section__title">
-                  All Classes
+                  {t("td.allClasses")}
                   {!loadingClasses && <span className="td-section__count">{classes.length}</span>}
                 </h2>
                 <div className="td-section__head-actions">
@@ -548,13 +549,13 @@ export default function TeacherDashboard({ onOpenDesigns }) {
                     <input
                       type="text"
                       className="td-search__input"
-                      placeholder="Search classes or students…"
+                      placeholder={t("td.searchClassesPh")}
                       value={classQuery}
                       onChange={(e) => setClassQuery(e.target.value)}
-                      aria-label="Search classes"
+                      aria-label={t("td.searchClassesAria")}
                     />
                     {classQuery && (
-                      <button className="td-search__clear" onClick={() => setClassQuery("")} aria-label="Clear search">×</button>
+                      <button className="td-search__clear" onClick={() => setClassQuery("")} aria-label={t("td.clearSearch")}>×</button>
                     )}
                   </div>
                   <button
@@ -562,12 +563,12 @@ export default function TeacherDashboard({ onOpenDesigns }) {
                     onClick={() => { setClassError(""); setCreateResult(null); setShowCreate(true); }}
                   >
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 5 }}><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                    New Class
+                    {t("td.newClass")}
                   </button>
                 </div>
               </div>
 
-              {loadingClasses && <p className="td-muted">Loading classes...</p>}
+              {loadingClasses && <p className="td-muted">{t("td.loadingClasses")}</p>}
 
               {(() => {
                 const q = classQuery.trim().toLowerCase();
@@ -578,7 +579,7 @@ export default function TeacherDashboard({ onOpenDesigns }) {
                       (c.students || []).some((s) => (s.username || "").toLowerCase().includes(q)))
                   : classes;
                 if (!loadingClasses && q && shown.length === 0) {
-                  return <div className="td-empty">No classes match “{classQuery}”.</div>;
+                  return <div className="td-empty">{t("td.noClassesMatch", { q: classQuery })}</div>;
                 }
                 return (
               <div className="tdc-grid">
@@ -597,7 +598,7 @@ export default function TeacherDashboard({ onOpenDesigns }) {
                       <div className="tdc-card__stripe" />
                       <div className="tdc-card__body">
                         <div className="tdc-card__top">
-                          <button className="tdc-card__name" onClick={() => setDetailClass(cls)} title={`Manage ${cls.class_name}`}>
+                          <button className="tdc-card__name" onClick={() => setDetailClass(cls)} title={t("td.manageTitle", { name: cls.class_name })}>
                             {cls.class_name}
                           </button>
                           <button
@@ -607,10 +608,10 @@ export default function TeacherDashboard({ onOpenDesigns }) {
                             aria-checked={aiOn}
                             disabled={saving}
                             onClick={() => toggleClassAI(cls)}
-                            title="Toggle the AI assistant for this class"
+                            title={t("td.toggleAiTitle")}
                           >
                             <span className="tdc-ai__dot" />
-                            {saving ? "…" : aiOn ? "AI on" : "AI off"}
+                            {saving ? "…" : aiOn ? t("td.aiOn") : t("td.aiOff")}
                           </button>
                         </div>
 
@@ -623,33 +624,33 @@ export default function TeacherDashboard({ onOpenDesigns }) {
                             ))}
                             {students.length > 4 && <span className="tdc-avatar tdc-avatar--more">+{students.length - 4}</span>}
                           </span>
-                          <span className="tdc-card__count">{students.length} student{students.length === 1 ? "" : "s"}</span>
+                          <span className="tdc-card__count">{t(students.length === 1 ? "td.nStudent" : "td.nStudents", { n: students.length })}</span>
                         </div>
 
                         <div className="tdc-card__progress">
-                          <div className="tdc-bar" role="img" aria-label={stats ? `${stats.avg}% average progress` : "No activity yet"}>
+                          <div className="tdc-bar" role="img" aria-label={stats ? t("td.avgProgressAria", { pct: stats.avg }) : t("td.noActivity")}>
                             <div className="tdc-bar__fill" style={{ width: `${stats ? stats.avg : 0}%` }} />
                           </div>
                           <span className="tdc-card__pct">
-                            {stats ? `${stats.avg}% avg` : "No activity yet"}
+                            {stats ? t("td.pctAvg", { pct: stats.avg }) : t("td.noActivity")}
                           </span>
                         </div>
 
                         <div className="tdc-card__meta">
-                          <span className="tdc-card__code">code {cls.class_code}</span>
-                          {stats?.last && <span>· active {timeAgo(stats.last)}</span>}
+                          <span className="tdc-card__code">{t("td.codeLabel", { code: cls.class_code })}</span>
+                          {stats?.last && <span>{t("td.activeAgo", { time: timeAgo(stats.last, t, lang) })}</span>}
                         </div>
 
                         <div className="tdc-card__actions">
                           <button className="tdc-act" onClick={() => setDetailClass(cls)}>
                             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
-                            Manage
+                            {t("td.manage")}
                           </button>
                           <button className="tdc-act" onClick={() => { setProgressFilter(cls.class_code); handleTabChange("progress"); }}>
                             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-                            Progress
+                            {t("td.progress")}
                           </button>
-                          <button className="tdc-act tdc-act--icon" onClick={() => handlePrintCredentials(cls)} title="Print login credentials" aria-label="Print login credentials">
+                          <button className="tdc-act tdc-act--icon" onClick={() => handlePrintCredentials(cls)} title={t("td.printLoginCreds")} aria-label={t("td.printLoginCreds")}>
                             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
                           </button>
                         </div>
@@ -672,13 +673,13 @@ export default function TeacherDashboard({ onOpenDesigns }) {
               <div className="td-progress__filter">
                 {sessionClassCodes.length > 0 && (
                   <>
-                    <label className="td-progress__filter-label">Filter by class:</label>
+                    <label className="td-progress__filter-label">{t("td.filterByClass")}</label>
                     <select
                       className="td-progress__select"
                       value={progressFilter}
                       onChange={(e) => setProgressFilter(e.target.value)}
                     >
-                      <option value="all">All Classes</option>
+                      <option value="all">{t("td.allClasses")}</option>
                       {sessionClassCodes.map((code) => (
                         <option key={code} value={code}>{code}</option>
                       ))}
@@ -686,15 +687,15 @@ export default function TeacherDashboard({ onOpenDesigns }) {
                   </>
                 )}
                 {progressFocus && (
-                  <button className="td-focus-chip" onClick={() => setProgressFocus(null)} title="Clear this filter">
-                    {progressFocus === "week" ? "Active this week" : progressFocus === "feedback" ? "Awaiting your feedback" : "Designs completed"}
+                  <button className="td-focus-chip" onClick={() => setProgressFocus(null)} title={t("td.clearFilter")}>
+                    {progressFocus === "week" ? t("td.tileWeek") : progressFocus === "feedback" ? t("td.tileFeedback") : t("td.tileDone")}
                     <span aria-hidden="true">×</span>
                   </button>
                 )}
                 {chartFilter && (
-                  <button className="td-focus-chip" onClick={() => setChartFilter(null)} title="Clear this filter">
+                  <button className="td-focus-chip" onClick={() => setChartFilter(null)} title={t("td.clearFilter")}>
                     {chartFilter.type === "step"
-                      ? `Working on Step ${chartFilter.step}: ${STEP_LABELS[chartFilter.step - 1]}`
+                      ? t("td.workingOnStep", { n: chartFilter.step, label: STEP_LABELS[chartFilter.step - 1] })
                       : `${chartFilter.name} · ${BAND_LABELS[chartFilter.band]}`}
                     <span aria-hidden="true">×</span>
                   </button>
@@ -704,7 +705,7 @@ export default function TeacherDashboard({ onOpenDesigns }) {
 
             {/* Charts */}
             {!loadingSessions && chartData && (
-              <h2 className="td-section__title td-section__title--progress">Class Overview</h2>
+              <h2 className="td-section__title td-section__title--progress">{t("td.classOverview")}</h2>
             )}
             {!loadingSessions && chartData && (
               <div className="td-charts">
@@ -712,17 +713,17 @@ export default function TeacherDashboard({ onOpenDesigns }) {
                 <div className="td-chart-card td-chart-card--purple">
                   <h3 className="td-chart-card__title">
                     <span className="td-chart-card__ic"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span>
-                    Step Completion Overview
+                    {t("td.stepCompletion")}
                   </h3>
-                  <p className="td-chart-card__desc">Students who completed each step - click a bar to see who's working on it</p>
+                  <p className="td-chart-card__desc">{t("td.stepCompletionDesc")}</p>
                   {chartData.bottleneck && chartData.bottleneckCount > 1 && (
                     <button
                       className="td-bottleneck"
                       onClick={() => setChartFilter({ type: "step", step: chartData.bottleneck })}
-                      title="Show these students in the table below"
+                      title={t("td.bottleneckTitle")}
                     >
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
-                      Most students ({chartData.bottleneckCount}) are working on Step {chartData.bottleneck}: {STEP_LABELS[chartData.bottleneck - 1]}
+                      {t("td.bottleneckMsg", { n: chartData.bottleneckCount, step: chartData.bottleneck, label: STEP_LABELS[chartData.bottleneck - 1] })}
                     </button>
                   )}
                   <ResponsiveContainer width="100%" height={220}>
@@ -731,7 +732,7 @@ export default function TeacherDashboard({ onOpenDesigns }) {
                       <XAxis dataKey="step" tick={{ fontSize: 11, fill: "var(--hop-muted)" }} />
                       <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: "var(--hop-muted)" }} />
                       <Tooltip
-                        formatter={(val, _, props) => [`${val} students`, props.payload.fullLabel]}
+                        formatter={(val, _, props) => [t(val === 1 ? "td.nStudent" : "td.nStudents", { n: val }), props.payload.fullLabel]}
                         contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid var(--hop-border)" }}
                       />
                       <Bar
@@ -753,11 +754,11 @@ export default function TeacherDashboard({ onOpenDesigns }) {
                 <div className="td-chart-card td-chart-card--green">
                   <h3 className="td-chart-card__title">
                     <span className="td-chart-card__ic"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/></svg></span>
-                    Class Hopscotch Court
+                    {t("td.court")}
                   </h3>
-                  <p className="td-chart-card__desc">The brighter a square, the more of the class completed that step - click one to see who's on it</p>
+                  <p className="td-chart-card__desc">{t("td.courtDesc")}</p>
                   <div className="td-court">
-                    <svg viewBox="-2 -8 132 62" className="td-court__svg" aria-label="Class step completion court">
+                    <svg viewBox="-2 -8 132 62" className="td-court__svg" aria-label={t("td.courtAria")}>
                       {[
                         { x: 0, y: 0 }, { x: 0, y: 24 }, { x: 22, y: 12 }, { x: 44, y: 0 },
                         { x: 44, y: 24 }, { x: 66, y: 12 }, { x: 88, y: 0 }, { x: 88, y: 24 },
@@ -768,7 +769,7 @@ export default function TeacherDashboard({ onOpenDesigns }) {
                             <rect x={p.x} y={p.y} width="18" height="22" rx="6"
                               fill={e.color} fillOpacity={0.14 + 0.86 * e.pct}
                               stroke={e.color} strokeWidth="1.2" strokeOpacity="0.75">
-                              <title>{`${e.fullLabel} - ${Math.round(e.pct * 100)}% of the class completed`}</title>
+                              <title>{t("td.courtSqTitle", { label: e.fullLabel, pct: Math.round(e.pct * 100) })}</title>
                             </rect>
                             <text x={p.x + 9} y={p.y + 11} textAnchor="middle" dominantBaseline="central" fontSize="6.5" fontWeight="700"
                               fill={e.pct > 0.55 ? "#fff" : "var(--hop-ink-secondary)"} pointerEvents="none">
@@ -784,7 +785,7 @@ export default function TeacherDashboard({ onOpenDesigns }) {
                             <path d="M110,7 A16,16 0 0,1 110,39 Z"
                               fill={e.color} fillOpacity={0.14 + 0.86 * e.pct}
                               stroke={e.color} strokeWidth="1.2" strokeOpacity="0.75">
-                              <title>{`${e.fullLabel} - ${Math.round(e.pct * 100)}% of the class completed`}</title>
+                              <title>{t("td.courtSqTitle", { label: e.fullLabel, pct: Math.round(e.pct * 100) })}</title>
                             </path>
                             <text x="116.8" y="23" textAnchor="middle" dominantBaseline="central" fontSize="6.5" fontWeight="700"
                               fill={e.pct > 0.55 ? "#fff" : "var(--hop-ink-secondary)"} pointerEvents="none">
@@ -797,7 +798,7 @@ export default function TeacherDashboard({ onOpenDesigns }) {
                     <div className="td-court__legend">
                       {STEP_LABELS.map((l, i) => (
                         <span key={i} className="td-court__leg" style={{ "--leg": STEP_COLORS[i] }}>
-                          <span className="td-court__leg-dot" />S{i + 1} {l}
+                          <span className="td-court__leg-dot" />{t("td.stepAbbr", { n: i + 1 })} {l}
                         </span>
                       ))}
                     </div>
@@ -809,10 +810,10 @@ export default function TeacherDashboard({ onOpenDesigns }) {
                   <div className="td-chart-card td-chart-card--wide td-chart-card--amber">
                     <h3 className="td-chart-card__title">
                       <span className="td-chart-card__ic"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg></span>
-                      Average Progress by Class
+                      {t("td.avgByClass")}
                     </h3>
                     <p className="td-chart-card__desc">
-                      How each class's students are spread across the journey · {chartData.classAvg.length} classes (sorted by average, click a segment to see those students)
+                      {t("td.avgByClassDesc", { n: chartData.classAvg.length })}
                     </p>
                     <div className="td-band-legend">
                       {BAND_LABELS.map((l, i) => (
@@ -840,7 +841,7 @@ export default function TeacherDashboard({ onOpenDesigns }) {
                           <Tooltip
                             formatter={(val, key, props) => {
                               const idx = { b0: 0, b1: 1, b2: 2, b3: 3 }[key];
-                              return [`${val} student${val === 1 ? "" : "s"}`, `${props.payload.name} · ${BAND_LABELS[idx]}`];
+                              return [t(val === 1 ? "td.nStudent" : "td.nStudents", { n: val }), `${props.payload.name} · ${BAND_LABELS[idx]}`];
                             }}
                             contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid var(--hop-border)" }}
                           />
@@ -864,19 +865,19 @@ export default function TeacherDashboard({ onOpenDesigns }) {
               </div>
             )}
 
-            {loadingSessions && <p className="td-muted">Loading student sessions...</p>}
+            {loadingSessions && <p className="td-muted">{t("td.loadingSessions")}</p>}
             {sessionsError && <div className="td-alert td-alert--error">{sessionsError}</div>}
 
             {!loadingSessions && sessions.length === 0 && !sessionsError && (
               <div className="td-empty">
-                <p>No student sessions found yet. Students need to log in and start working first.</p>
+                <p>{t("td.noSessions")}</p>
               </div>
             )}
 
             {!loadingSessions && filteredSessions.length > 0 && (
               <div className="td-section__head td-students__head">
                 <h2 className="td-section__title td-section__title--progress">
-                  Students
+                  {t("td.students")}
                   <span className="td-section__count">{tableSessions.length}</span>
                 </h2>
                 <div className="td-search">
@@ -884,20 +885,20 @@ export default function TeacherDashboard({ onOpenDesigns }) {
                   <input
                     type="text"
                     className="td-search__input"
-                    placeholder="Search students…"
+                    placeholder={t("td.searchStudentsPh")}
                     value={studentQuery}
                     onChange={(e) => setStudentQuery(e.target.value)}
-                    aria-label="Search students by name or username"
+                    aria-label={t("td.searchStudentsAria")}
                   />
                   {studentQuery && (
-                    <button className="td-search__clear" onClick={() => setStudentQuery("")} aria-label="Clear search">×</button>
+                    <button className="td-search__clear" onClick={() => setStudentQuery("")} aria-label={t("td.clearSearch")}>×</button>
                   )}
                 </div>
               </div>
             )}
 
             {!loadingSessions && filteredSessions.length > 0 && tableSessions.length === 0 && (
-              <div className="td-empty">No students match “{studentQuery}”.</div>
+              <div className="td-empty">{t("td.noStudentsMatch", { q: studentQuery })}</div>
             )}
 
             {!loadingSessions && tableSessions.length > 0 && (
@@ -905,13 +906,13 @@ export default function TeacherDashboard({ onOpenDesigns }) {
                 <table className="td-table">
                   <thead>
                     <tr>
-                      <th>Student</th>
-                      <th>Class</th>
-                      <th>Worldview</th>
-                      <th>Path</th>
-                      <th>Current Step</th>
-                      <th>Progress</th>
-                      <th>Last Activity</th>
+                      <th>{t("td.thStudent")}</th>
+                      <th>{t("td.thClass")}</th>
+                      <th>{t("td.thWorldview")}</th>
+                      <th>{t("td.thPath")}</th>
+                      <th>{t("td.thCurrentStep")}</th>
+                      <th>{t("td.thProgress")}</th>
+                      <th>{t("td.thLastActivity")}</th>
                       <th></th>
                     </tr>
                   </thead>
@@ -941,11 +942,11 @@ export default function TeacherDashboard({ onOpenDesigns }) {
                           <td className="td-table__cap">{(s.resolved_path !== "mixed" && s.chosen_methodology) || s.resolved_path || "\u2014"}</td>
                           <td>
                             {!s.session_id ? (
-                              <span className="td-table__not-started">Not started</span>
+                              <span className="td-table__not-started">{t("td.band0")}</span>
                             ) : s.active_step ? (
                               <span className="td-step-badge" style={{ "--step-color": STEP_COLORS[s.active_step - 1] || "#94a3b8" }}>
                                 <span className="td-step-badge__dot" />
-                                Step {s.active_step} · {STEP_LABELS[s.active_step - 1] || ""}
+                                {t("chat.step", { n: s.active_step })} · {STEP_LABELS[s.active_step - 1] || ""}
                               </span>
                             ) : "\u2014"}
                           </td>
@@ -959,7 +960,7 @@ export default function TeacherDashboard({ onOpenDesigns }) {
                                   <span
                                     key={si}
                                     className={`td-dots__dot${completed.includes(si + 1) ? " td-dots__dot--done" : ""}${s.active_step === si + 1 ? " td-dots__dot--active" : ""}`}
-                                    title={`Step ${si + 1}: ${label}${completed.includes(si + 1) ? " (completed)" : ""}`}
+                                    title={`${t("panel.stepTip", { n: si + 1, label })}${completed.includes(si + 1) ? t("td.completedSuffix") : ""}`}
                                     style={completed.includes(si + 1) ? { background: STEP_COLORS[si] } : {}}
                                   />
                                 ))}
@@ -968,7 +969,7 @@ export default function TeacherDashboard({ onOpenDesigns }) {
                             </div>
                           </td>
                           <td className="td-table__muted">
-                            {!s.session_id ? "Never" : timeAgo(s.updated_at || s.created_at)}
+                            {!s.session_id ? t("td.never") : timeAgo(s.updated_at || s.created_at, t, lang)}
                           </td>
                           <td>
                             {s.session_id && (
@@ -976,11 +977,11 @@ export default function TeacherDashboard({ onOpenDesigns }) {
                                 className="td-btn td-btn--outline td-btn--sm"
                                 onClick={() => setViewingStudent({
                                   session_id: s.session_id,
-                                  name: s.user?.username || s.user?.name || "Student",
+                                  name: s.user?.username || s.user?.name || t("td.student"),
                                   class_name: s.class_name || "",
                                 })}
                               >
-                                View
+                                {t("td.view")}
                               </button>
                             )}
                           </td>
@@ -1019,10 +1020,10 @@ export default function TeacherDashboard({ onOpenDesigns }) {
             <div className="mcm" onMouseDown={(e) => e.stopPropagation()}>
               <header className="mcm__head">
                 <div className="mcm__headtext">
-                  <span className="mcm__eyebrow">Manage class</span>
+                  <span className="mcm__eyebrow">{t("td.manageClass")}</span>
                   <h3 className="mcm__title">{live.class_name}</h3>
                 </div>
-                <button className="mcm__close" onClick={() => setDetailClass(null)} aria-label="Close">
+                <button className="mcm__close" onClick={() => setDetailClass(null)} aria-label={t("common.close")}>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
                 </button>
               </header>
@@ -1031,8 +1032,8 @@ export default function TeacherDashboard({ onOpenDesigns }) {
                 {/* Credentials */}
                 <div className="mcm-cred">
                   {[
-                    { label: "Class code", value: live.class_code, field: "code" },
-                    { label: "Shared password", value: live.password || "Not available", field: "pw" },
+                    { label: t("td.classCode"), value: live.class_code, field: "code" },
+                    { label: t("td.sharedPassword"), value: live.password || t("td.notAvailable"), field: "pw" },
                   ].map(({ label, value, field }) => {
                     const key = `${live.class_id}:${field}`;
                     return (
@@ -1040,11 +1041,11 @@ export default function TeacherDashboard({ onOpenDesigns }) {
                         <span className="mcm-cred__label">{label}</span>
                         <div className="mcm-cred__row">
                           <code className="mcm-cred__value">{value}</code>
-                          <button type="button" className="mcm-cred__copy" onClick={() => copyValue(value, key)} title={`Copy ${label.toLowerCase()}`}>
+                          <button type="button" className="mcm-cred__copy" onClick={() => copyValue(value, key)} title={t("td.copyThing", { label: label.toLowerCase() })}>
                             {copied === key ? (
-                              <><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Copied</>
+                              <><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg> {t("td.copied")}</>
                             ) : (
-                              <><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy</>
+                              <><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> {t("td.copy")}</>
                             )}
                           </button>
                         </div>
@@ -1056,11 +1057,9 @@ export default function TeacherDashboard({ onOpenDesigns }) {
                 {/* AI Assistant */}
                 <div className="mcm-row">
                   <div className="mcm-row__text">
-                    <span className="mcm-row__label">AI Assistant</span>
+                    <span className="mcm-row__label">{t("vd.aiBtn")}</span>
                     <span className="mcm-row__desc">
-                      {aiOn
-                        ? "Students can use the AI research assistant."
-                        : "AI is off - students work on their own. Turn it on when they're ready."}
+                      {aiOn ? t("td.aiOnDesc") : t("td.aiOffDesc")}
                     </span>
                   </div>
                   <button
@@ -1068,40 +1067,40 @@ export default function TeacherDashboard({ onOpenDesigns }) {
                     className={`td-switch${aiOn ? " td-switch--on" : ""}`}
                     role="switch"
                     aria-checked={aiOn}
-                    aria-label="Toggle AI assistant for this class"
+                    aria-label={t("td.toggleAiAria")}
                     disabled={saving}
                     onClick={() => toggleClassAI(live)}
                   >
                     <span className="td-switch__track"><span className="td-switch__thumb" /></span>
-                    <span className="td-switch__state">{saving ? "…" : aiOn ? "On" : "Off"}</span>
+                    <span className="td-switch__state">{saving ? "…" : aiOn ? t("td.on") : t("td.off")}</span>
                   </button>
                 </div>
 
                 {/* Student access */}
                 <div className="mcm-section">
                   <div className="mcm-row__text mcm-section__head">
-                    <span className="mcm-row__label">Student access</span>
-                    <span className="mcm-row__desc">Control which steps students can work on.</span>
+                    <span className="mcm-row__label">{t("td.studentAccess")}</span>
+                    <span className="mcm-row__desc">{t("td.studentAccessDesc")}</span>
                   </div>
                   <div className="mcm-seg">
-                    {ACCESS_MODES.map((opt) => (
+                    {ACCESS_MODES.map((id) => (
                       <button
-                        key={opt.id}
+                        key={id}
                         type="button"
-                        className={`mcm-seg__btn${mode === opt.id ? " mcm-seg__btn--active" : ""}`}
+                        className={`mcm-seg__btn${mode === id ? " mcm-seg__btn--active" : ""}`}
                         disabled={saving}
                         onClick={() => patchClassSettings(live, {
-                          access_mode: opt.id,
-                          ...(opt.id === "phase" && !live.settings?.unlocked_phase ? { unlocked_phase: 1 } : {}),
+                          access_mode: id,
+                          ...(id === "phase" && !live.settings?.unlocked_phase ? { unlocked_phase: 1 } : {}),
                         })}
                       >
-                        {opt.label}
+                        {t(`td.access.${id}`)}
                       </button>
                     ))}
                   </div>
 
                   {mode === "step" && (
-                    <p className="mcm-hint">Students must complete each step before the next one unlocks.</p>
+                    <p className="mcm-hint">{t("td.stepModeHint")}</p>
                   )}
 
                   {mode === "phase" && (
@@ -1124,14 +1123,14 @@ export default function TeacherDashboard({ onOpenDesigns }) {
                               )}
                             </span>
                             <span className="mcm-phase__text">
-                              <span className="mcm-phase__label">{ph.label} · {ph.name}</span>
-                              <span className="mcm-phase__range">{ph.range}</span>
+                              <span className="mcm-phase__label">{t("td.phaseLabel", { n: ph.n })} · {t(`td.phase${ph.n}Name`)}</span>
+                              <span className="mcm-phase__range">{t("td.phaseRange", { a: ph.a, b: ph.b })}</span>
                             </span>
-                            {unlocked && <span className="mcm-phase__tag">Unlocked</span>}
+                            {unlocked && <span className="mcm-phase__tag">{t("td.unlockedTag")}</span>}
                           </button>
                         );
                       })}
-                      <p className="mcm-hint">Click a phase to unlock everything up to and including it.</p>
+                      <p className="mcm-hint">{t("td.phaseHint")}</p>
                     </div>
                   )}
                 </div>
@@ -1139,7 +1138,7 @@ export default function TeacherDashboard({ onOpenDesigns }) {
                 {/* Roster */}
                 <div className="mcm-section">
                   <div className="mcm-roster__head">
-                    <span className="mcm-row__label">Student logins</span>
+                    <span className="mcm-row__label">{t("td.studentLogins")}</span>
                     <span className="mcm-count">{students.length}</span>
                   </div>
                   <div className="mcm-roster">
@@ -1152,10 +1151,10 @@ export default function TeacherDashboard({ onOpenDesigns }) {
 
               <footer className="mcm__foot">
                 <button className="td-btn td-btn--ghost td-btn--sm" onClick={() => handlePrintCredentials(live)}>
-                  Print credentials
+                  {t("td.printCredentials")}
                 </button>
                 <button className="td-btn td-btn--primary td-btn--sm" onClick={() => setDetailClass(null)}>
-                  Done
+                  {t("settings.done")}
                 </button>
               </footer>
             </div>
@@ -1169,12 +1168,12 @@ export default function TeacherDashboard({ onOpenDesigns }) {
           <div className="td-modal__card" onMouseDown={(e) => e.stopPropagation()}>
             <div className="td-modal__head">
               <div className="td-modal__headtext">
-                <h3 className="td-modal__title">{createResult ? "Class created" : "Create a new class"}</h3>
+                <h3 className="td-modal__title">{createResult ? t("td.classCreated") : t("td.createNewClass")}</h3>
                 {!createResult && (
-                  <span className="td-modal__subtitle">Student logins are auto-generated with your shared password.</span>
+                  <span className="td-modal__subtitle">{t("td.createSubtitle")}</span>
                 )}
               </div>
-              <button className="td-modal__close" onClick={closeCreate} aria-label="Close">
+              <button className="td-modal__close" onClick={closeCreate} aria-label={t("common.close")}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
               </button>
             </div>
@@ -1183,11 +1182,11 @@ export default function TeacherDashboard({ onOpenDesigns }) {
               {!createResult ? (
                 <form className="td-form" onSubmit={handleCreateClass}>
                   <div className="td-form__group">
-                    <label className="td-form__label">Class Name</label>
+                    <label className="td-form__label">{t("td.className")}</label>
                     <input
                       type="text"
                       className="td-form__input"
-                      placeholder="e.g. Period 3 Research"
+                      placeholder={t("td.classNamePh")}
                       value={className}
                       onChange={(e) => setClassName(e.target.value)}
                       autoFocus
@@ -1196,7 +1195,7 @@ export default function TeacherDashboard({ onOpenDesigns }) {
                   </div>
                   <div className="td-form__grid" style={{ marginTop: 12 }}>
                     <div className="td-form__group td-form__group--narrow">
-                      <label className="td-form__label">Students</label>
+                      <label className="td-form__label">{t("td.students")}</label>
                       <input
                         type="number"
                         className="td-form__input"
@@ -1208,11 +1207,11 @@ export default function TeacherDashboard({ onOpenDesigns }) {
                       />
                     </div>
                     <div className="td-form__group td-form__group--grow">
-                      <label className="td-form__label">Shared Password</label>
+                      <label className="td-form__label">{t("td.sharedPasswordCaps")}</label>
                       <input
                         type="text"
                         className="td-form__input"
-                        placeholder="Password for all students"
+                        placeholder={t("td.passwordPh")}
                         value={classPassword}
                         onChange={(e) => setClassPassword(e.target.value)}
                         required
@@ -1222,9 +1221,9 @@ export default function TeacherDashboard({ onOpenDesigns }) {
                   </div>
                   {classError && <div className="td-alert td-alert--error" style={{ marginTop: 12 }}>{classError}</div>}
                   <div className="td-modal__foot td-modal__foot--inline">
-                    <button type="button" className="td-btn td-btn--ghost td-btn--sm" onClick={closeCreate}>Cancel</button>
+                    <button type="button" className="td-btn td-btn--ghost td-btn--sm" onClick={closeCreate}>{t("td.cancel")}</button>
                     <button type="submit" className="td-btn td-btn--primary td-btn--sm" disabled={creating}>
-                      {creating ? "Creating…" : "Create Class"}
+                      {creating ? t("td.creating") : t("td.createClass")}
                     </button>
                   </div>
                 </form>
@@ -1232,8 +1231,8 @@ export default function TeacherDashboard({ onOpenDesigns }) {
                 <>
                   <div className="td-cred">
                     {[
-                      { label: "Class code", value: createResult.class_code, field: "code" },
-                      { label: "Shared password", value: createResult.password, field: "pw" },
+                      { label: t("td.classCode"), value: createResult.class_code, field: "code" },
+                      { label: t("td.sharedPassword"), value: createResult.password, field: "pw" },
                     ].map(({ label, value, field }) => {
                       const key = `new:${field}`;
                       return (
@@ -1242,7 +1241,7 @@ export default function TeacherDashboard({ onOpenDesigns }) {
                           <div className="td-cred__value">
                             <code>{value}</code>
                             <button type="button" className="td-copy" onClick={() => copyValue(value, key)}>
-                              {copied === key ? "Copied" : "Copy"}
+                              {copied === key ? t("td.copied") : t("td.copy")}
                             </button>
                           </div>
                         </div>
@@ -1250,14 +1249,14 @@ export default function TeacherDashboard({ onOpenDesigns }) {
                     })}
                   </div>
                   <div className="td-class__subhead">
-                    Student logins <span className="td-class__count-mini">{createResult.students?.length || 0}</span>
+                    {t("td.studentLogins")} <span className="td-class__count-mini">{createResult.students?.length || 0}</span>
                   </div>
                   <div className="td-roster">
                     {(createResult.students || []).map((s) => (
                       <span className="td-roster__chip" key={s.username}>{s.username}</span>
                     ))}
                   </div>
-                  <p className="td-modal__note">Share the class code and password with your students, or print the credentials.</p>
+                  <p className="td-modal__note">{t("td.shareNote")}</p>
                 </>
               )}
             </div>
@@ -1265,9 +1264,9 @@ export default function TeacherDashboard({ onOpenDesigns }) {
             {createResult && (
               <div className="td-modal__foot">
                 <button className="td-btn td-btn--outline td-btn--sm" onClick={() => handlePrintCredentials(createResult)}>
-                  Print Credentials
+                  {t("td.printCredentialsCaps")}
                 </button>
-                <button className="td-btn td-btn--primary td-btn--sm" onClick={closeCreate}>Done</button>
+                <button className="td-btn td-btn--primary td-btn--sm" onClick={closeCreate}>{t("settings.done")}</button>
               </div>
             )}
           </div>
