@@ -183,6 +183,15 @@ const L = {
   design_based_research: { central_item: "Problema de práctica", informants: "Socios, interesados e informantes", other_documents: "Otros documentos y artefactos", strategies: "Iteraciones y puntos de decisión", process_support: "Apoyo al proceso y viabilidad", question: "Propósito y preguntas de investigación" },
 };
 
+// Mixed-methods diagram main titles ("... Research Design on:")
+const TITLE_TEXTS = {
+  convergent_parallel: "Diseño de investigación de métodos mixtos convergente paralelo sobre:",
+  explanatory_sequential: "Diseño de investigación de métodos mixtos explicativo secuencial sobre:",
+  exploratory_sequential: "Diseño de investigación de métodos mixtos exploratorio secuencial sobre:",
+  embedded: "Diseño de investigación de métodos mixtos incrustado sobre:",
+  embedded_quant: "Diseño de investigación de métodos mixtos incrustado sobre:",
+};
+
 const CONTEXT_TITLES = {
   narrative: "Contexto de tu estudio narrativo", phenomenology: "Contexto de tu estudio fenomenológico",
   grounded_theory: "Contexto de tu estudio de teoría fundamentada", ethnography: "Contexto de tu etnografía",
@@ -206,6 +215,7 @@ export function localizeVdForm(form, designKey, lang) {
     ...(labels ? { labels } : {}),
     ...(form.layout?.contextTitle ? { contextTitle: CONTEXT_TITLES[designKey] || form.layout.contextTitle } : {}),
     ...(form.layout?.designName ? { designName: N[designKey] || form.layout.designName } : {}),
+    ...(form.layout?.titleText ? { titleText: TITLE_TEXTS[designKey] || form.layout.titleText } : {}),
   };
   return { ...form, designName: name, intro: intro(name), fields, layout };
 }

@@ -7,6 +7,7 @@
 //   notify.error("Could not save", { title: "Save failed" });
 // <Toaster /> is mounted once at the App root.
 import React, { useState, useRef, useEffect, useCallback } from "react";
+import { useLang } from "./i18n.jsx";
 
 let pushExternal = null;
 let idCounter = 0;
@@ -58,6 +59,7 @@ const ICONS = {
 const MAX_VISIBLE = 4;
 
 export function Toaster() {
+  const { t: tr } = useLang();
   const [toasts, setToasts] = useState([]);
   const timers = useRef(new Map()); // id -> { timeout, expiresAt, remaining }
   const pausedRef = useRef(false);
@@ -141,7 +143,7 @@ export function Toaster() {
             {t.title && <div className="hop-toast__title">{t.title}</div>}
             <div className="hop-toast__msg">{t.message}</div>
           </div>
-          <button className="hop-toast__close" onClick={() => startExit(t.id)} aria-label="Dismiss notification">
+          <button className="hop-toast__close" onClick={() => startExit(t.id)} aria-label={tr("toast.dismiss")}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
               <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
             </svg>

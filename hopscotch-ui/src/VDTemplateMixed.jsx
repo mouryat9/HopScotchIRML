@@ -10,42 +10,52 @@ import React from "react";
 import VDTemplateHoneycomb from "./VDTemplateHoneycomb";
 import VDTemplatePentagonFlower from "./VDTemplatePentagonFlower";
 import VDCitation from "./VDCitation";
+import { useLang } from "./i18n.jsx";
 
 // Generic qualitative strand layout used by the mixed templates (Julie's mixed
 // PPTX uses the generic labels, not a specific tradition's). Center hexagon
 // color from the mixed PPTX files.
-const QUAL_STRAND_LAYOUT = {
-  designName: "Qualitative Study",
-  contextTitle: "Context of the Study",
+const qualStrandLayout = (t) => ({
+  designName: t("mixed.qualStudy"),
+  contextTitle: t("mixed.contextTitle"),
   contextBottom: true,
   centerColor: "#A64D79",
   centerLabelColor: "#FFFFFF",
   centerDark: true,
   labels: {
-    informants: "Informants",
-    other_documents: "Other Documents",
-    data_gathering: "Data Gathering Methods",
-    central_item: "Phenomenon under study",
-    strategies: "Strategies",
-    process_support: "Process Support",
-    question: "Issues",
+    informants: t("mixed.lbl.informants"),
+    other_documents: t("mixed.lbl.otherDocuments"),
+    data_gathering: t("mixed.lbl.dataGathering"),
+    central_item: t("mixed.lbl.phenomenon"),
+    strategies: t("mixed.lbl.strategies"),
+    process_support: t("mixed.lbl.processSupport"),
+    question: t("mixed.lbl.issues"),
   },
-};
+});
 
 // Quantitative strand layout (teal center from the mixed PPTX; the fixed
 // chips mirror the generic fill-in slide of the quantitative template)
-const QUANT_STRAND_LAYOUT = {
+const quantStrandLayout = (t) => ({
   kind: "pentagon",
-  designName: "Quantitative Study",
+  designName: t("mixed.quantStudy"),
   titleName: "",
   centerColor: "#0097A7",
   sliders: { variance: 0.3, causality: 0.3, ivControl: 0.3 },
   fixed: {
-    type: "Exploratory/Descriptive",
-    groups: "No control group",
-    representativeness: "Desirable",
+    type: t("mixed.fixedType"),
+    groups: t("mixed.fixedGroups"),
+    representativeness: t("mixed.fixedRepr"),
   },
-};
+});
+
+// Render a "Line|Line" key as stacked lines (the diagram chips wrap by design)
+const stacked = (s) =>
+  s.split("|").map((seg, i) => (
+    <React.Fragment key={i}>
+      {i > 0 && <br />}
+      {seg}
+    </React.Fragment>
+  ));
 
 // The quantitative strand reuses the quantitative field keys, except the ones
 // that would collide with the qualitative strand - those map to mm_* keys.
@@ -58,9 +68,10 @@ const QUANT_ONLY_KEYS = new Set(["variables", "sample", "groups", "data_analysis
 const QUANT_REVERSE_MAP = { mm_question: "question", mm_data_gathering: "data_gathering", mm_process_support: "process_support" };
 
 function Identity({ name, email }) {
+  const { t } = useLang();
   return (
     <div className="vd-identity">
-      <div className="vd-identity__caption">Designed by</div>
+      <div className="vd-identity__caption">{t("vd.designedBy")}</div>
       <div className="vd-identity__name">{name}</div>
       <div className="vd-identity__email">{email}</div>
     </div>
@@ -90,6 +101,9 @@ function LogoRow() {
 }
 
 export default function VDTemplateMixed({ layout, name, email, fields, upd, E, activeKey, onJumpToField, primary = "qualitative" }) {
+  const { t } = useLang();
+  const QUAL_STRAND_LAYOUT = qualStrandLayout(t);
+  const QUANT_STRAND_LAYOUT = quantStrandLayout(t);
   // Proxy the fields/updates for the quantitative strand
   const quantFields = { ...fields };
   for (const [pentKey, mmKey] of Object.entries(QUANT_KEY_MAP)) {
@@ -128,7 +142,7 @@ export default function VDTemplateMixed({ layout, name, email, fields, upd, E, a
             value={fields.study_type}
             onChange={(v) => upd("study_type", v)}
             className="vd-mixed__quant-type-text"
-            placeholder="Type of quantitative research design…"
+            placeholder={t("mixed.typeQuantPh")}
           />
         </div>
       )}
@@ -151,7 +165,7 @@ export default function VDTemplateMixed({ layout, name, email, fields, upd, E, a
         value={fields.research_topic}
         onChange={(v) => upd("research_topic", v)}
         className="vd-mixed__title-topic"
-        placeholder="Your research topic…"
+        placeholder={t("mixed.topicPh")}
       />
     </div>
   );
@@ -171,22 +185,22 @@ export default function VDTemplateMixed({ layout, name, email, fields, upd, E, a
     const EMB_HEXES = quantHost
       ? [
           { key: null, solid: true, x: c2, y: 0 },
-          { key: "data_gathering", label: "Data Gathering", x: c1, y: 16.6 },
-          { key: "strategies", label: "Strategies", x: c2, y: 33.3 },
-          { key: "informants", label: "Informants", x: c1, y: 49.9 },
-          { key: "context", label: "Context", x: c2, y: 66.6 },
+          { key: "data_gathering", label: t("tpl.dataGathering"), x: c1, y: 16.6 },
+          { key: "strategies", label: t("tpl.strategies"), x: c2, y: 33.3 },
+          { key: "informants", label: t("tpl.informants"), x: c1, y: 49.9 },
+          { key: "context", label: t("tpl.context"), x: c2, y: 66.6 },
         ]
       : [
           { key: null, solid: true, x: c2, y: 0 },
-          { key: "mm_data_gathering", label: "Data Gathering", x: c1, y: 16.6 },
-          { key: "mm_process_support", label: "Process Support", x: c2, y: 33.3 },
-          { key: "data_analysis", label: "Analysis", x: c1, y: 49.9 },
-          { key: "sample", label: "Sample", x: c2, y: 66.6 },
+          { key: "mm_data_gathering", label: t("tpl.dataGathering"), x: c1, y: 16.6 },
+          { key: "mm_process_support", label: t("tpl.processSupport"), x: c2, y: 33.3 },
+          { key: "data_analysis", label: t("tpl.analysis"), x: c1, y: 49.9 },
+          { key: "sample", label: t("tpl.sample"), x: c2, y: 66.6 },
         ];
     const clusterColor = quantHost ? "#A64D79" : "#0097A7";
-    const clusterTitle = quantHost ? "Embedded Qualitative Study" : "Embedded Quantitative Study";
+    const clusterTitle = quantHost ? t("mixed.embQual") : t("mixed.embQuant");
     const rqKey = quantHost ? "question" : "mm_question";
-    const rqLabel = quantHost ? "Qualitative Research Question" : "Research Question";
+    const rqLabel = quantHost ? t("mixed.qualQuestion") : t("mixed.researchQuestion");
     // Arc position: quant host was tuned to sit tight against the cluster;
     // the qual host keeps its column-derived placement.
     const arcLeft = quantHost ? 10 : c1 - 29;
@@ -196,7 +210,7 @@ export default function VDTemplateMixed({ layout, name, email, fields, upd, E, a
       <div className="vd-diagram vd-diagram--embedded">
         <Identity name={name} email={email} />
         {title}
-        <div className="vd-embedded__host-label">{quantHost ? "PRIMARY: QUANTITATIVE STUDY" : "PRIMARY: QUALITATIVE STUDY"}</div>
+        <div className="vd-embedded__host-label">{quantHost ? t("mixed.primaryQuant") : t("mixed.primaryQual")}</div>
         <div className={`vd-embedded__host ${quantHost ? "vd-embedded__host--quant" : "vd-embedded__host--qual"}`}>
           {quantHost ? quantStrand(true) : (
             <div className="vd-mixed__strand-canvas">
@@ -220,7 +234,7 @@ export default function VDTemplateMixed({ layout, name, email, fields, upd, E, a
           <svg className="vd-embhex__arc" style={{ left: `${arcLeft}%` }} viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
             <path d="M96,2 C20,14 20,84 96,96" stroke={clusterColor} strokeWidth="2" strokeDasharray="6 7" fill="none" vectorEffect="non-scaling-stroke" />
           </svg>
-          <span className="vd-embhex__arc-label" style={{ left: `${arcLabelLeft}%` }}>Informs the understanding</span>
+          <span className="vd-embhex__arc-label" style={{ left: `${arcLabelLeft}%` }}>{t("mixed.informs")}</span>
 
           {EMB_HEXES.map((hx, i) => (
             <div key={i} className="vd-embhex__hex" style={{ left: `${hx.x}%`, top: `${hx.y}%` }}>
@@ -238,12 +252,12 @@ export default function VDTemplateMixed({ layout, name, email, fields, upd, E, a
                   <div className="vd-embhex__title">{clusterTitle}</div>
                 ) : (
                   <>
-                    <div className="vd-embhex__label" onClick={() => onJumpToField && onJumpToField(hx.key)} title="Edit in the form">{hx.label}</div>
+                    <div className="vd-embhex__label" onClick={() => onJumpToField && onJumpToField(hx.key)} title={t("vd.editInForm")}>{hx.label}</div>
                     <E
                       value={fields[hx.key]}
                       onChange={(v) => upd(hx.key, v)}
                       className="vd-embhex__text"
-                      placeholder="Click to write…"
+                      placeholder={t("vd.clickWrite")}
                     />
                   </>
                 )}
@@ -259,7 +273,7 @@ export default function VDTemplateMixed({ layout, name, email, fields, upd, E, a
               value={fields[rqKey]}
               onChange={(v) => upd(rqKey, v)}
               className="vd-embhex__rq-text"
-              placeholder="The question the embedded study answers…"
+              placeholder={t("mixed.embQuestionPh")}
             />
           </div>
         </div>
@@ -286,17 +300,17 @@ export default function VDTemplateMixed({ layout, name, email, fields, upd, E, a
             value={fields.study_type}
             onChange={(v) => upd("study_type", v)}
             className="vd-seq__type-text"
-            placeholder="Type of quantitative research design…"
+            placeholder={t("mixed.typeQuantPh")}
           />
         </div>
         <div className="vd-seq__canvas vd-seq__canvas--quant">{quantStrand(false)}</div>
         <div className="vd-seq__footline">
-          <span className="vd-seq__footline-label">Hypothesis</span>
+          <span className="vd-seq__footline-label">{t("mixed.hypothesis")}</span>
           <E
             value={fields.hypothesis}
             onChange={(v) => upd("hypothesis", v)}
             className="vd-seq__footline-text"
-            placeholder="Your hypothesis…"
+            placeholder={t("mixed.hypothesisPh")}
           />
         </div>
       </>
@@ -308,25 +322,25 @@ export default function VDTemplateMixed({ layout, name, email, fields, upd, E, a
             value={fields.qual_tradition}
             onChange={(v) => upd("qual_tradition", v)}
             className="vd-seq__type-text"
-            placeholder="Type of qualitative research tradition…"
+            placeholder={t("mixed.typeQualPh")}
           />
         </div>
         <div className="vd-seq__canvas vd-seq__canvas--qual">{qualStrand}</div>
         <div className="vd-seq__footline">
-          <span className="vd-seq__footline-label">Qualitative Research Question</span>
+          <span className="vd-seq__footline-label">{t("mixed.qualQuestion")}</span>
           <E
             value={fields.qual_question}
             onChange={(v) => upd("qual_question", v)}
             className="vd-seq__footline-text"
-            placeholder="Your qualitative research question…"
+            placeholder={t("mixed.qualQuestionPh")}
           />
         </div>
       </>
     );
 
-    const resultsFirst = quantLeft ? "Results Quantitative Study" : "Results Qualitative Study";
+    const resultsFirst = quantLeft ? t("mixed.resultsQuant") : t("mixed.resultsQual");
     const resultsFirstClass = quantLeft ? "vd-mixed__chip--quant" : "vd-mixed__chip--qual";
-    const resultsFinal = quantLeft ? "Results Qualitative Study" : "Results Quantitative Study";
+    const resultsFinal = quantLeft ? t("mixed.resultsQual") : t("mixed.resultsQuant");
     const resultsFinalClass = quantLeft ? "vd-mixed__chip--qual" : "vd-mixed__chip--quant";
 
     return (
@@ -336,9 +350,9 @@ export default function VDTemplateMixed({ layout, name, email, fields, upd, E, a
 
         {/* PHASE I ----> PHASE II header (each centered over its box) */}
         <div className="vd-seq__phases" aria-hidden="true">
-          <span className="vd-seq__phase vd-seq__phase--one">PHASE I</span>
+          <span className="vd-seq__phase vd-seq__phase--one">{t("mixed.phase1")}</span>
           <span className="vd-seq__dash" />
-          <span className="vd-seq__phase vd-seq__phase--two">PHASE II</span>
+          <span className="vd-seq__phase vd-seq__phase--two">{t("mixed.phase2")}</span>
         </div>
 
         {/* Phase I container */}
@@ -358,7 +372,7 @@ export default function VDTemplateMixed({ layout, name, email, fields, upd, E, a
 
         {/* results chip -> down -> Inform -> curve into Phase II */}
         <span className="vd-seq__inform-drop" aria-hidden="true" />
-        <span className="vd-mixed__seq-inform vd-seq__inform-below" aria-hidden="true">Inform</span>
+        <span className="vd-mixed__seq-inform vd-seq__inform-below" aria-hidden="true">{t("mixed.inform")}</span>
         <svg className="vd-seq__inform-curve" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
           <defs>
             <marker id="vdInformArrow" markerWidth="5.5" markerHeight="5.5" refX="4" refY="2.75" orient="auto">
@@ -380,7 +394,7 @@ export default function VDTemplateMixed({ layout, name, email, fields, upd, E, a
         {/* INTERPRETATION rail on the far right, fed by a solid arrow from Phase II */}
         <span className="vd-seq__flow-arrow vd-seq__flow-arrow--interp" aria-hidden="true" />
         <div className="vd-seq__interp" aria-hidden="true">
-          <span className="vd-seq__interp-label">INTERPRETATION</span>
+          <span className="vd-seq__interp-label">{t("mixed.interpretationCaps")}</span>
         </div>
 
         <LogoRow />
@@ -402,7 +416,7 @@ export default function VDTemplateMixed({ layout, name, email, fields, upd, E, a
           value={fields.qual_tradition}
           onChange={(v) => upd("qual_tradition", v)}
           className="vd-seq__type-text"
-          placeholder="Type of qualitative research tradition…"
+          placeholder={t("mixed.typeQualPh")}
         />
       </div>
       <div className="vd-seq__type vd-conv__type vd-conv__type--right">
@@ -410,7 +424,7 @@ export default function VDTemplateMixed({ layout, name, email, fields, upd, E, a
           value={fields.study_type}
           onChange={(v) => upd("study_type", v)}
           className="vd-seq__type-text"
-          placeholder="Type of quantitative research design…"
+          placeholder={t("mixed.typeQuantPh")}
         />
       </div>
 
@@ -419,11 +433,11 @@ export default function VDTemplateMixed({ layout, name, email, fields, upd, E, a
 
       {/* Center flow: both results rise along dashed rails into the
           comparison, which is then interpreted */}
-      <span className="vd-conv__compare-label" aria-hidden="true">Comparison<br />of Results</span>
+      <span className="vd-conv__compare-label" aria-hidden="true">{stacked(t("mixed.comparisonBr"))}</span>
       <span className="vd-conv__interp-line" aria-hidden="true">
         <span className="vd-conv__interp-line-arrow">&#9660;</span>
       </span>
-      <span className="vd-conv__interp-label" aria-hidden="true">Interpretation</span>
+      <span className="vd-conv__interp-label" aria-hidden="true">{t("mixed.interpretation")}</span>
       <span className="vd-conv__rail vd-conv__rail--qual" aria-hidden="true">
         <span className="vd-conv__rail-arrow">&#10148;</span>
       </span>
@@ -441,27 +455,27 @@ export default function VDTemplateMixed({ layout, name, email, fields, upd, E, a
 
       {/* Both strands' results feed the comparison */}
       <div className="vd-conv__results" aria-hidden="true">
-        <span className="vd-conv__result-text vd-conv__result-text--qual">Results<br />Qualitative<br />Study</span>
-        <span className="vd-conv__result-text vd-conv__result-text--quant">Results<br />Quantitative<br />Study</span>
+        <span className="vd-conv__result-text vd-conv__result-text--qual">{stacked(t("mixed.resultsQualBr"))}</span>
+        <span className="vd-conv__result-text vd-conv__result-text--quant">{stacked(t("mixed.resultsQuantBr"))}</span>
       </div>
 
       {/* Footlines under each strand */}
       <div className="vd-seq__footline vd-conv__footline--left">
-        <span className="vd-seq__footline-label">Qualitative Research Question</span>
+        <span className="vd-seq__footline-label">{t("mixed.qualQuestion")}</span>
         <E
           value={fields.qual_question}
           onChange={(v) => upd("qual_question", v)}
           className="vd-seq__footline-text"
-          placeholder="Your qualitative research question…"
+          placeholder={t("mixed.qualQuestionPh")}
         />
       </div>
       <div className="vd-seq__footline vd-conv__footline--right">
-        <span className="vd-seq__footline-label">Hypothesis</span>
+        <span className="vd-seq__footline-label">{t("mixed.hypothesis")}</span>
         <E
           value={fields.hypothesis}
           onChange={(v) => upd("hypothesis", v)}
           className="vd-seq__footline-text"
-          placeholder="Your hypothesis…"
+          placeholder={t("mixed.hypothesisPh")}
         />
       </div>
 

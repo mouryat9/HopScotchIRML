@@ -2463,6 +2463,20 @@ select.input:focus {
   color: var(--hop-blue);
 }
 
+/* Back button + language pill share the form's top row */
+.login-split__topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  align-self: stretch;
+  margin-bottom: 2rem;
+}
+.login-split__topbar .login-split__back { margin-bottom: 0; }
+
+/* Language pill on the login screens (header + split form) */
+.login-lang-switch { background: var(--hop-white); }
+.login-header .login-lang-switch { margin-left: auto; margin-right: 12px; }
+
 .login-split__form-area {
   flex: 1;
   display: flex;

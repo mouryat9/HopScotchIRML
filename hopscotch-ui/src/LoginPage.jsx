@@ -2,28 +2,25 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "./AuthContext";
 import { useTheme } from "./ThemeContext";
+import { useLang, LANGS } from "./i18n.jsx";
 import { API } from "./api";
 
-const ROTATING_WORDS = [
-  "Simplified.",
-  "Structured.",
-  "Step by Step.",
-  "Guided.",
-];
+const ROTATING_KEYS = ["login.rotating1", "login.rotating2", "login.rotating3", "login.rotating4"];
 
 export default function LoginPage() {
   const { login } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const { lang, setLang, t } = useLang();
   const [showForm, setShowForm] = useState(false);
   // "login" | "register" | "forgot" | "reset" | "classroom"
   const [view, setView] = useState("login");
   // Account type: determines both role and education_level
   const [accountType, setAccountType] = useState("hs_student");
   const ACCOUNT_TYPES = {
-    hs_student:  { role: "student", education_level: "high_school",  label: "High School Student", icon: "🎒", desc: "Grades 9–12" },
-    hs_teacher:  { role: "teacher", education_level: "high_school",  label: "High School Teacher", icon: "🍎", desc: "Create & manage classes" },
-    he_student:  { role: "student", education_level: "higher_ed",    label: "Higher Ed Student",   icon: "🎓", desc: "College & university" },
-    he_faculty:  { role: "teacher", education_level: "higher_ed",    label: "Higher Ed Faculty",   icon: "🏛️", desc: "Create & manage classes" },
+    hs_student:  { role: "student", education_level: "high_school",  label: t("login.type.hsStudent"), icon: "🎒", desc: t("login.type.hsStudentDesc") },
+    hs_teacher:  { role: "teacher", education_level: "high_school",  label: t("login.type.hsTeacher"), icon: "🍎", desc: t("login.type.teacherDesc") },
+    he_student:  { role: "student", education_level: "higher_ed",    label: t("login.type.heStudent"), icon: "🎓", desc: t("login.type.heStudentDesc") },
+    he_faculty:  { role: "teacher", education_level: "higher_ed",    label: t("login.type.heFaculty"), icon: "🏛️", desc: t("login.type.teacherDesc") },
   };
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -44,7 +41,7 @@ export default function LoginPage() {
     const id = setInterval(() => {
       setAnimating(true);
       setTimeout(() => {
-        setWordIdx((i) => (i + 1) % ROTATING_WORDS.length);
+        setWordIdx((i) => (i + 1) % ROTATING_KEYS.length);
         setAnimating(false);
       }, 400); // fade-out duration
     }, 2500);
@@ -83,11 +80,11 @@ export default function LoginPage() {
 
     if (view === "reset") {
       if (newPassword !== confirmPassword) {
-        setError("Passwords do not match");
+        setError(t("login.errNoMatch"));
         return;
       }
       if (newPassword.length < 6) {
-        setError("Password must be at least 6 characters");
+        setError(t("login.errTooShort"));
         return;
       }
     }
@@ -106,10 +103,10 @@ export default function LoginPage() {
         login(data);
       } else if (view === "forgot") {
         await API.forgotPassword({ email });
-        setSuccessMsg("If an account with that email exists, a reset link has been sent. Check your inbox.");
+        setSuccessMsg(t("login.forgotSent"));
       } else if (view === "reset") {
         await API.resetPassword({ token: resetToken, new_password: newPassword });
-        setSuccessMsg("Password updated successfully! You can now log in.");
+        setSuccessMsg(t("login.resetDone"));
         setTimeout(() => {
           switchView("login");
           setNewPassword("");
@@ -117,7 +114,7 @@ export default function LoginPage() {
         }, 3000);
       }
     } catch (err) {
-      setError(err.message || "Something went wrong");
+      setError(err.message || t("login.errGeneric"));
     } finally {
       setLoading(false);
     }
@@ -145,7 +142,7 @@ export default function LoginPage() {
       type="button"
       className="login-field__eye"
       onClick={() => setShowPassword((v) => !v)}
-      aria-label={showPassword ? "Hide password" : "Show password"}
+      aria-label={showPassword ? t("login.hidePassword") : t("login.showPassword")}
       tabIndex={-1}
     >
       {showPassword ? (
@@ -179,6 +176,22 @@ export default function LoginPage() {
     </svg>
   );
 
+  // ---------- Language pill (shared by hero header and split form) ----------
+  const langSwitch = (
+    <span className="hop-lang-switch login-lang-switch" role="group" aria-label={t("profile.language")}>
+      {LANGS.map((l) => (
+        <button
+          key={l.id}
+          type="button"
+          className={lang === l.id ? "is-active" : ""}
+          onClick={() => setLang(l.id)}
+        >
+          {l.label}
+        </button>
+      ))}
+    </span>
+  );
+
   // ---------- Header (always visible) ----------
   const header = (
     <header className="login-header">
@@ -189,7 +202,8 @@ export default function LoginPage() {
           className="login-header-logo"
         />
       </div>
-      <button className="theme-toggle" onClick={toggleTheme} aria-label="Toggle dark mode" title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}>
+      {langSwitch}
+      <button className="theme-toggle" onClick={toggleTheme} aria-label={t("login.toggleTheme")} title={theme === "dark" ? t("login.lightMode") : t("login.darkMode")}>
         {theme === "dark" ? "\u2600" : "\u263E"}
       </button>
     </header>
@@ -206,28 +220,26 @@ export default function LoginPage() {
             {hopGrid(220, 80)}
           </div>
 
-          <h1 className="login-hero__gradient">Research Made</h1>
+          <h1 className="login-hero__gradient">{t("login.heroTitle")}</h1>
           <h2 className={`login-hero__rotating ${animating ? "fade-out" : "fade-in"}`}>
-            {ROTATING_WORDS[wordIdx]}
+            {t(ROTATING_KEYS[wordIdx])}
           </h2>
           <p className="login-hero__desc">
-            Hopscotch is a structured, AI-powered 9-step research methods
-            learning platform that helps students discover their worldview and
-            build a research design from the ground up.
+            {t("login.heroDesc")}
           </p>
 
           <div className="login-hero__actions">
             <button className="btn login-btn-filled" onClick={() => openForm("login")}>
-              Log In
+              {t("login.logIn")}
             </button>
             <button className="btn login-btn-outline" onClick={() => openForm("register")}>
-              Create Account
+              {t("login.createAccount")}
             </button>
             <div className="login-hero__divider">
-              <span>or</span>
+              <span>{t("login.or")}</span>
             </div>
             <button className="login-btn-school" onClick={() => openForm("classroom")}>
-              I'm a School/Middle/High School student
+              {t("login.schoolBtn")}
             </button>
           </div>
         </main>
@@ -237,11 +249,11 @@ export default function LoginPage() {
 
   // ---------- Form title / subtitle ----------
   const titles = {
-    login:     { title: "Welcome back",      subtitle: "Log in to continue your research journey" },
-    register:  { title: "Create your account", subtitle: "Pick who you are and you're set in seconds" },
-    classroom: { title: "School Student Login", subtitle: "Jump back into your class workspace" },
-    forgot:    { title: "Forgot password?",  subtitle: "Enter your email and we'll send you a reset link" },
-    reset:     { title: "Set a new password", subtitle: "Choose a new password for your account" },
+    login:     { title: t("login.title.login"),     subtitle: t("login.subtitle.login") },
+    register:  { title: t("login.title.register"),  subtitle: t("login.subtitle.register") },
+    classroom: { title: t("login.title.classroom"), subtitle: t("login.subtitle.classroom") },
+    forgot:    { title: t("login.title.forgot"),    subtitle: t("login.subtitle.forgot") },
+    reset:     { title: t("login.title.reset"),     subtitle: t("login.subtitle.reset") },
   };
 
   const { title, subtitle } = titles[view] || titles.login;
@@ -251,9 +263,12 @@ export default function LoginPage() {
     <div className="login-split">
       {/* Left side: form */}
       <div className="login-split__left">
-        <button className="login-split__back" onClick={() => setShowForm(false)}>
-          &larr; Back
-        </button>
+        <div className="login-split__topbar">
+          <button className="login-split__back" onClick={() => setShowForm(false)}>
+            {t("login.back")}
+          </button>
+          {langSwitch}
+        </div>
 
         <div className="login-split__form-area">
           <h1 className="login-split__title">{title}</h1>
@@ -263,7 +278,7 @@ export default function LoginPage() {
             {/* Account type selector - register only */}
             {view === "register" && (
               <div className="login-account-type">
-                <label className="login-field__label">I am a...</label>
+                <label className="login-field__label">{t("login.iAmA")}</label>
                 <div className="login-account-type__grid">
                   {Object.entries(ACCOUNT_TYPES).map(([key, { label, icon, desc }]) => (
                     <button
@@ -292,8 +307,8 @@ export default function LoginPage() {
               <div className="login-hint">
                 <span className="login-hint__emoji" aria-hidden="true">🏫</span>
                 <span>
-                  Use the <strong>username and class password</strong> your teacher gave you.
-                  Usernames look like <code>period3research_01</code>.
+                  {t("login.hint1")}<strong>{t("login.hintBold")}</strong>{t("login.hint2")}
+                  <code>period3research_01</code>.
                 </span>
               </div>
             )}
@@ -301,12 +316,12 @@ export default function LoginPage() {
             {/* Name - register only */}
             {view === "register" && (
               <div className="login-field">
-                <label className="login-field__label">Full Name</label>
+                <label className="login-field__label">{t("login.fullName")}</label>
                 <div className="login-field__box">
                   <span className="login-field__icon">{fieldIcon.user}</span>
                   <input
                     type="text"
-                    placeholder="Your name"
+                    placeholder={t("login.namePh")}
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     required
@@ -319,12 +334,12 @@ export default function LoginPage() {
             {/* Username - classroom only */}
             {view === "classroom" && (
               <div className="login-field">
-                <label className="login-field__label">Username</label>
+                <label className="login-field__label">{t("login.username")}</label>
                 <div className="login-field__box">
                   <span className="login-field__icon">{fieldIcon.school}</span>
                   <input
                     type="text"
-                    placeholder="e.g. period3research_01"
+                    placeholder={t("login.usernamePh")}
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     required
@@ -337,12 +352,12 @@ export default function LoginPage() {
             {/* Email - login, register, forgot */}
             {(view === "login" || view === "register" || view === "forgot") && (
               <div className="login-field">
-                <label className="login-field__label">Email</label>
+                <label className="login-field__label">{t("login.email")}</label>
                 <div className="login-field__box">
                   <span className="login-field__icon">{fieldIcon.mail}</span>
                   <input
                     type="email"
-                    placeholder="you@school.edu"
+                    placeholder={t("login.emailPh")}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
@@ -355,7 +370,7 @@ export default function LoginPage() {
             {/* Password - login, register, classroom */}
             {(view === "login" || view === "register" || view === "classroom") && (
               <div className="login-field">
-                <label className="login-field__label">Password</label>
+                <label className="login-field__label">{t("login.password")}</label>
                 <div className="login-field__box login-field__password-wrap">
                   <span className="login-field__icon">{fieldIcon.lock}</span>
                   <input
@@ -376,12 +391,12 @@ export default function LoginPage() {
             {view === "reset" && (
               <>
                 <div className="login-field">
-                  <label className="login-field__label">New Password</label>
+                  <label className="login-field__label">{t("login.newPassword")}</label>
                   <div className="login-field__box login-field__password-wrap">
                     <span className="login-field__icon">{fieldIcon.lock}</span>
                     <input
                       type={showPassword ? "text" : "password"}
-                      placeholder="New password"
+                      placeholder={t("login.newPasswordPh")}
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
                       required
@@ -392,12 +407,12 @@ export default function LoginPage() {
                   </div>
                 </div>
                 <div className="login-field">
-                  <label className="login-field__label">Confirm Password</label>
+                  <label className="login-field__label">{t("login.confirmPassword")}</label>
                   <div className="login-field__box">
                     <span className="login-field__icon">{fieldIcon.lock}</span>
                     <input
                       type={showPassword ? "text" : "password"}
-                      placeholder="Confirm password"
+                      placeholder={t("login.confirmPasswordPh")}
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       required
@@ -417,12 +432,12 @@ export default function LoginPage() {
               className="login-split__submit"
               disabled={loading}
             >
-              {loading ? "Please wait..."
-                : view === "register" ? "Create Account"
-                : view === "classroom" ? "Login"
-                : view === "forgot" ? "Send Reset Link"
-                : view === "reset" ? "Update Password"
-                : "Login"}
+              {loading ? t("login.pleaseWait")
+                : view === "register" ? t("login.submitRegister")
+                : view === "classroom" ? t("login.submitLogin")
+                : view === "forgot" ? t("login.submitForgot")
+                : view === "reset" ? t("login.submitReset")
+                : t("login.submitLogin")}
             </button>
           </form>
 
@@ -431,21 +446,21 @@ export default function LoginPage() {
               <>
                 <div className="login-links-row">
                   <span>
-                    Don't have an account?{" "}
+                    {t("login.noAccount")}{" "}
                     <button className="link-btn" onClick={() => switchView("register")}>
-                      Create Account
+                      {t("login.createAccount")}
                     </button>
                   </span>
                   <button className="link-btn link-btn--muted" onClick={() => switchView("forgot")}>
-                    Forgot password?
+                    {t("login.forgotLink")}
                   </button>
                 </div>
-                <div className="login-or"><span>or</span></div>
+                <div className="login-or"><span>{t("login.or")}</span></div>
                 <button type="button" className="login-callout" onClick={() => switchView("classroom")}>
                   <span className="login-callout__emoji" aria-hidden="true">🏫</span>
                   <span className="login-callout__text">
-                    <span className="login-callout__title">School student?</span>
-                    <span className="login-callout__desc">Log in with the username your teacher gave you</span>
+                    <span className="login-callout__title">{t("login.calloutTitle")}</span>
+                    <span className="login-callout__desc">{t("login.calloutDesc")}</span>
                   </span>
                   <span className="login-callout__arrow" aria-hidden="true">&rarr;</span>
                 </button>
@@ -453,32 +468,32 @@ export default function LoginPage() {
             )}
             {view === "register" && (
               <p>
-                Already have an account?{" "}
+                {t("login.haveAccount")}{" "}
                 <button className="link-btn" onClick={() => switchView("login")}>
-                  Login
+                  {t("login.submitLogin")}
                 </button>
               </p>
             )}
             {view === "classroom" && (
               <p>
-                Have an email account?{" "}
+                {t("login.haveEmail")}{" "}
                 <button className="link-btn" onClick={() => switchView("login")}>
-                  Login here
+                  {t("login.loginHere")}
                 </button>
               </p>
             )}
             {view === "forgot" && (
               <p>
-                Remember your password?{" "}
+                {t("login.rememberPassword")}{" "}
                 <button className="link-btn" onClick={() => switchView("login")}>
-                  Back to Login
+                  {t("login.backToLogin")}
                 </button>
               </p>
             )}
             {view === "reset" && (
               <p>
                 <button className="link-btn" onClick={() => switchView("login")}>
-                  Back to Login
+                  {t("login.backToLogin")}
                 </button>
               </p>
             )}
