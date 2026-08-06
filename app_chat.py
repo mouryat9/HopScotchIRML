@@ -2877,8 +2877,35 @@ def export_research_design_pdf(
         # layout (Steps 5-9 will simply read "Not yet completed").
         template_name = "research_design_qualitative.html"
 
+    # Spanish students get the Spanish template (falls back to English)
+    if (pdf_user or {}).get("language") == "es":
+        es_name = template_name.replace(".html", ".es.html")
+        if (TEMPLATE_DIR / es_name).exists():
+            template_name = es_name
+
     for n in (5, 6, 7, 8, 9):
         template_data[f"step{n}"] = step_text(n)
+
+    # Localize the placeholder values on the Spanish template
+    if template_name.endswith(".es.html"):
+        for k, v in list(template_data.items()):
+            if v == "Not yet completed":
+                template_data[k] = "Aún no completado"
+            elif v == "Not specified":
+                template_data[k] = "No especificado"
+        WORLDVIEW_ES = {
+            "positivist": "Positivista", "post_positivist": "Pospositivista",
+            "constructivist": "Constructivista", "transformative": "Transformativa",
+            "pragmatist": "Pragmatista",
+        }
+        wv_raw = str(template_data.get("step1", "")).strip()
+        wv_key = wv_raw.lower().replace(" ", "_").replace("-", "_")
+        if wv_key in WORLDVIEW_ES:
+            template_data["step1"] = WORLDVIEW_ES[wv_key]
+        MONTHS_ES = ["enero", "febrero", "marzo", "abril", "mayo", "junio",
+                     "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"]
+        now = datetime.now()
+        template_data["date"] = f"{now.day} de {MONTHS_ES[now.month - 1]} de {now.year}"
 
     # Load and render the appropriate HTML template
     template_path = TEMPLATE_DIR / template_name
