@@ -2,12 +2,14 @@
 import React from "react";
 import HopGridLoader from "./HopGridLoader";
 import VDCitation from "./VDCitation";
+import { useLang } from "./i18n.jsx";
 
 /**
  * Template 1: Angular polygon mosaic (matching PPTX Slide 3).
  * Two-layer approach: background polygon shapes + foreground text overlays.
  */
 export default function CFTemplatePolygon({ d, upd, updTopic, updFramework, E }) {
+  const { t } = useLang();
   const topicPositions = [
     { left: "0.4%", top: "5%" },
     { left: "4%", top: "11.5%" },
@@ -45,56 +47,56 @@ export default function CFTemplatePolygon({ d, upd, updTopic, updFramework, E })
         {/* ═══ Layer 2: Text content overlays ═══ */}
 
         <div className="cf-txt cf-txt--topical-label">
-          <span className="cf-label cf-label--light">Topical Research</span>
+          <span className="cf-label cf-label--light">{t("cf.topicalResearch")}</span>
         </div>
-        {d.topics.map((t, i) => (
+        {d.topics.map((topic, i) => (
           <div key={`t${i}`} className="cf-txt cf-txt--topic" style={topicPositions[i]}>
-            <E value={t} onChange={(v) => updTopic(i, v)} placeholder={`Topic ${i + 1}`} className="cf-text--light" />
+            <E value={topic} onChange={(v) => updTopic(i, v)} placeholder={t("cf.phs.topicN", { n: i + 1 })} className="cf-text--light" />
           </div>
         ))}
 
         <div className="cf-txt cf-txt--fw-label">
-          <span className="cf-label cf-label--light">Theoretical Frameworks</span>
+          <span className="cf-label cf-label--light">{t("cf.frameworks")}</span>
         </div>
         {d.frameworks.map((f, i) => (
           <div key={`f${i}`} className="cf-txt cf-txt--framework" style={fwPositions[i]}>
-            <E value={f} onChange={(v) => updFramework(i, v)} placeholder={`Framework ${i + 1}`} className="cf-text--light" />
+            <E value={f} onChange={(v) => updFramework(i, v)} placeholder={t("cf.phs.frameworkN", { n: i + 1 })} className="cf-text--light" />
           </div>
         ))}
 
         <div className="cf-txt cf-txt--gaps">
-          <span className="cf-label cf-label--dark">Gap/s Found:</span>
-          <E value={d.gaps} onChange={(v) => upd("gaps", v)} placeholder="Gaps found in literature..." className="cf-text--dark cf-text--sm" />
+          <span className="cf-label cf-label--dark">{t("cf.gapsFound")}</span>
+          <E value={d.gaps} onChange={(v) => upd("gaps", v)} placeholder={t("cf.phs.gaps")} className="cf-text--dark cf-text--sm" />
         </div>
 
         <div className="cf-txt cf-txt--topic-center">
-          <span className="cf-label cf-label--light">Research Topic:</span>
-          <E value={d.topic} onChange={(v) => upd("topic", v)} placeholder="Define your research topic" className="cf-text--light cf-text--sm" />
+          <span className="cf-label cf-label--light">{t("cf.researchTopic")}</span>
+          <E value={d.topic} onChange={(v) => upd("topic", v)} placeholder={t("cf.phs.topic")} className="cf-text--light cf-text--sm" />
         </div>
 
         <div className="cf-txt cf-txt--interests">
-          <span className="cf-label cf-label--dark">Personal Interests & Goals</span>
-          <E value={d.personal_goals} onChange={(v) => upd("personal_goals", v)} placeholder="Your interests and goals" className="cf-text--dark cf-text--sm" />
+          <span className="cf-label cf-label--dark">{t("cf.personalGoals")}</span>
+          <E value={d.personal_goals} onChange={(v) => upd("personal_goals", v)} placeholder={t("cf.phs.personal")} className="cf-text--dark cf-text--sm" />
         </div>
 
         <div className="cf-txt cf-txt--identity">
-          <span className="cf-label cf-label--light">Identity & Positionality</span>
-          <E value={d.worldview} onChange={(v) => upd("worldview", v)} placeholder="Your worldview" className="cf-text--light cf-text--sm" />
+          <span className="cf-label cf-label--light">{t("cf.identityCard")}</span>
+          <E value={d.worldview} onChange={(v) => upd("worldview", v)} placeholder={t("cf.phs.worldview")} className="cf-text--light cf-text--sm" />
         </div>
 
         <div className="cf-txt cf-txt--problem">
-          <span className="cf-label cf-label--light">Problem Statement:</span>
-          <E value={d.problem_statement} onChange={(v) => upd("problem_statement", v)} placeholder="Define your problem" className="cf-text--light cf-text--sm" />
+          <span className="cf-label cf-label--light">{t("cf.problem")}:</span>
+          <E value={d.problem_statement} onChange={(v) => upd("problem_statement", v)} placeholder={t("cf.phs.problem")} className="cf-text--light cf-text--sm" />
         </div>
 
         <div className="cf-txt cf-txt--design">
-          <span className="cf-label cf-label--light">Research Design</span>
-          <E value={d.research_design} onChange={(v) => upd("research_design", v)} placeholder="Your research design" className="cf-text--light cf-text--sm" />
+          <span className="cf-label cf-label--light">{t("cf.design")}</span>
+          <E value={d.research_design} onChange={(v) => upd("research_design", v)} placeholder={t("cf.phs.design")} className="cf-text--light cf-text--sm" />
         </div>
 
         <div className="cf-txt cf-txt--questions">
-          <span className="cf-label cf-label--light">Research Questions</span>
-          <E value={d.research_questions} onChange={(v) => upd("research_questions", v)} placeholder="Your research questions" className="cf-text--light cf-text--sm" />
+          <span className="cf-label cf-label--light">{t("cf.questions")}</span>
+          <E value={d.research_questions} onChange={(v) => upd("research_questions", v)} placeholder={t("cf.phs.questions")} className="cf-text--light cf-text--sm" />
         </div>
 
         {/* Footer: logo bottom-left, name + date centered, citation right */}
@@ -104,7 +106,7 @@ export default function CFTemplatePolygon({ d, upd, updTopic, updFramework, E })
             <HopGridLoader className="cf-footer__grid" />
           </div>
           <span className="cf-footer__center cf-footer__center--stacked">
-            <span className="cf-footer__doctitle">Conceptual Framework</span>
+            <span className="cf-footer__doctitle">{t("cf.title")}</span>
             <span className="cf-identity cf-footer__name">
               <E value={d.name} onChange={(v) => upd("name", v)} className="cf-text--footer" />
             </span>

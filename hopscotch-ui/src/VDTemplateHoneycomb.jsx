@@ -53,7 +53,7 @@ const CTX_TRI_TAGS = [
   { x: 77.3, y: 88.4, rot: -32, flip: true },
 ];
 
-function ContextFootball({ x, y, rot, color = "#999999", triangle = false, flip = false }) {
+function ContextFootball({ x, y, rot, color = "#999999", triangle = false, flip = false, label = "Context" }) {
   // Triangle: base corners at the football's old tip positions, curved base
   // (bulge outward), apex overshooting the 200x52 box - the hexagons paint
   // over the overshoot, so the wedge between them fills completely.
@@ -66,7 +66,7 @@ function ContextFootball({ x, y, rot, color = "#999999", triangle = false, flip 
     <div className="vd-ctx-tag" style={{ left: `${x}%`, top: `${y}%`, transform: `translate(-50%, -50%) rotate(${rot}deg)` }}>
       <svg viewBox="0 0 200 52" preserveAspectRatio="none" aria-hidden="true" style={{ overflow: "visible" }}>
         <path d={path} fill={color} />
-        <text x="100" y={textY} textAnchor="middle" fill="#ffffff" fontWeight="700" fontSize="20" letterSpacing="0.5">Context</text>
+        <text x="100" y={textY} textAnchor="middle" fill="#ffffff" fontWeight="700" fontSize="20" letterSpacing="0.5">{label}</text>
       </svg>
     </div>
   );
@@ -102,7 +102,7 @@ export default function VDTemplateHoneycomb({ layout, name, email, fields, upd, 
           className={`vd-context vd-context--rail${activeKey === rail.key ? " vd-context--active" : ""}`}
           style={{ top: `${11.5 + i * 29}%`, height: "26%" }}
         >
-          <div className="vd-context__title" onClick={() => jump(rail.key)} title="Edit in the form">
+          <div className="vd-context__title" onClick={() => jump(rail.key)} title={t("vd.editInForm")}>
             {rail.title}
           </div>
           <E
@@ -117,7 +117,7 @@ export default function VDTemplateHoneycomb({ layout, name, email, fields, upd, 
       {/* Context rail (left, or bottom-left under Strategies in mixed strands) */}
       {!layout.hideContext && !layout.leftRails && (
       <div className={`vd-context${layout.contextBottom ? " vd-context--bottom" : ""}${activeKey === "context" ? " vd-context--active" : ""}`}>
-        <div className="vd-context__title" onClick={() => jump("context")} title="Edit in the form">
+        <div className="vd-context__title" onClick={() => jump("context")} title={t("vd.editInForm")}>
           {layout.contextTitle}
         </div>
         <E
@@ -130,13 +130,14 @@ export default function VDTemplateHoneycomb({ layout, name, email, fields, upd, 
       )}
 
       {/* Gray "Context" markers in the gaps between hexagons (case study / action research) */}
-      {layout.contextMarkers && (layout.contextMarkerShape === "triangle" ? CTX_TRI_TAGS : CTX_TAGS).map((t, i) => (
+      {layout.contextMarkers && (layout.contextMarkerShape === "triangle" ? CTX_TRI_TAGS : CTX_TAGS).map((tag, i) => (
         <ContextFootball
           key={`ctx-${i}`}
-          x={t.x} y={t.y} rot={t.rot}
+          x={tag.x} y={tag.y} rot={tag.rot}
           color={layout.contextMarkerColor}
           triangle={layout.contextMarkerShape === "triangle"}
-          flip={t.flip}
+          flip={tag.flip}
+          label={t("tpl.context")}
         />
       ))}
 
@@ -166,7 +167,7 @@ export default function VDTemplateHoneycomb({ layout, name, email, fields, upd, 
             <div className="vd-hex__content">
               {isCenter && layout.centerExtra && (
                 <>
-                  <div className="vd-hex__label" style={{ color: style.labelColor }} onClick={() => jump(layout.centerExtra.key)} title="Edit in the form">
+                  <div className="vd-hex__label" style={{ color: style.labelColor }} onClick={() => jump(layout.centerExtra.key)} title={t("vd.editInForm")}>
                     {layout.centerExtra.label}
                   </div>
                   <E
@@ -181,7 +182,7 @@ export default function VDTemplateHoneycomb({ layout, name, email, fields, upd, 
                 className="vd-hex__label"
                 style={{ color: style.labelColor }}
                 onClick={() => jump(key)}
-                title="Edit in the form"
+                title={t("vd.editInForm")}
               >
                 {layout.labels[key]}
               </div>
@@ -199,7 +200,7 @@ export default function VDTemplateHoneycomb({ layout, name, email, fields, upd, 
       {/* Split area inside the lower half of the Strategies hexagon (DBR) */}
       {layout.splitStrategies && (
         <div className={`vd-leftsplit${activeKey === layout.splitStrategies.key ? " vd-minicases--active" : ""}`}>
-          <div className="vd-minicases__label" onClick={() => jump(layout.splitStrategies.key)} title="Edit in the form">{layout.splitStrategies.label}</div>
+          <div className="vd-minicases__label" onClick={() => jump(layout.splitStrategies.key)} title={t("vd.editInForm")}>{layout.splitStrategies.label}</div>
           <E
             value={fields[layout.splitStrategies.key]}
             onChange={(v) => upd(layout.splitStrategies.key, v)}
@@ -212,7 +213,7 @@ export default function VDTemplateHoneycomb({ layout, name, email, fields, upd, 
       {/* Minicases (inside the lower half of the Process Support hexagon) */}
       {layout.hasMinicases && (
         <div className={`vd-minicases${activeKey === "minicases" ? " vd-minicases--active" : ""}`}>
-          <div className="vd-minicases__label" onClick={() => jump("minicases")} title="Edit in the form">{t("tpl.minicases")}</div>
+          <div className="vd-minicases__label" onClick={() => jump("minicases")} title={t("vd.editInForm")}>{t("tpl.minicases")}</div>
           <E
             value={fields.minicases}
             onChange={(v) => upd("minicases", v)}
@@ -225,7 +226,7 @@ export default function VDTemplateHoneycomb({ layout, name, email, fields, upd, 
       {/* Topics (inside the lower half of the question hexagon) */}
       <div className={`vd-topics${activeKey === "topics" ? " vd-topics--active" : ""}`}>
         <div className="vd-topics__rule" />
-        <div className="vd-topics__label" onClick={() => jump("topics")} title="Edit in the form">{t("tpl.topics")}</div>
+        <div className="vd-topics__label" onClick={() => jump("topics")} title={t("vd.editInForm")}>{t("tpl.topics")}</div>
         <E
           value={fields.topics}
           onChange={(v) => upd("topics", v)}

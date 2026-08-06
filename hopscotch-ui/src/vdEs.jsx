@@ -192,6 +192,38 @@ const TITLE_TEXTS = {
   embedded_quant: "Diseño de investigación de métodos mixtos incrustado sobre:",
 };
 
+// Quantitative pentagon: short title above the diagram, per design
+const TITLE_NAMES = {
+  descriptive: "Descriptivo no experimental", correlational: "Correlacional no experimental",
+  quasi_experimental: "Cuasiexperimental", experimental: "Experimental",
+  cross_sectional_survey: "Encuesta transversal", pre_experimental: "Preexperimental",
+};
+
+// Fixed characteristic chips on the pentagon diagram, mapped by English value
+const FIXED_VALUES = {
+  "Exploratory/Descriptive": "Exploratorio/Descriptivo",
+  "No control group": "Sin grupo control",
+  "Desirable": "Deseable",
+  "Correlational": "Correlacional",
+  "Explanatory": "Explicativo",
+  "Treatment & control group": "Grupo de tratamiento y control",
+  "Natural groups": "Grupos naturales",
+  "Descriptive / Survey": "Descriptivo / Encuesta",
+  "Essential": "Esencial",
+  "Exploratory": "Exploratorio",
+  "1 group (no control)": "1 grupo (sin control)",
+  "Limited": "Limitada",
+};
+
+// DBR-only diagram areas that carry their own titles in the layout
+const DBR_RAIL_TITLES = {
+  context: "Contexto y límites",
+  hypothesis: "Conjetura inicial de diseño",
+  variables: "Intervención y requisitos de diseño",
+};
+const DBR_CENTER_EXTRA_LABEL = "Nombre de tu estudio DBR";
+const DBR_SPLIT_STRATEGIES_LABEL = "Principios de diseño y contribución";
+
 const CONTEXT_TITLES = {
   narrative: "Contexto de tu estudio narrativo", phenomenology: "Contexto de tu estudio fenomenológico",
   grounded_theory: "Contexto de tu estudio de teoría fundamentada", ethnography: "Contexto de tu etnografía",
@@ -216,6 +248,15 @@ export function localizeVdForm(form, designKey, lang) {
     ...(form.layout?.contextTitle ? { contextTitle: CONTEXT_TITLES[designKey] || form.layout.contextTitle } : {}),
     ...(form.layout?.designName ? { designName: N[designKey] || form.layout.designName } : {}),
     ...(form.layout?.titleText ? { titleText: TITLE_TEXTS[designKey] || form.layout.titleText } : {}),
+    ...(form.layout?.titleName ? { titleName: TITLE_NAMES[designKey] || form.layout.titleName } : {}),
+    ...(form.layout?.fixed
+      ? { fixed: Object.fromEntries(Object.entries(form.layout.fixed).map(([k, v]) => [k, FIXED_VALUES[v] || v])) }
+      : {}),
+    ...(form.layout?.leftRails
+      ? { leftRails: form.layout.leftRails.map((r) => ({ ...r, title: DBR_RAIL_TITLES[r.key] || r.title })) }
+      : {}),
+    ...(form.layout?.centerExtra ? { centerExtra: { ...form.layout.centerExtra, label: DBR_CENTER_EXTRA_LABEL } } : {}),
+    ...(form.layout?.splitStrategies ? { splitStrategies: { ...form.layout.splitStrategies, label: DBR_SPLIT_STRATEGIES_LABEL } } : {}),
   };
   return { ...form, designName: name, intro: intro(name), fields, layout };
 }
