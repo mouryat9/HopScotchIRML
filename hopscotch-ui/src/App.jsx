@@ -237,7 +237,8 @@ const STEP_TILE_LANGS = ["es", "zh"];
 /* ----- Animated step diagram ----- */
 function StepDiagram({ activeStep, completedSteps = [], onStepChange, lockedSteps = [] }) {
   const { lang, t } = useLang();
-  const stepImg = (n) => (STEP_TILE_LANGS.includes(lang) ? `/steps/${lang}/Step${n}.png` : `/Step${n}.png`);
+  // bump ?v= when tile images change in place, so CDN/browser caches refetch
+  const stepImg = (n) => (STEP_TILE_LANGS.includes(lang) ? `/steps/${lang}/Step${n}.png?v=2` : `/Step${n}.png?v=2`);
   return (
     <div className="hop-diagram">
       {HOPSCOTCH_COLUMNS.map((col, ci) => (
