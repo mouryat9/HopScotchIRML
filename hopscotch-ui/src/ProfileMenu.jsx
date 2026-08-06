@@ -2,6 +2,7 @@
 // Shared profile dropdown used on every page (design workspace, teacher
 // dashboard, admin) so the avatar menu, Settings and Sign Out are identical.
 import { useState, useRef, useEffect } from "react";
+import { useLang, LANGS } from "./i18n.jsx";
 
 export default function ProfileMenu({
   user,
@@ -11,6 +12,7 @@ export default function ProfileMenu({
   roleLabel,     // optional - shown under the name when the user has no email
 }) {
   const [open, setOpen] = useState(false);
+  const { lang, setLang, t } = useLang();
   const ref = useRef(null);
 
   useEffect(() => {
@@ -49,6 +51,21 @@ export default function ProfileMenu({
             </div>
           </div>
           <div className="hop-profile__sep" />
+          <div className="hop-profile__langrow" role="group" aria-label={t("profile.language")}>
+            <span className="hop-profile__langlabel">{t("profile.language")}</span>
+            <span className="hop-lang-switch">
+              {LANGS.map((l) => (
+                <button
+                  key={l.id}
+                  type="button"
+                  className={lang === l.id ? "is-active" : ""}
+                  onClick={() => setLang(l.id)}
+                >
+                  {l.label}
+                </button>
+              ))}
+            </span>
+          </div>
           {onOpenSettings && (
             <button
               className="hop-profile__item"

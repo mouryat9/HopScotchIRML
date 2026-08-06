@@ -14160,3 +14160,26 @@ body.wl-dragging, body.wl-dragging * { cursor: grabbing !important; user-select:
   color: var(--hop-ink-secondary);
 }
 :root[data-theme="dark"] .ad-seg__count { background: #252b36; }
+
+/* Language switcher in the profile menu */
+.hop-profile__langrow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 14px;
+  border-top: 1px solid var(--hop-border);
+}
+.hop-profile__langlabel { font-size: 0.78rem; font-weight: 650; color: var(--hop-ink-secondary); }
+.hop-lang-switch { display: inline-flex; border: 1px solid var(--hop-border); border-radius: 999px; overflow: hidden; }
+.hop-lang-switch button {
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 650;
+  padding: 4px 10px;
+  border: none;
+  background: var(--hop-surface, #fff);
+  color: var(--hop-ink-secondary);
+  cursor: pointer;
+}
+.hop-lang-switch button.is-active { background: var(--hop-blue, #2B5EA7); color: #fff; }

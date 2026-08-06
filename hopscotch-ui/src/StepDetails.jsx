@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { API } from "./api";
 import { vdEditorSupports } from "./VisualDesignEditor";
+import { useLang } from "./i18n.jsx";
 
 /* Mixed methods designs (pragmatist / mixed path, Step 4) */
 const MIXED_DESIGN_OPTIONS = [
@@ -54,6 +55,7 @@ const WORLDVIEW_IDS = new Set([
  */
 export default function StepDetails({ step, sessionId, onChatRefresh, onAutoSend, onCompletedStepsChange }) {
   const baseShape = useMemo(() => EMPTY_STEP_DATA[step] || {}, [step]);
+  const { t, lang } = useLang();
 
   const [data, setData] = useState(baseShape);
   const [saving, setSaving] = useState(false);
@@ -189,16 +191,17 @@ export default function StepDetails({ step, sessionId, onChatRefresh, onAutoSend
     const justification = (data.worldview_justification || "").trim();
     if (!WORLDVIEW_IDS.has(wv)) return;
     const label = wv.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+    const localLabel = t(`worldview.${wv}`);
     const text = justification
-      ? `I just selected ${label} as my worldview. Here is my explanation based on my understanding of ontology and epistemology: "${justification}". Can you give me a personalised welcome, help me clarify my worldview based on my reasoning, and explain what this means for my research approach and methodology pathway?`
-      : `I just selected ${label} as my worldview. Can you give me a personalised welcome explaining what this means for my research approach and methodology pathway?`;
+      ? t("step1.autoMsgWithJustification", { label: localLabel, justification })
+      : t("step1.autoMsgNoJustification", { label: localLabel });
     if (onAutoSend) onAutoSend({
       text,
       event: `Worldview selected: ${label}`,
     });
   };
 
-  const title = STEP_TITLES[step] || `Step ${step}`;
+  const title = step === 1 ? t("step1.title") : (STEP_TITLES[step] || `Step ${step}`);
 
   // ---------------- Step 1 ----------------
   if (step === 1) {
@@ -208,18 +211,15 @@ export default function StepDetails({ step, sessionId, onChatRefresh, onAutoSend
         <section className="hop-card">
           <h2 className="hop-title">{title}</h2>
           <p className="hop-desc">
-            <strong>Directions</strong>
+            <strong>{t("common.directions")}</strong>
             <br />
-            {STEP_DIRECTIONS[1]}
+            {t("step1.directions")}
           </p>
         </section>
 
         {/* Inputs card */}
         <section className="hop-card">
-          <p className="hop-desc">
-            After checking the interactive resources on the left side, please
-            select the worldview that best represents who you are a researcher.
-          </p>
+          <p className="hop-desc">{t("step1.selectPrompt")}</p>
 
           <select
             className="input"
@@ -227,28 +227,21 @@ export default function StepDetails({ step, sessionId, onChatRefresh, onAutoSend
             onChange={(e) => onWorldviewChange(e.target.value)}
             disabled={!sessionId}
           >
-            <option value="">
-              Choose the worldview that best aligns with who you are
-            </option>
-            <option value="positivist">Positivist</option>
-            <option value="post_positivist">Post-positivist</option>
-            <option value="constructivist">Constructivist</option>
-            <option value="transformative">Transformative</option>
-            <option value="pragmatist">Pragmatist</option>
-            <option value="unsure">I’m not sure yet</option>
+            <option value="">{t("step1.dropdownPlaceholder")}</option>
+            <option value="positivist">{t("worldview.positivist")}</option>
+            <option value="post_positivist">{t("worldview.post_positivist")}</option>
+            <option value="constructivist">{t("worldview.constructivist")}</option>
+            <option value="transformative">{t("worldview.transformative")}</option>
+            <option value="pragmatist">{t("worldview.pragmatist")}</option>
+            <option value="unsure">{t("worldview.unsure")}</option>
           </select>
 
-          <p className="hop-desc" style={{ marginTop: 16 }}>
-            Explain your selection based on how you understand the nature of
-            reality (ontology) and how you believe knowledge is generated,
-            discovered, or constructed (epistemology). Then use the AI Assistant
-            to clarify your worldview.
-          </p>
+          <p className="hop-desc" style={{ marginTop: 16 }}>{t("step1.explainPrompt")}</p>
 
           <textarea
             className="textarea"
             rows={5}
-            placeholder="Explain your selection..."
+            placeholder={t("step1.textareaPlaceholder")}
             value={data.worldview_justification || ""}
             onChange={(e) => updateField("worldview_justification", e.target.value)}
             disabled={!sessionId}
@@ -260,7 +253,7 @@ export default function StepDetails({ step, sessionId, onChatRefresh, onAutoSend
               onClick={onAskAIClarify}
               disabled={!sessionId || !WORLDVIEW_IDS.has(data.worldview || "")}
             >
-              Ask AI to Clarify My Worldview
+              {t("step1.askAI")}
             </button>
           </div>
 

@@ -3,6 +3,7 @@ import React, { useEffect, useRef, useState, useMemo, useCallback, memo } from "
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { API } from "./api";
+import { useLang } from "./i18n.jsx";
 
 /* ---------- Step color + label map ---------- */
 const STEP_COLORS = {
@@ -196,6 +197,7 @@ function isAutoPrompt(msg) {
 /* ---------- Main chat component ---------- */
 
 export default function ChatBox({ sessionId, activeStep, refreshKey, autoMessage, onAutoMessageSent, aiEnabled = true }) {
+  const { t } = useLang();
   const [history, setHistory] = useState([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
@@ -412,7 +414,7 @@ export default function ChatBox({ sessionId, activeStep, refreshKey, autoMessage
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={onKey}
-          placeholder={aiEnabled ? "Type your message and press Enter…" : "The AI assistant is turned off by your teacher."}
+          placeholder={aiEnabled ? t("chat.placeholder") : t("chat.aiOff")}
           rows={2}
           disabled={!aiEnabled || !sessionId || sending}
         />

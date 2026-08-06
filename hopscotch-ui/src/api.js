@@ -129,6 +129,16 @@ export const API = {
     return res.json();
   },
 
+  async setLanguage(language) {
+    const res = await fetch(`${API_BASE}/auth/language`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify({ language }),
+    });
+    if (!res.ok) throw new Error("Failed to save language");
+    return res.json();
+  },
+
   async me() {
     const res = await fetch(`${API_BASE}/auth/me`, { headers: authHeaders() });
     if (!res.ok) throw new Error(`me failed: ${res.status}`);

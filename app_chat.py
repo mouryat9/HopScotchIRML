@@ -747,7 +747,7 @@ STEP_NAMES = {
 
 def build_ollama_payload(worldview_profile, step_context, user_msg, passages,
                          stream=False, active_step=None, step_llm_guidance=None,
-                         chat_history=None):
+                         chat_history=None, language="en"):
     """
     Shared helper to build the Ollama chat payload.
     Set stream=True when you want chunked responses, False for normal JSON.
@@ -938,6 +938,13 @@ def build_ollama_payload(worldview_profile, step_context, user_msg, passages,
         )
 
     # Build messages: system + context + conversation history + latest user msg
+    if language == "es":
+        system_msg += (
+            "\n\nLANGUAGE: The student uses Hopscotch in Spanish. ALWAYS respond "
+            "entirely in Spanish, with a warm academic tone (use 'cosmovisión' for "
+            "worldview). Keep methodology terminology accurate in Spanish."
+        )
+
     messages = [
         {"role": "system", "content": system_msg},
         {"role": "system", "content": context_msg},
@@ -1007,12 +1014,12 @@ def call_llm(worldview_profile: str, step_context: str, user_msg: str,
              passages: List[Dict[str, Any]],
              active_step: Optional[int] = None,
              step_llm_guidance: Optional[str] = None,
-             chat_history=None) -> str:
+             chat_history=None, language: str = "en") -> str:
 
     payload = build_ollama_payload(
         worldview_profile, step_context, user_msg, passages,
         stream=False, active_step=active_step, step_llm_guidance=step_llm_guidance,
-        chat_history=chat_history,
+        chat_history=chat_history, language=language,
     )
 
     result = None
@@ -1158,6 +1165,23 @@ def login(req: LoginReq, request: Request):
                     education_level=user.get("education_level", "high_school"))
 
 
+class LanguageReq(BaseModel):
+    language: str
+
+
+SUPPORTED_LANGUAGES = {"en", "es"}
+
+
+@app.post("/auth/language")
+def set_language(req: LanguageReq, user: dict = Depends(get_current_user)):
+    """Persist the user's interface language (Phase 1: en / es)."""
+    lang = (req.language or "").strip().lower()
+    if lang not in SUPPORTED_LANGUAGES:
+        raise HTTPException(status_code=400, detail="Unsupported language")
+    update_user_fields(str(user["_id"]), {"language": lang})
+    return {"ok": True, "language": lang}
+
+
 @app.get("/auth/me")
 def get_me(user: dict = Depends(get_current_user)):
     return {
@@ -1166,6 +1190,7 @@ def get_me(user: dict = Depends(get_current_user)):
         "name": user["name"],
         "role": user["role"],
         "education_level": user.get("education_level", "high_school"),
+        "language": user.get("language", "en"),
         "ai_enabled": _student_ai_enabled(user),
         "access_mode": _student_class_settings(user).get("access_mode", "full"),
         "unlocked_phase": _student_class_settings(user).get("unlocked_phase"),
@@ -1190,6 +1215,7 @@ def refresh_token(user: dict = Depends(get_current_user)):
         "name": user["name"],
         "role": user["role"],
         "education_level": user.get("education_level", "high_school"),
+        "language": user.get("language", "en"),
         "ai_enabled": _student_ai_enabled(user),
         "access_mode": _student_class_settings(user).get("access_mode", "full"),
         "unlocked_phase": _student_class_settings(user).get("unlocked_phase"),
@@ -2153,6 +2179,25 @@ _SAFETY_REFUSAL = (
     "responsibly and ethically — and I'll gladly help you design that study."
 )
 
+_AI_OFF_MESSAGE_ES = (
+    "Tu docente ha desactivado el asistente de IA para tu clase por ahora. "
+    "Puedes seguir trabajando en cada paso de tu diseño de investigación; "
+    "tus respuestas se guardan normalmente."
+)
+
+_SAFETY_REFUSAL_ES = (
+    "No puedo ayudarte con esa solicitud. Hopscotch es un espacio de aprendizaje "
+    "de métodos de investigación, y estoy aquí para apoyar un trabajo seguro, ético "
+    "y académico. Si esto se conecta con un interés de investigación genuino, "
+    "intenta replantearlo en torno a cómo estudiarías el tema de forma responsable "
+    "y ética — y con gusto te ayudaré a diseñar ese estudio."
+)
+
+
+def _canned(user: dict, en_text: str, es_text: str) -> str:
+    return es_text if (user or {}).get("language") == "es" else en_text
+
+
 
 def _moderate_input(user_msg: str) -> tuple:
     """Run Llama Guard 3 locally (via Ollama) on the student's message.
@@ -2460,7 +2505,7 @@ def chat_send(req: ChatSendReq = Body(...), user: dict = Depends(get_current_use
 
     # Teacher-controlled mode: AI assistant may be turned off for this student's class.
     if not _student_ai_enabled(user):
-        history.append(ChatTurn(role="assistant", content=_AI_OFF_MESSAGE, step=req.active_step))
+        history.append(ChatTurn(role="assistant", content=_canned(user, _AI_OFF_MESSAGE, _AI_OFF_MESSAGE_ES), step=req.active_step))
         _persist_session(sess)
         return ChatHistoryResp(session_id=req.session_id, history=history)
 
@@ -2475,7 +2520,7 @@ def chat_send(req: ChatSendReq = Body(...), user: dict = Depends(get_current_use
     # Safety gate: refuse harmful/unethical requests (Llama Guard 3, local).
     is_safe, _cats = _moderate_input(user_msg)
     if not is_safe:
-        history.append(ChatTurn(role="assistant", content=_SAFETY_REFUSAL, step=req.active_step))
+        history.append(ChatTurn(role="assistant", content=_canned(user, _SAFETY_REFUSAL, _SAFETY_REFUSAL_ES), step=req.active_step))
         _persist_session(sess)
         return ChatHistoryResp(session_id=req.session_id, history=history)
 
@@ -2495,7 +2540,7 @@ def chat_send(req: ChatSendReq = Body(...), user: dict = Depends(get_current_use
     answer = call_llm(
         worldview_profile, step_context, user_msg, passages,
         active_step=req.active_step, step_llm_guidance=step_llm_guidance,
-        chat_history=history,
+        chat_history=history, language=user.get("language", "en"),
     )
     # Output guard: strip any handed-over deliverable blocks the model slipped in.
     answer = _strip_handed_answers(answer)
@@ -2525,9 +2570,9 @@ def chat_send_stream(req: ChatSendReq = Body(...), user: dict = Depends(get_curr
     if not _student_ai_enabled(user):
         def _ai_off_stream():
             try:
-                yield _AI_OFF_MESSAGE
+                yield _canned(user, _AI_OFF_MESSAGE, _AI_OFF_MESSAGE_ES)
             finally:
-                history.append(ChatTurn(role="assistant", content=_AI_OFF_MESSAGE, step=req.active_step))
+                history.append(ChatTurn(role="assistant", content=_canned(user, _AI_OFF_MESSAGE, _AI_OFF_MESSAGE_ES), step=req.active_step))
                 _persist_session(sess)
         return StreamingResponse(_ai_off_stream(), media_type="text/plain")
 
@@ -2552,9 +2597,9 @@ def chat_send_stream(req: ChatSendReq = Body(...), user: dict = Depends(get_curr
     if not is_safe:
         def _refusal_stream():
             try:
-                yield _SAFETY_REFUSAL
+                yield _canned(user, _SAFETY_REFUSAL, _SAFETY_REFUSAL_ES)
             finally:
-                history.append(ChatTurn(role="assistant", content=_SAFETY_REFUSAL, step=req.active_step))
+                history.append(ChatTurn(role="assistant", content=_canned(user, _SAFETY_REFUSAL, _SAFETY_REFUSAL_ES), step=req.active_step))
                 _persist_session(sess)
         return StreamingResponse(_refusal_stream(), media_type="text/plain")
 
@@ -2582,7 +2627,7 @@ def chat_send_stream(req: ChatSendReq = Body(...), user: dict = Depends(get_curr
     payload = build_ollama_payload(
         worldview_profile, step_context, user_msg, passages,
         stream=True, active_step=req.active_step, step_llm_guidance=step_llm_guidance,
-        chat_history=history,
+        chat_history=history, language=user.get("language", "en"),
     )
 
     # Capture session_id for persistence inside the generator
