@@ -474,7 +474,7 @@ export default function StepDetails({ step, sessionId, onChatRefresh, onAutoSend
         <section className="hop-card">
           <h2 className="hop-title">{stepConfig.title || `Step ${step}`}</h2>
           <p className="hop-desc">
-            {stepConfig.directions || "Please complete Step 1 (worldview selection) before proceeding to this step."}
+            {stepConfig.directions || t("common.completeStep1")}
           </p>
         </section>
       </div>
@@ -549,7 +549,7 @@ export default function StepDetails({ step, sessionId, onChatRefresh, onAutoSend
                 {t("common.createVd")}
               </button>
             )}
-            {saving && <span className="badge">Saving...</span>}
+            {saving && <span className="badge">{t("common.saving")}</span>}
           </div>
           {saveError && (
             <div className="badge badge--error">
@@ -567,20 +567,18 @@ export default function StepDetails({ step, sessionId, onChatRefresh, onAutoSend
       <section className="hop-card">
         <h2 className="hop-title">{title}</h2>
         <p className="hop-desc">
-          Use this step to refine your research design. After exploring the
-          interactive resource on the left, jot down any key decisions or notes
-          you want to remember.
+          {t("common.fallbackIntro")}
         </p>
       </section>
 
       <section className="hop-card">
         <label className="hop-desc" style={{ display: "block", marginBottom: 6 }}>
-          Notes for Step {step}
+          {t("common.notesFor", { n: step })}
         </label>
         <textarea
           className="textarea"
           rows={5}
-          placeholder={`Write your notes for Step ${step} here...`}
+          placeholder={t("common.notesPh", { n: step })}
           value={data.notes || ""}
           onChange={(e) => updateField("notes", e.target.value)}
           disabled={!sessionId}
@@ -588,7 +586,7 @@ export default function StepDetails({ step, sessionId, onChatRefresh, onAutoSend
 
         {saving && (
           <div className="badge" style={{ marginTop: 6 }}>
-            Saving...
+            {t("common.saving")}
           </div>
         )}
         {saveError && (
@@ -609,6 +607,7 @@ export default function StepDetails({ step, sessionId, onChatRefresh, onAutoSend
  * Renders the appropriate input controls based on field_type from the config.
  */
 function StepFieldRenderer({ config, data, updateField, sessionId, disabled }) {
+  const { t } = useLang();
   const { field_type, field_key, options, fields } = config;
 
   // single_select: dropdown
@@ -738,7 +737,7 @@ function StepFieldRenderer({ config, data, updateField, sessionId, disabled }) {
                   <input
                     className="input"
                     type="text"
-                    placeholder="Please describe…"
+                    placeholder={t("field.describeOther")}
                     value={data[f.field_key + "_other"] || ""}
                     onChange={(e) => updateField(f.field_key + "_other", e.target.value)}
                     disabled={disabled}
@@ -754,7 +753,7 @@ function StepFieldRenderer({ config, data, updateField, sessionId, disabled }) {
                   onChange={(e) => updateField(f.field_key, e.target.value)}
                   disabled={disabled}
                 >
-                  <option value="">{f.placeholder || "Select…"}</option>
+                  <option value="">{f.placeholder || t("field.select")}</option>
                   {f.options.map((opt) => (
                     <option key={opt.id} value={opt.id}>{opt.label}</option>
                   ))}
@@ -763,7 +762,7 @@ function StepFieldRenderer({ config, data, updateField, sessionId, disabled }) {
                   <input
                     className="input"
                     type="text"
-                    placeholder="Please describe your method…"
+                    placeholder={t("field.describeMethod")}
                     value={data[f.field_key + "_other"] || ""}
                     onChange={(e) => updateField(f.field_key + "_other", e.target.value)}
                     disabled={disabled}

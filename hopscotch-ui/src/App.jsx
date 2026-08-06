@@ -872,15 +872,15 @@ function StudentApp({ onBackToDashboard }) {
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/></svg>
                   </span>
                   <div className="hop-settings__section-hettext">
-                    <span className="hop-settings__section-title">Panels</span>
-                    <span className="hop-settings__section-desc">Show or hide the side panels in your workspace.</span>
+                    <span className="hop-settings__section-title">{t("panel.sectionTitle")}</span>
+                    <span className="hop-settings__section-desc">{t("panel.sectionDesc")}</span>
                   </div>
                 </div>
                 <div className="hop-settings__section-body">
                   <div className="hop-settings__toggles">
                     {[
-                      { on: leftOpen, set: () => setLeftOpen((o) => !o), title: "Interactive Resources", desc: "Videos, interactive activities, and the glossary." },
-                      { on: rightOpen, set: () => setRightOpen((o) => !o), title: "Research Assistant", desc: "Your AI research mentor chat." },
+                      { on: leftOpen, set: () => setLeftOpen((o) => !o), title: t("panel.resources"), desc: t("panel.resourcesDesc") },
+                      { on: rightOpen, set: () => setRightOpen((o) => !o), title: t("panel.assistant"), desc: t("panel.assistantDesc") },
                     ].map((row, idx) => (
                       <div className="hop-settings__toggle" key={idx}>
                         <div className="hop-settings__toggle-text">

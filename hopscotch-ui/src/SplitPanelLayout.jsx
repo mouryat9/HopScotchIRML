@@ -18,13 +18,14 @@ const AsstIcon = (
 );
 
 function PanelHeader({ icon, title, tone, onClose, onFocus, focused }) {
+  const { t } = useLang();
   return (
     <div className={`pin-panel__header pin-panel__header--${tone}`}>
       <div className="pin-panel__header-content">{icon}<span className="pin-panel__title">{title}</span></div>
       <div className="pin-panel__header-actions">
         {onFocus && (
           <button className="pin-panel__icon-btn" onClick={onFocus} aria-pressed={focused}
-                  title={focused ? "Exit reading mode" : "Expand for reading"} aria-label={focused ? "Collapse assistant" : "Expand assistant"}>
+                  title={focused ? t("panel.exitReading") : t("panel.expandReading")} aria-label={focused ? "Collapse assistant" : "Expand assistant"}>
             {focused ? (
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" y1="10" x2="21" y2="3"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
             ) : (
@@ -68,7 +69,7 @@ export default function SplitPanelLayout({
   const assistant = (
     <div className={`pin-panel__content${!aiEnabled ? " pin-panel__content--ai-off" : ""}`}>
       {loading && !sessionId ? (
-        <div className="badge badge--neutral">Starting session...</div>
+        <div className="badge badge--neutral">{t("panel.starting")}</div>
       ) : (
         <>
           <ChatBox
@@ -81,10 +82,9 @@ export default function SplitPanelLayout({
                 <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><line x1="4" y1="4" x2="20" y2="20" />
                 </svg>
-                <div className="ai-off-overlay__title">AI assistant is turned off</div>
+                <div className="ai-off-overlay__title">{t("panel.aiOffTitle")}</div>
                 <div className="ai-off-overlay__text">
-                  Your teacher has turned off the AI assistant for now. Need help with a tricky term?
-                  Open the <strong>Glossary</strong> tab in the Resources panel.
+                  {t("panel.aiOffBefore")} <strong>{t("respanel.tab.glossary")}</strong> {t("panel.aiOffAfter")}
                 </div>
               </div>
             </div>
@@ -103,8 +103,8 @@ export default function SplitPanelLayout({
         <div className="pin-panel pin-panel--open wl-helper">
           <div className="pin-panel__inner">
             <div className="wl-helper__tabs">
-              <button className={`wl-helper__tab${helperTab === "resources" ? " wl-helper__tab--active" : ""}`} onClick={() => setHelperTab("resources")}>{ResIcon}<span>Resources</span></button>
-              <button className={`wl-helper__tab${helperTab === "assistant" ? " wl-helper__tab--active" : ""}`} onClick={() => setHelperTab("assistant")}>{AsstIcon}<span>Assistant</span></button>
+              <button className={`wl-helper__tab${helperTab === "resources" ? " wl-helper__tab--active" : ""}`} onClick={() => setHelperTab("resources")}>{ResIcon}<span>{t("panel.resourcesShort")}</span></button>
+              <button className={`wl-helper__tab${helperTab === "assistant" ? " wl-helper__tab--active" : ""}`} onClick={() => setHelperTab("assistant")}>{AsstIcon}<span>{t("panel.assistantShort")}</span></button>
             </div>
             {helperTab === "resources"
               ? <div className="pin-panel__content">{resources}</div>
@@ -120,10 +120,10 @@ export default function SplitPanelLayout({
     return (
       <div className="pin-layout pin-layout--float">
         <div className="pin-layout__main pin-layout__main--full">{design}</div>
-        <FloatCard id="resources" title="Interactive Resources" icon={ResIcon} tone="navy" start={{ x: 24, y: 90 }} initialOpen>
+        <FloatCard id="resources" title={t("panel.resources")} icon={ResIcon} tone="navy" start={{ x: 24, y: 90 }} initialOpen>
           <div className="pin-panel__content">{resources}</div>
         </FloatCard>
-        <FloatCard id="assistant" title="Research Assistant" icon={AsstIcon} tone="green" start={{ x: null, y: 90 }} initialOpen>
+        <FloatCard id="assistant" title={t("panel.assistant")} icon={AsstIcon} tone="green" start={{ x: null, y: 90 }} initialOpen>
           {assistant}
         </FloatCard>
       </div>
@@ -137,7 +137,7 @@ export default function SplitPanelLayout({
     <div className={`pin-layout${modeClass}${focusClass}`}>
       <div className={`pin-panel pin-panel--left${leftOpen ? " pin-panel--open" : ""}`}>
         <div className="pin-panel__inner">
-          <PanelHeader icon={ResIcon} title="Interactive Resources" tone="navy" onClose={onCloseLeft} />
+          <PanelHeader icon={ResIcon} title={t("panel.resources")} tone="navy" onClose={onCloseLeft} />
           <div className="pin-panel__content">{resources}</div>
         </div>
       </div>
@@ -146,7 +146,7 @@ export default function SplitPanelLayout({
 
       <div className={`pin-panel pin-panel--right${rightOpen ? " pin-panel--open" : ""}`}>
         <div className="pin-panel__inner">
-          <PanelHeader icon={AsstIcon} title="Research Assistant" tone="green"
+          <PanelHeader icon={AsstIcon} title={t("panel.assistant")} tone="green"
                        onClose={onCloseRight} onFocus={onToggleAssistantFocus} focused={assistantFocus} />
           {assistant}
         </div>
