@@ -122,15 +122,42 @@ const CF_FIELDS_ES = {
 };
 
 const CF_FIELDS_ZH = {
-  topic: { label: "研究主题", hint: "你的概念框架所围绕的核心主题" },
-  personal_goals: { label: "个人兴趣与目标", hint: "个人、实践和学术层面的目标" },
-  worldview: { label: "身份与立场", hint: "你的世界观以及你开展研究的立场" },
-  topics: { label: "主题式文献研究", hint: "文献综述中最多 5 个研究领域", placeholder: "每行一个主题（最多 5 个）" },
-  frameworks: { label: "理论框架", hint: "最多 5 个框架及其作者", placeholder: "每行一个框架（最多 5 个）" },
-  gaps: { label: "发现的研究空白", hint: "文献中还缺少什么？" },
-  problem_statement: { label: "问题陈述", hint: "你的研究要解决的问题" },
-  research_questions: { label: "研究问题", hint: "引导你研究的问题" },
-  research_design: { label: "研究设计", hint: "用于回答研究问题的设计" },
+  topic: {
+    label: "研究主题", hint: "你的概念框架所围绕的核心主题",
+    help: "用一个短语写出你的研究主题。它位于概念框架的中心：其他一切（你的目标、文献、空白、问题）都与它相连。",
+  },
+  personal_goals: {
+    label: "个人兴趣与目标", hint: "个人、实践和学术层面的目标",
+    help: "这项研究为什么对你重要？总结你的个人、实践和学术目标：它们影响你设计中的每一个决定，属于框架的起点。",
+  },
+  worldview: {
+    label: "身份与立场", hint: "你的世界观以及你开展研究的立场",
+    help: "描述你的立场和世界观（例如：建构主义、后实证主义、变革性、实用主义），以及你的身份与研究的关系。",
+  },
+  topics: {
+    label: "主题式文献研究", hint: "文献综述中最多 5 个研究领域", placeholder: "每行一个主题（最多 5 个）",
+    help: "哪些主题式文献研究领域为你的研究提供依据？最多列出五个：每个都会作为独立的板块出现在框架中。",
+  },
+  frameworks: {
+    label: "理论框架", hint: "最多 5 个框架及其作者", placeholder: "每行一个框架（最多 5 个）",
+    help: "哪些理论框架为你的研究奠定基础？尽量注明作者和年份（例如：实践共同体 - Wenger, 1998）。最多列出五个。",
+  },
+  gaps: {
+    label: "发现的研究空白", hint: "文献中还缺少什么？",
+    help: "你的文献综述揭示了哪个或哪些空白？空白正是你的研究将帮助填补的内容。",
+  },
+  problem_statement: {
+    label: "问题陈述", hint: "你的研究要解决的问题",
+    help: "写出从空白中浮现的问题：你的研究要解决的具体问题，以及它对谁重要。",
+  },
+  research_questions: {
+    label: "研究问题", hint: "引导你研究的问题",
+    help: "写出将引导你研究的研究问题（定量研究则写目标和假设）。",
+  },
+  research_design: {
+    label: "研究设计", hint: "用于回答研究问题的设计",
+    help: "你将用哪种研究设计来回答你的研究问题？例如：个案研究、现象学、实验、聚敛式平行混合研究方法。",
+  },
 };
 
 // Per-language field overlays; English (or any missing language) uses the base fields.
