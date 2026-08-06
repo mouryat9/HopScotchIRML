@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { API } from "./api";
-import { useLang } from "./i18n.jsx";
+import { useLang, dateLocale } from "./i18n.jsx";
 
 const STEP_COLORS = [
   "#2B5EA7", "#E8618C", "#D94040", "#1A8A7D", "#B0A47A",
@@ -84,7 +84,7 @@ export default function SessionHistoryPanel({
   function formatDate(iso) {
     if (!iso) return t("panel.unknownDate");
     try {
-      return new Date(iso).toLocaleDateString(lang === "es" ? "es" : "en-US", {
+      return new Date(iso).toLocaleDateString(dateLocale(lang), {
         month: "short",
         day: "numeric",
         year: "numeric",

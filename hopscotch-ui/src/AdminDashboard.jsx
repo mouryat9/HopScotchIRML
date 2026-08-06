@@ -8,7 +8,7 @@ import UserLocationMap from "./UserLocationMap";
 import StudentDesignView from "./StudentDesignView";
 import ProfileMenu from "./ProfileMenu";
 import SettingsModal from "./SettingsModal";
-import { useLang } from "./i18n.jsx";
+import { useLang, LANGS, LOCALE_TAGS } from "./i18n.jsx";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend, LineChart, Line, AreaChart, Area, ComposedChart,
@@ -85,7 +85,7 @@ function timeAgo(dateStr, t, lang) {
   if (hrs < 24) return t("time.hAgo", { n: hrs });
   const days = Math.floor(hrs / 24);
   if (days < 7) return t("time.dAgo", { n: days });
-  return new Date(dateStr).toLocaleDateString(lang === "es" ? "es-ES" : "en-US");
+  return new Date(dateStr).toLocaleDateString(LOCALE_TAGS[lang] || "en-US");
 }
 
 function formatUptime(seconds) {
@@ -101,7 +101,7 @@ export default function AdminDashboard() {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { lang, t } = useLang();
-  const dateLocale = lang === "es" ? "es-ES" : "en-US";
+  const dateLocale = LOCALE_TAGS[lang] || "en-US";
   const ROLE_LABELS = roleLabels(t);
   const STEP_LABELS = stepLabels(t);
   const dark = theme === "dark";
@@ -2001,11 +2001,15 @@ export default function AdminDashboard() {
                 <span className="ad-glossary__count">
                   {t(glossaryTerms.length === 1 ? "ad.glossary.countOne" : "ad.glossary.count", { n: glossaryTerms.length })}
                   {(() => {
-                    const missing = glossaryTerms.filter((g) => !g.has_es).length;
-                    return missing > 0 ? ` · ${t("ad.glossary.missingEs", { n: missing })}` : "";
+                    const missingEs = glossaryTerms.filter((g) => !g.has_es).length;
+                    const missingZh = glossaryTerms.filter((g) => !g.has_zh).length;
+                    let extra = "";
+                    if (missingEs > 0) extra += ` · ${t("ad.glossary.missingEs", { n: missingEs })}`;
+                    if (missingZh > 0) extra += ` · ${t("ad.glossary.missingZh", { n: missingZh })}`;
+                    return extra;
                   })()}
                 </span>
-                {glossaryTerms.some((g) => !g.has_es) && (
+                {glossaryTerms.some((g) => !g.has_es || !g.has_zh) && (
                   <button className="td-btn td-btn--ghost td-btn--sm" onClick={handleTranslateMissing}>
                     {t("ad.glossary.translateBtn")}
                   </button>
@@ -2067,6 +2071,7 @@ export default function AdminDashboard() {
                         <div className="ad-glossary__term">
                           {g.term}
                           {!g.has_es && <span className="ad-glossary__noes" title={t("ad.glossary.esPendingTitle")}>{t("ad.glossary.esPending")}</span>}
+                          {!g.has_zh && <span className="ad-glossary__noes" title={t("ad.glossary.zhPendingTitle")}>{t("ad.glossary.zhPending")}</span>}
                         </div>
                         <div className="ad-glossary__def">{g.def}</div>
                         {g.steps && g.steps.length > 0 && (
@@ -2202,7 +2207,7 @@ export default function AdminDashboard() {
                   value={stepResLang}
                   onChange={(e) => setStepResLang(e.target.value)}
                 >
-                  {[["en", "English"], ["es", "Español"]].map(([id, label]) => {
+                  {LANGS.map(({ id, label }) => {
                     const filled = Object.values(stepRes?.[id] || {}).reduce(
                       (n, lvl) => n + Object.values(lvl || {}).filter((e) => e?.video_url || e?.interactive_url).length,
                       0
@@ -2242,7 +2247,7 @@ export default function AdminDashboard() {
                     const step = i + 1;
                     const e = stepRes[stepResLang]?.[stepResLevel]?.[step] || {};
                     const en = stepRes.en?.[stepResLevel]?.[step] || {};
-                    const isEs = stepResLang === "es";
+                    const isOverlay = stepResLang !== "en";
                     const key = `${stepResLang}:${stepResLevel}:${step}`;
                     return (
                       <div className="ad-stepres__row" key={key}>
@@ -2256,7 +2261,7 @@ export default function AdminDashboard() {
                             <input
                               value={e.video_url || ""}
                               onChange={(ev) => setStepField(stepResLang, stepResLevel, step, "video_url", ev.target.value)}
-                              placeholder={isEs && en.video_url ? t("ad.stepres.blankEnVideo") : t("ad.stepres.videoPh")}
+                              placeholder={isOverlay && en.video_url ? t("ad.stepres.blankEnVideo") : t("ad.stepres.videoPh")}
                             />
                           </label>
                           <label className="ad-stepres__field">
@@ -2264,7 +2269,7 @@ export default function AdminDashboard() {
                             <input
                               value={e.interactive_url || ""}
                               onChange={(ev) => setStepField(stepResLang, stepResLevel, step, "interactive_url", ev.target.value)}
-                              placeholder={isEs && en.interactive_url ? t("ad.stepres.blankEnInteractive") : t("ad.stepres.interactivePh")}
+                              placeholder={isOverlay && en.interactive_url ? t("ad.stepres.blankEnInteractive") : t("ad.stepres.interactivePh")}
                             />
                           </label>
                         </div>
@@ -2434,7 +2439,7 @@ function SortTh({ label, col, sort, onSort }) {
 
 function ClassDetailView({ detail: c, onViewSession, onEdit, onAddStudents, onResetPw, onRemoveStudent }) {
   const { lang, t } = useLang();
-  const dateLocale = lang === "es" ? "es-ES" : "en-US";
+  const dateLocale = LOCALE_TAGS[lang] || "en-US";
   const [showPw, setShowPw] = useState(false);
   return (
     <div className="ad-user-detail">
@@ -2729,7 +2734,7 @@ function Meter({ label, pct, text }) {
 
 function UserDetailView({ detail, onViewSession }) {
   const { lang, t } = useLang();
-  const dateLocale = lang === "es" ? "es-ES" : "en-US";
+  const dateLocale = LOCALE_TAGS[lang] || "en-US";
   const ROLE_LABELS = roleLabels(t);
   const { user, sessions, logins } = detail;
   return (

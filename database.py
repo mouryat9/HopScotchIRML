@@ -804,19 +804,24 @@ def get_user_detail(user_id: str) -> Optional[Dict]:
 
 # --------------- Glossary CRUD ---------------
 
+# Languages served as stored-translation overlays on the English glossary
+GLOSSARY_LANGS = ("es", "zh")
+
+
 def _glossary_public(doc: Dict, lang: str = "en") -> Dict:
-    """Shape a glossary doc for API responses. For Spanish, serve the stored
-    translation and fall back to English per field while one is pending."""
+    """Shape a glossary doc for API responses. For overlay languages, serve the
+    stored translation and fall back to English per field while one is pending."""
     out = {
         "id": str(doc["_id"]),
         "term": doc.get("term", ""),
         "def": doc.get("def", ""),
         "steps": doc.get("steps", []),
-        "has_es": bool(doc.get("term_es") and doc.get("def_es")),
     }
-    if lang == "es":
-        out["term"] = doc.get("term_es") or out["term"]
-        out["def"] = doc.get("def_es") or out["def"]
+    for lg in GLOSSARY_LANGS:
+        out[f"has_{lg}"] = bool(doc.get(f"term_{lg}") and doc.get(f"def_{lg}"))
+    if lang in GLOSSARY_LANGS:
+        out["term"] = doc.get(f"term_{lang}") or out["term"]
+        out["def"] = doc.get(f"def_{lang}") or out["def"]
     return out
 
 
@@ -829,15 +834,17 @@ def get_all_glossary_terms(lang: str = "en") -> List[Dict]:
     return terms
 
 
-def set_glossary_translation(term_id: str, term_es: str, def_es: str) -> bool:
+def set_glossary_translation(term_id: str, term_t: str, def_t: str, lang: str = "es") -> bool:
     from bson import ObjectId
+    if lang not in GLOSSARY_LANGS:
+        return False
     try:
         res = glossary_col.update_one(
             {"_id": ObjectId(term_id)},
             {"$set": {
-                "term_es": (term_es or "").strip(),
-                "def_es": (def_es or "").strip(),
-                "translated_at": datetime.utcnow().isoformat() + "Z",
+                f"term_{lang}": (term_t or "").strip(),
+                f"def_{lang}": (def_t or "").strip(),
+                f"translated_at_{lang}": datetime.utcnow().isoformat() + "Z",
             }},
         )
         return res.matched_count > 0
@@ -845,10 +852,12 @@ def set_glossary_translation(term_id: str, term_es: str, def_es: str) -> bool:
         return False
 
 
-def get_glossary_ids_missing_es() -> List[str]:
-    """Ids of terms with no Spanish translation yet."""
+def get_glossary_ids_missing(lang: str = "es") -> List[str]:
+    """Ids of terms with no stored translation for the given language yet."""
+    if lang not in GLOSSARY_LANGS:
+        return []
     cursor = glossary_col.find(
-        {"$or": [{"term_es": {"$in": [None, ""]}}, {"def_es": {"$in": [None, ""]}}]},
+        {"$or": [{f"term_{lang}": {"$in": [None, ""]}}, {f"def_{lang}": {"$in": [None, ""]}}]},
         {"_id": 1},
     )
     return [str(d["_id"]) for d in cursor]
@@ -889,11 +898,12 @@ def update_glossary_term(term_id: str, fields: Dict[str, Any]) -> bool:
         updates["steps"] = fields["steps"]
     if not updates:
         return False
-    # English text changed → the stored Spanish translation is stale; clear it
-    # so readers fall back to English until the re-translation lands.
+    # English text changed → every stored translation is stale; clear them all
+    # so readers fall back to English until the re-translations land.
     if "term" in updates or "def" in updates:
-        updates["term_es"] = ""
-        updates["def_es"] = ""
+        for lg in GLOSSARY_LANGS:
+            updates[f"term_{lg}"] = ""
+            updates[f"def_{lg}"] = ""
     updates["updated_at"] = datetime.utcnow().isoformat() + "Z"
     try:
         res = glossary_col.update_one({"_id": ObjectId(term_id)}, {"$set": updates})
@@ -934,7 +944,7 @@ def seed_glossary_if_empty(terms: List[Dict]) -> int:
 # --------------- Step resources (student Resources panel) ---------------
 
 STEP_LEVELS = ("high_school", "higher_ed")
-STEP_LANGS = ("en", "es")
+STEP_LANGS = ("en", "es", "zh")
 
 
 def get_step_resources(lang: str = "en") -> Dict[str, Dict[str, Dict[str, str]]]:

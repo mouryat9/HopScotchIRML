@@ -69,7 +69,7 @@ from database import (
     # Glossary
     get_all_glossary_terms, count_glossary_terms, create_glossary_term,
     update_glossary_term, delete_glossary_term, seed_glossary_if_empty,
-    set_glossary_translation, get_glossary_ids_missing_es, get_glossary_term_by_id,
+    set_glossary_translation, get_glossary_ids_missing, get_glossary_term_by_id,
     # Step resources
     get_step_resources, get_step_resources_all, upsert_step_resource,
     seed_step_resources_if_empty,
@@ -81,6 +81,8 @@ from database import (
 ROOT = Path(__file__).parent
 PATHS_PATH = ROOT / "server" / "config" / "paths" / "research_paths.json"
 PATHS_ES_PATH = ROOT / "server" / "config" / "paths" / "research_paths.es.json"
+PATHS_ZH_PATH = ROOT / "server" / "config" / "paths" / "research_paths.zh.json"
+PATHS_OVERLAY_FILES = {"es": PATHS_ES_PATH, "zh": PATHS_ZH_PATH}
 TEMPLATE_DIR = ROOT / "server" / "templates"
 
 # -------------------------------------------------
@@ -172,27 +174,26 @@ def load_paths_config() -> Dict[str, Any]:
     return _paths_config
 
 
-_paths_config_es = None
+_paths_overlays: Dict[str, Dict[str, Any]] = {}
 
-def load_paths_config_es() -> Dict[str, Any]:
-    """Spanish overlay for student-visible step-config strings (optional file)."""
-    global _paths_config_es
-    if _paths_config_es is None:
+def load_paths_overlay(lang: str) -> Dict[str, Any]:
+    """Localized overlay for student-visible step-config strings (optional file)."""
+    if lang not in _paths_overlays:
         try:
-            with open(PATHS_ES_PATH, "r", encoding="utf-8") as f:
-                _paths_config_es = json.load(f)
+            with open(PATHS_OVERLAY_FILES[lang], "r", encoding="utf-8") as f:
+                _paths_overlays[lang] = json.load(f)
         except Exception:
-            _paths_config_es = {}
-    return _paths_config_es
+            _paths_overlays[lang] = {}
+    return _paths_overlays[lang]
 
 
 def _localize_step_cfg(path_name: str, step_key: str, step_cfg: dict, lang: str) -> dict:
-    """Merge the Spanish overlay over a step config. Overlay keys replace the
+    """Merge a language overlay over a step config. Overlay keys replace the
     English ones wholesale (arrays keep the same ids); anything untranslated
     falls through to English. llm_guidance is never overlaid."""
-    if lang != "es" or not step_cfg:
+    if lang not in PATHS_OVERLAY_FILES or not step_cfg:
         return step_cfg
-    ov = (load_paths_config_es().get("paths", {}).get(path_name, {})
+    ov = (load_paths_overlay(lang).get("paths", {}).get(path_name, {})
           .get("steps", {}).get(step_key) or {})
     return {**step_cfg, **ov} if ov else step_cfg
 
@@ -973,6 +974,14 @@ def build_ollama_payload(worldview_profile, step_context, user_msg, passages,
             "entirely in Spanish, with a warm academic tone (use 'cosmovisión' for "
             "worldview). Keep methodology terminology accurate in Spanish."
         )
+    elif language == "zh":
+        system_msg += (
+            "\n\nLANGUAGE: The student uses Hopscotch in Chinese. ALWAYS respond "
+            "entirely in Simplified Chinese (简体中文), with a warm academic tone. "
+            "Use standard research-methods terminology: 定量研究 for quantitative "
+            "research, 定性研究 for qualitative research, 混合研究方法 for mixed "
+            "methods, 世界观 for worldview."
+        )
 
     messages = [
         {"role": "system", "content": system_msg},
@@ -1198,7 +1207,7 @@ class LanguageReq(BaseModel):
     language: str
 
 
-SUPPORTED_LANGUAGES = {"en", "es"}
+SUPPORTED_LANGUAGES = {"en", "es", "zh"}
 
 
 @app.post("/auth/language")
@@ -2234,9 +2243,27 @@ _SAFETY_REFUSAL_ES = (
     "y ética — y con gusto te ayudaré a diseñar ese estudio."
 )
 
+_AI_OFF_MESSAGE_ZH = (
+    "你的老师目前为班级关闭了 AI 助手，希望大家先自己完成研究设计。"
+    "你可以继续在“我的研究设计”面板中作答，内容会正常保存——"
+    "之后老师可能会在合适的时候重新开启助手。"
+)
 
-def _canned(user: dict, en_text: str, es_text: str) -> str:
-    return es_text if (user or {}).get("language") == "es" else en_text
+_SAFETY_REFUSAL_ZH = (
+    "我无法帮助处理这个请求。Hopscotch 是一个学习研究方法的空间，"
+    "我在这里支持安全、合乎伦理的学术工作。如果这与你真实的研究兴趣有关，"
+    "请试着换个角度：思考如何以负责任、合乎伦理的方式研究这个主题——"
+    "我很乐意帮你设计这样的研究。"
+)
+
+
+def _canned(user: dict, en_text: str, es_text: str, zh_text: str = None) -> str:
+    lang = (user or {}).get("language")
+    if lang == "es":
+        return es_text
+    if lang == "zh" and zh_text:
+        return zh_text
+    return en_text
 
 
 
@@ -2546,7 +2573,7 @@ def chat_send(req: ChatSendReq = Body(...), user: dict = Depends(get_current_use
 
     # Teacher-controlled mode: AI assistant may be turned off for this student's class.
     if not _student_ai_enabled(user):
-        history.append(ChatTurn(role="assistant", content=_canned(user, _AI_OFF_MESSAGE, _AI_OFF_MESSAGE_ES), step=req.active_step))
+        history.append(ChatTurn(role="assistant", content=_canned(user, _AI_OFF_MESSAGE, _AI_OFF_MESSAGE_ES, _AI_OFF_MESSAGE_ZH), step=req.active_step))
         _persist_session(sess)
         return ChatHistoryResp(session_id=req.session_id, history=history)
 
@@ -2561,7 +2588,7 @@ def chat_send(req: ChatSendReq = Body(...), user: dict = Depends(get_current_use
     # Safety gate: refuse harmful/unethical requests (Llama Guard 3, local).
     is_safe, _cats = _moderate_input(user_msg)
     if not is_safe:
-        history.append(ChatTurn(role="assistant", content=_canned(user, _SAFETY_REFUSAL, _SAFETY_REFUSAL_ES), step=req.active_step))
+        history.append(ChatTurn(role="assistant", content=_canned(user, _SAFETY_REFUSAL, _SAFETY_REFUSAL_ES, _SAFETY_REFUSAL_ZH), step=req.active_step))
         _persist_session(sess)
         return ChatHistoryResp(session_id=req.session_id, history=history)
 
@@ -2611,9 +2638,9 @@ def chat_send_stream(req: ChatSendReq = Body(...), user: dict = Depends(get_curr
     if not _student_ai_enabled(user):
         def _ai_off_stream():
             try:
-                yield _canned(user, _AI_OFF_MESSAGE, _AI_OFF_MESSAGE_ES)
+                yield _canned(user, _AI_OFF_MESSAGE, _AI_OFF_MESSAGE_ES, _AI_OFF_MESSAGE_ZH)
             finally:
-                history.append(ChatTurn(role="assistant", content=_canned(user, _AI_OFF_MESSAGE, _AI_OFF_MESSAGE_ES), step=req.active_step))
+                history.append(ChatTurn(role="assistant", content=_canned(user, _AI_OFF_MESSAGE, _AI_OFF_MESSAGE_ES, _AI_OFF_MESSAGE_ZH), step=req.active_step))
                 _persist_session(sess)
         return StreamingResponse(_ai_off_stream(), media_type="text/plain")
 
@@ -2638,9 +2665,9 @@ def chat_send_stream(req: ChatSendReq = Body(...), user: dict = Depends(get_curr
     if not is_safe:
         def _refusal_stream():
             try:
-                yield _canned(user, _SAFETY_REFUSAL, _SAFETY_REFUSAL_ES)
+                yield _canned(user, _SAFETY_REFUSAL, _SAFETY_REFUSAL_ES, _SAFETY_REFUSAL_ZH)
             finally:
-                history.append(ChatTurn(role="assistant", content=_canned(user, _SAFETY_REFUSAL, _SAFETY_REFUSAL_ES), step=req.active_step))
+                history.append(ChatTurn(role="assistant", content=_canned(user, _SAFETY_REFUSAL, _SAFETY_REFUSAL_ES, _SAFETY_REFUSAL_ZH), step=req.active_step))
                 _persist_session(sess)
         return StreamingResponse(_refusal_stream(), media_type="text/plain")
 
@@ -2882,35 +2909,54 @@ def export_research_design_pdf(
         # layout (Steps 5-9 will simply read "Not yet completed").
         template_name = "research_design_qualitative.html"
 
-    # Spanish students get the Spanish template (falls back to English)
-    if (pdf_user or {}).get("language") == "es":
-        es_name = template_name.replace(".html", ".es.html")
-        if (TEMPLATE_DIR / es_name).exists():
-            template_name = es_name
+    # Localized template for the session owner's language (falls back to English)
+    pdf_lang = (pdf_user or {}).get("language")
+    if pdf_lang and pdf_lang != "en":
+        loc_name = template_name.replace(".html", f".{pdf_lang}.html")
+        if (TEMPLATE_DIR / loc_name).exists():
+            template_name = loc_name
 
     for n in (5, 6, 7, 8, 9):
         template_data[f"step{n}"] = step_text(n)
 
-    # Localize the placeholder values on the Spanish template
-    if template_name.endswith(".es.html"):
+    # Localize the placeholder values on a localized template
+    MONTHS_ES = ["enero", "febrero", "marzo", "abril", "mayo", "junio",
+                 "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"]
+    PDF_L10N = {
+        "es": {
+            "not_completed": "Aún no completado",
+            "not_specified": "No especificado",
+            "worldviews": {
+                "positivist": "Positivista", "post_positivist": "Pospositivista",
+                "constructivist": "Constructivista", "transformative": "Transformativa",
+                "pragmatist": "Pragmatista",
+            },
+            "date": lambda now: f"{now.day} de {MONTHS_ES[now.month - 1]} de {now.year}",
+        },
+        "zh": {
+            "not_completed": "尚未完成",
+            "not_specified": "未指定",
+            "worldviews": {
+                "positivist": "实证主义", "post_positivist": "后实证主义",
+                "constructivist": "建构主义", "transformative": "变革性",
+                "pragmatist": "实用主义",
+            },
+            "date": lambda now: f"{now.year}年{now.month}月{now.day}日",
+        },
+    }
+    tpl_lang = next((lg for lg in PDF_L10N if template_name.endswith(f".{lg}.html")), None)
+    if tpl_lang:
+        l10n = PDF_L10N[tpl_lang]
         for k, v in list(template_data.items()):
             if v == "Not yet completed":
-                template_data[k] = "Aún no completado"
+                template_data[k] = l10n["not_completed"]
             elif v == "Not specified":
-                template_data[k] = "No especificado"
-        WORLDVIEW_ES = {
-            "positivist": "Positivista", "post_positivist": "Pospositivista",
-            "constructivist": "Constructivista", "transformative": "Transformativa",
-            "pragmatist": "Pragmatista",
-        }
+                template_data[k] = l10n["not_specified"]
         wv_raw = str(template_data.get("step1", "")).strip()
         wv_key = wv_raw.lower().replace(" ", "_").replace("-", "_")
-        if wv_key in WORLDVIEW_ES:
-            template_data["step1"] = WORLDVIEW_ES[wv_key]
-        MONTHS_ES = ["enero", "febrero", "marzo", "abril", "mayo", "junio",
-                     "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"]
-        now = datetime.now()
-        template_data["date"] = f"{now.day} de {MONTHS_ES[now.month - 1]} de {now.year}"
+        if wv_key in l10n["worldviews"]:
+            template_data["step1"] = l10n["worldviews"][wv_key]
+        template_data["date"] = l10n["date"](datetime.now())
 
     # Load and render the appropriate HTML template
     template_path = TEMPLATE_DIR / template_name
@@ -3948,19 +3994,23 @@ def public_glossary(lang: Optional[str] = Query(None)):
     return {"terms": get_all_glossary_terms(lang), "lang": lang}
 
 
-def _translate_glossary_term(term: str, definition: str) -> Optional[dict]:
-    """One-shot LLM translation of a glossary entry into Spanish. Returns
-    {'term_es', 'def_es'} or None if both backends fail."""
+GLOSSARY_LANG_NAMES = {"es": "Spanish", "zh": "Simplified Chinese"}
+
+
+def _translate_glossary_term(term: str, definition: str, lang: str = "es") -> Optional[dict]:
+    """One-shot LLM translation of a glossary entry into the target language.
+    Returns {'term', 'def'} or None if both backends fail."""
+    lang_name = GLOSSARY_LANG_NAMES.get(lang, "Spanish")
     prompt = (
-        "You translate research-methods glossary entries from English to Spanish "
-        "for high-school and university students. Use the standard Spanish term "
+        f"You translate research-methods glossary entries from English to {lang_name} "
+        f"for high-school and university students. Use the standard {lang_name} term "
         "used in research-methodology courses (not a literal word-for-word "
         "rendering). Keep the definition's plain, student-friendly tone. If the "
         "English term includes a parenthetical, keep an equivalent parenthetical.\n\n"
         f"TERM: {term}\n"
         f"DEFINITION: {definition}\n\n"
         "Respond with ONLY valid JSON, no markdown, no explanation:\n"
-        '{"term_es": "", "def_es": ""}'
+        '{"term": "", "def": ""}'
     )
     messages = [{"role": "user", "content": prompt}]
     raw = None
@@ -3978,28 +4028,32 @@ def _translate_glossary_term(term: str, definition: str) -> Optional[dict]:
     try:
         match = re.search(r'\{[\s\S]*\}', raw)
         data = _json.loads(match.group()) if match else None
-        if data and (data.get("term_es") or "").strip() and (data.get("def_es") or "").strip():
-            return {"term_es": data["term_es"].strip(), "def_es": data["def_es"].strip()}
+        if data and (data.get("term") or "").strip() and (data.get("def") or "").strip():
+            return {"term": data["term"].strip(), "def": data["def"].strip()}
     except Exception as e:
         logger.warning("Glossary translation parse failed for %r: %s", term, e)
     return None
 
 
-def _translate_glossary_ids(term_ids: List[str]):
-    """Background worker: translate the given glossary terms into Spanish.
-    Skips terms already translated (or deleted) by the time it runs."""
+def _translate_glossary_ids(term_ids: List[str], langs: tuple = ("es", "zh")):
+    """Background worker: translate the given glossary terms into every overlay
+    language that still lacks one. Skips terms already translated (or deleted)
+    by the time it runs."""
     done = failed = 0
     for tid in term_ids:
         doc = get_glossary_term_by_id(tid)
-        if not doc or (doc.get("term_es") and doc.get("def_es")):
+        if not doc:
             continue
-        result = _translate_glossary_term(doc.get("term", ""), doc.get("def", ""))
-        if result and set_glossary_translation(tid, result["term_es"], result["def_es"]):
-            done += 1
-        else:
-            failed += 1
+        for lg in langs:
+            if doc.get(f"term_{lg}") and doc.get(f"def_{lg}"):
+                continue
+            result = _translate_glossary_term(doc.get("term", ""), doc.get("def", ""), lg)
+            if result and set_glossary_translation(tid, result["term"], result["def"], lg):
+                done += 1
+            else:
+                failed += 1
     if done or failed:
-        logger.info("[glossary] Auto-translated %d term(s) to Spanish (%d failed)", done, failed)
+        logger.info("[glossary] Auto-translated %d entry/entries (%d failed)", done, failed)
 
 
 class GlossaryTermReq(BaseModel):
@@ -4015,6 +4069,7 @@ def admin_list_glossary(admin: dict = Depends(require_admin)):
         "terms": terms,
         "total": count_glossary_terms(),
         "missing_es": sum(1 for t in terms if not t.get("has_es")),
+        "missing_zh": sum(1 for t in terms if not t.get("has_zh")),
     }
 
 
@@ -4061,8 +4116,8 @@ def admin_update_glossary(term_id: str, req: GlossaryTermReq, background_tasks: 
 @app.post("/admin/glossary/translate-missing")
 def admin_glossary_translate_missing(background_tasks: BackgroundTasks,
                                      admin: dict = Depends(require_admin)):
-    """Queue Spanish translations for every glossary term that lacks one."""
-    ids = get_glossary_ids_missing_es()
+    """Queue translations for every glossary term missing any overlay language."""
+    ids = sorted(set(get_glossary_ids_missing("es")) | set(get_glossary_ids_missing("zh")))
     if ids:
         background_tasks.add_task(_translate_glossary_ids, ids)
     record_admin_action(

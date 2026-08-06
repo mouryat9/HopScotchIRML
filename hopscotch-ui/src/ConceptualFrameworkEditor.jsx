@@ -94,6 +94,21 @@ const CF_FIELDS_ES = {
   research_design: { label: "Diseño de investigación", hint: "El diseño que responderá tu(s) pregunta(s)" },
 };
 
+const CF_FIELDS_ZH = {
+  topic: { label: "研究主题", hint: "你的概念框架所围绕的核心主题" },
+  personal_goals: { label: "个人兴趣与目标", hint: "个人、实践和学术层面的目标" },
+  worldview: { label: "身份与立场", hint: "你的世界观以及你开展研究的立场" },
+  topics: { label: "主题式文献研究", hint: "文献综述中最多 5 个研究领域", placeholder: "每行一个主题（最多 5 个）" },
+  frameworks: { label: "理论框架", hint: "最多 5 个框架及其作者", placeholder: "每行一个框架（最多 5 个）" },
+  gaps: { label: "发现的研究空白", hint: "文献中还缺少什么？" },
+  problem_statement: { label: "问题陈述", hint: "你的研究要解决的问题" },
+  research_questions: { label: "研究问题", hint: "引导你研究的问题" },
+  research_design: { label: "研究设计", hint: "用于回答研究问题的设计" },
+};
+
+// Per-language field overlays; English (or any missing language) uses the base fields.
+const CF_FIELDS_BY_LANG = { es: CF_FIELDS_ES, zh: CF_FIELDS_ZH };
+
 export default function ConceptualFrameworkEditor({ data, sessionId, onClose }) {
   const { t, lang } = useLang();
   const [d, setD] = useState(() => ({
@@ -318,7 +333,7 @@ export default function ConceptualFrameworkEditor({ data, sessionId, onClose }) 
           </div>
 
           {CF_FORM_FIELDS.map((f0, i) => {
-            const ov = lang === "es" ? (CF_FIELDS_ES[f0.key] || {}) : {};
+            const ov = (CF_FIELDS_BY_LANG[lang] || {})[f0.key] || {};
             const f = { ...f0, label: ov.label || f0.label, hint: ov.hint || f0.hint, placeholder: ov.placeholder || f0.placeholder };
             const val = formValue(f);
             const filled = val.trim();

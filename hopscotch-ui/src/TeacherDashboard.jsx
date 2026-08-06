@@ -6,7 +6,7 @@ import { API } from "./api";
 import StudentDesignView from "./StudentDesignView";
 import ProfileMenu from "./ProfileMenu";
 import SettingsModal from "./SettingsModal";
-import { useLang } from "./i18n.jsx";
+import { useLang, dateLocale } from "./i18n.jsx";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   Cell,
@@ -53,7 +53,7 @@ function timeAgo(dateStr, t, lang) {
   if (hrs < 24) return t("time.hAgo", { n: hrs });
   const days = Math.floor(hrs / 24);
   if (days < 7) return t("time.dAgo", { n: days });
-  return new Date(dateStr).toLocaleDateString(lang === "es" ? "es-ES" : "en-US");
+  return new Date(dateStr).toLocaleDateString(dateLocale(lang));
 }
 
 export default function TeacherDashboard({ onOpenDesigns }) {

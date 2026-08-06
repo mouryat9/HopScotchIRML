@@ -1,0 +1,219 @@
+{
+  "meta": {
+    "id": "hopscotch_paths_v1_zh",
+    "version": "1.0.0",
+    "description": "Simplified Chinese overlay for student-visible strings of steps 4-9. llm_guidance stays in English (model instructions); the chat language directive makes the assistant answer in Chinese."
+  },
+
+  "paths": {
+    "quantitative": {
+      "label": "定量研究",
+      "steps": {
+        "4": {
+          "title": "第 4 步：我将如何研究它？（定量研究设计）",
+          "directions": "第四步是选择一种与你的世界观和研究目标相一致的研究方法（定性、定量或混合），并根据你的技能和限制（如时间或资源）选择合适的研究设计。左侧的互动资源将引导你完成这一过程。",
+          "input_prompt": "在查看左侧的互动资源后，探索下面的选项，并与 AI 助手交流，以确定哪种研究方法和研究设计最适合你的研究。做出决定后，选择你的研究方法和研究设计，并根据你的世界观和研究主题说明你的选择理由。然后使用 AI 助手来解答你对研究方法或研究设计的疑问。",
+          "options": [
+            {"id": "descriptive", "label": "描述性非实验设计", "description": "描述某一总体或现象的特征。"},
+            {"id": "correlational", "label": "相关性设计", "description": "考察两个或多个变量之间的关系。"},
+            {"id": "pre_experimental", "label": "前实验设计", "description": "使用单一组别，控制条件有限。"},
+            {"id": "quasi_experimental", "label": "准实验设计", "description": "类似实验设计，但缺少随机分配。"},
+            {"id": "experimental", "label": "实验设计", "description": "使用随机分配和控制组来检验因果关系。"}
+          ]
+        },
+        "5": {
+          "title": "第 5 步：我的研究问题是什么？（假设）",
+          "directions": "第五步是提出一个与你的研究方法相一致的研究问题。左侧的互动资源将引导你完成这一过程。",
+          "input_prompt": "在查看左侧的互动资源后，输入你的研究问题，并使用 AI 助手来完善它。",
+          "fields": [
+            {"field_key": "research_aim", "label": "研究目的", "type": "textarea", "placeholder": "陈述你的研究目的..."},
+            {"field_key": "hypothesis", "label": "假设", "type": "textarea", "placeholder": "陈述你的可检验假设..."}
+          ]
+        },
+        "6": {
+          "title": "第 6 步：我将收集哪些数据？（定量数据收集）",
+          "directions": "第六步是制定数据收集计划，并选择与你的研究方法相一致、能帮助你回答研究问题的数据收集方法。左侧的互动资源将引导你完成这一过程。",
+          "input_prompt": "在查看左侧的互动资源后，描述你的数据收集计划，包括你的方法、参与者和抽样策略，并解释你做出每项选择的理由。然后使用 AI 助手帮助你完善计划。",
+          "fields": [
+            {"field_key": "collection_method", "label": "数据收集方法", "type": "multi_select", "placeholder": "选择所有适用项…", "options": [
+              {"id": "experiments", "label": "实验"},
+              {"id": "questionnaires", "label": "问卷"},
+              {"id": "surveys", "label": "调查"},
+              {"id": "systematic_observations", "label": "系统观察"},
+              {"id": "instrumental_measurements", "label": "仪器测量"},
+              {"id": "other", "label": "其他"}
+            ]},
+            {"field_key": "participants", "label": "参与者", "type": "textarea", "placeholder": "描述你研究的参与者（例如：他们是谁、有多少人、纳入/排除标准）..."},
+            {"field_key": "sampling_method", "label": "抽样方法", "type": "textarea", "placeholder": "你将使用什么抽样方法？（例如：随机抽样、分层抽样、便利抽样、目的抽样）..."}
+          ]
+        },
+        "7": {
+          "title": "第 7 步：我将如何分析数据？（定量数据分析）",
+          "directions": "第七步是制定数据分析计划，并选择与你的研究方法相一致的数据分析方法，帮助你回答研究问题。左侧的互动资源将引导你完成这一过程。",
+          "input_prompt": "在查看左侧的互动资源后，描述你的数据分析方法和分析计划，并解释你的理由。然后使用 AI 助手帮助你完善计划。",
+          "fields": [
+            {"field_key": "analysis_method", "label": "分析方法", "type": "select", "placeholder": "选择一种分析方法…", "options": [
+              {"id": "descriptive_stats", "label": "描述性统计"},
+              {"id": "inferential_stats", "label": "推断统计"},
+              {"id": "visualization", "label": "数据可视化"},
+              {"id": "other", "label": "其他"}
+            ]},
+            {"field_key": "analysis_notes", "label": "描述你的分析计划", "type": "textarea", "placeholder": "你将如何分析你的数据？你将使用哪些具体技术？"}
+          ]
+        },
+        "8": {
+          "title": "第 8 步：我将如何确保研究的可信度？（效度与信度）",
+          "directions": "第八步聚焦于你可以用来确保研究可信的各种策略。左侧的互动资源将引导你完成这一过程。",
+          "input_prompt": "在查看左侧的互动资源后，描述你将采取哪些步骤来确保你的研究是可信的。然后使用 AI 助手帮助你完善计划，并根据你的研究设计、数据收集和数据分析探索可用的策略。",
+          "options": [
+            {"id": "internal_validity", "label": "内部效度"},
+            {"id": "external_validity", "label": "外部效度"},
+            {"id": "generalizability", "label": "可推广性（通过抽样策略）"},
+            {"id": "construct_validity", "label": "构念效度"},
+            {"id": "content_validity", "label": "内容效度"}
+          ]
+        },
+        "9": {
+          "title": "第 9 步：我将如何遵守研究伦理？（诚信与伦理）",
+          "directions": "第九步聚焦于帮助你作为研究者保持安全并遵守伦理的各种策略。左侧的互动资源将引导你完成这一过程。",
+          "input_prompt": "在查看左侧的互动资源后，描述你将采取的具体步骤，以确保你在抽样、数据收集和数据分析等研究设计环节中做出必要的伦理考量。然后使用 AI 助手帮助你完善计划并探索更多策略。",
+          "fields": [
+            {"field_key": "involves_humans", "label": "你的研究是否涉及人类参与者？", "type": "select", "placeholder": "请选择…", "options": [
+              {"id": "yes", "label": "是"},
+              {"id": "no", "label": "否"}
+            ]},
+            {"field_key": "ethics_approach", "label": "伦理与诚信考量", "type": "multi_select", "placeholder": "选择所有适用项…", "options": [
+              {"id": "irb", "label": "IRB 审批（伦理审查委员会）"},
+              {"id": "respect_for_persons", "label": "尊重个人"},
+              {"id": "beneficence", "label": "行善原则"},
+              {"id": "justice", "label": "公正原则"},
+              {"id": "informed_consent", "label": "知情同意"},
+              {"id": "confidentiality", "label": "保密"},
+              {"id": "data_ethics", "label": "数据伦理"},
+              {"id": "academic_integrity", "label": "学术诚信"},
+              {"id": "other", "label": "其他"}
+            ]},
+            {"field_key": "ethics_notes", "label": "描述你的伦理计划", "type": "textarea", "placeholder": "你将如何确保你的研究符合伦理且安全？"}
+          ]
+        }
+      }
+    },
+
+    "qualitative": {
+      "label": "定性研究",
+      "steps": {
+        "4": {
+          "title": "第 4 步：我将如何研究它？（定性研究设计）",
+          "directions": "第四步是选择一种与你的世界观和研究目标相一致的研究方法（定性、定量或混合），并根据你的技能和限制（如时间或资源）选择合适的研究设计。左侧的互动资源将引导你完成这一过程。",
+          "input_prompt": "在查看左侧的互动资源后，探索下面的选项，并与 AI 助手交流，以确定哪种研究方法和研究设计最适合你的研究。做出决定后，选择你的研究方法和研究设计，并根据你的世界观和研究主题说明你的选择理由。然后使用 AI 助手来解答你对研究方法或研究设计的疑问。",
+          "options": [
+            {"id": "narrative", "label": "叙事研究", "description": "探索个体随时间推移的生活故事和亲身经历。"},
+            {"id": "phenomenology", "label": "现象学", "description": "研究人们对某一现象的亲历体验的本质。"},
+            {"id": "phenomenography", "label": "现象图析学", "description": "探索人们体验某一现象的不同方式。"},
+            {"id": "ethnography", "label": "民族志", "description": "通过长期沉浸和观察来研究文化群体。"},
+            {"id": "school_ethnography", "label": "学校民族志", "description": "专门应用于教育情境的民族志方法。"},
+            {"id": "grounded_theory", "label": "扎根理论", "description": "通过迭代分析从数据中系统地发展理论。"},
+            {"id": "case_study", "label": "个案研究", "description": "对一个有边界的个案或多个个案进行深入调查。"},
+            {"id": "action_research", "label": "行动研究", "description": "旨在通过反思改进实践的循环式探究。"},
+            {"id": "design_based_research", "label": "基于设计的研究", "description": "对教育干预进行迭代设计与研究。"}
+          ]
+        },
+        "5": {
+          "title": "第 5 步：我的研究问题是什么？（定性议题）",
+          "directions": "第五步是提出一个与你的研究方法相一致的研究问题。左侧的互动资源将引导你完成这一过程。",
+          "input_prompt": "在查看左侧的互动资源后，输入你的研究问题，并使用 AI 助手来完善它。",
+          "fields": [
+            {"field_key": "research_question", "label": "研究问题 / 核心议题", "type": "textarea", "placeholder": "陈述你的定性研究问题或核心议题..."}
+          ]
+        },
+        "6": {
+          "title": "第 6 步：我将收集哪些数据？（定性数据收集）",
+          "directions": "第六步是制定数据收集计划，并选择与你的研究方法相一致、能帮助你回答研究问题的数据收集方法。左侧的互动资源将引导你完成这一过程。",
+          "input_prompt": "在查看左侧的互动资源后，描述你的数据收集计划，包括你的方法、参与者和抽样策略，并解释你做出每项选择的理由。然后使用 AI 助手帮助你完善计划。",
+          "fields": [
+            {"field_key": "collection_method", "label": "数据收集方法", "type": "multi_select", "placeholder": "选择所有适用项…", "options": [
+              {"id": "interview", "label": "访谈"},
+              {"id": "field_notes", "label": "田野笔记"},
+              {"id": "document_analysis", "label": "文档分析"},
+              {"id": "images", "label": "图像"},
+              {"id": "focus_groups", "label": "焦点小组"},
+              {"id": "surveys_open", "label": "调查（开放式问题）"},
+              {"id": "observation_naturalistic", "label": "观察（自然情境）"},
+              {"id": "geo_narratives", "label": "地理叙事"},
+              {"id": "photo_elicitation", "label": "照片引谈"},
+              {"id": "performance", "label": "表演（口语表达、诗歌、涂鸦）"},
+              {"id": "other", "label": "其他"}
+            ]},
+            {"field_key": "participants", "label": "参与者", "type": "textarea", "placeholder": "描述你研究的参与者（例如：他们是谁、有多少人、选择标准）..."},
+            {"field_key": "sampling_method", "label": "抽样方法", "type": "textarea", "placeholder": "你将使用什么抽样方法？（例如：目的抽样、滚雪球抽样、标准抽样、最大变异抽样）..."}
+          ]
+        },
+        "7": {
+          "title": "第 7 步：我将如何分析数据？（定性数据分析）",
+          "directions": "第七步是制定数据分析计划，并选择与你的研究方法相一致的数据分析方法，帮助你回答研究问题。左侧的互动资源将引导你完成这一过程。",
+          "input_prompt": "在查看左侧的互动资源后，描述你的数据分析方法和分析计划，并解释你的理由。然后使用 AI 助手帮助你完善计划。",
+          "fields": [
+            {"field_key": "analysis_method", "label": "分析方法", "type": "select", "placeholder": "选择一种分析方法…", "options": [
+              {"id": "coding", "label": "编码（开放式、主轴式、选择式）"},
+              {"id": "memoing", "label": "备忘录撰写"},
+              {"id": "data_saturation", "label": "数据饱和"},
+              {"id": "content_analysis", "label": "内容分析（引文）"},
+              {"id": "thematic_analysis", "label": "主题分析"},
+              {"id": "triangulation", "label": "三角互证"},
+              {"id": "co_occurrence", "label": "共现分析（表格或桑基图）"},
+              {"id": "network_views", "label": "网络视图"},
+              {"id": "other", "label": "其他"}
+            ]},
+            {"field_key": "analysis_notes", "label": "描述你的分析计划", "type": "textarea", "placeholder": "你将如何分析你的数据？你将使用哪些具体技术？"}
+          ]
+        },
+        "8": {
+          "title": "第 8 步：我将如何确保研究的可信度？（定性研究标准）",
+          "directions": "第八步聚焦于你可以用来确保研究可信的各种策略。左侧的互动资源将引导你完成这一过程。",
+          "input_prompt": "在查看左侧的互动资源后，描述你将采取哪些步骤来确保你的研究是可信的。然后使用 AI 助手帮助你完善计划，并根据你的研究设计、数据收集和数据分析探索可用的策略。",
+          "options": [
+            {"id": "credibility", "label": "可信性"},
+            {"id": "transferability", "label": "可迁移性"},
+            {"id": "dependability", "label": "可靠性（一致性）"},
+            {"id": "confirmability", "label": "可确认性"}
+          ]
+        },
+        "9": {
+          "title": "第 9 步：我将如何遵守研究伦理？（诚信与伦理）",
+          "directions": "第九步聚焦于帮助你作为研究者保持安全并遵守伦理的各种策略。左侧的互动资源将引导你完成这一过程。",
+          "input_prompt": "在查看左侧的互动资源后，描述你将采取的具体步骤，以确保你在抽样、数据收集和数据分析等研究设计环节中做出必要的伦理考量。然后使用 AI 助手帮助你完善计划并探索更多策略。",
+          "fields": [
+            {"field_key": "involves_humans", "label": "你的研究是否涉及人类参与者？", "type": "select", "placeholder": "请选择…", "options": [
+              {"id": "yes", "label": "是"},
+              {"id": "no", "label": "否"}
+            ]},
+            {"field_key": "ethics_approach", "label": "伦理与诚信考量", "type": "multi_select", "placeholder": "选择所有适用项…", "options": [
+              {"id": "irb", "label": "IRB 审批（伦理审查委员会）"},
+              {"id": "respect_for_persons", "label": "尊重个人"},
+              {"id": "beneficence", "label": "行善原则"},
+              {"id": "justice", "label": "公正原则"},
+              {"id": "informed_consent", "label": "知情同意"},
+              {"id": "confidentiality", "label": "保密"},
+              {"id": "positionality", "label": "立场性与反思性"},
+              {"id": "data_ethics", "label": "数据伦理"},
+              {"id": "academic_integrity", "label": "学术诚信"},
+              {"id": "other", "label": "其他"}
+            ]},
+            {"field_key": "ethics_notes", "label": "描述你的伦理计划", "type": "textarea", "placeholder": "你将如何确保你的研究符合伦理且安全？"}
+          ]
+        }
+      }
+    },
+
+    "mixed": {
+      "label": "混合研究方法",
+      "steps": {
+        "4": {
+          "title": "第 4 步：我将如何研究它？（混合研究方法）",
+          "directions": "第四步是选择一种与你的世界观和研究目标相一致的研究方法（定性、定量或混合），并根据你的技能和限制（如时间或资源）选择合适的研究设计。左侧的互动资源将引导你完成这一过程。",
+          "input_prompt": "在查看左侧的互动资源后，探索下面的选项，并与 AI 助手交流，以确定哪种研究方法和研究设计最适合你的研究。做出决定后，选择你的研究方法和研究设计，并根据你的世界观和研究主题说明你的选择理由。然后使用 AI 助手来解答你对研究方法或研究设计的疑问。"
+        }
+      }
+    }
+  }
+}

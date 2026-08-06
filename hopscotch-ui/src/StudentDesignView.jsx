@@ -6,7 +6,7 @@ import { API } from "./api";
 import { notify } from "./Toast";
 import VisualDesignReadOnly from "./VisualDesignReadOnly";
 import ConceptualFrameworkReadOnly from "./ConceptualFrameworkReadOnly";
-import { useLang } from "./i18n.jsx";
+import { useLang, dateLocale } from "./i18n.jsx";
 
 const STEP_COLORS = [
   "#2B5EA7", "#E8618C", "#D94040", "#1A8A7D", "#B0A47A",
@@ -27,7 +27,7 @@ function timeAgo(dateStr, t, lang) {
   if (hrs < 24) return t("time.hAgo", { n: hrs });
   const days = Math.floor(hrs / 24);
   if (days < 7) return t("time.dAgo", { n: days });
-  return new Date(dateStr).toLocaleDateString(lang === "es" ? "es-ES" : "en-US");
+  return new Date(dateStr).toLocaleDateString(dateLocale(lang));
 }
 
 export default function StudentDesignView({ sessionId, studentName, className: classNameProp, onClose }) {

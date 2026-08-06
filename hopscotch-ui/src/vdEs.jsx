@@ -1,5 +1,6 @@
 // src/vdEs.jsx
 // Spanish overlay for the Visual Design editor forms + diagram layout labels.
+import { VD_ZH } from "./vdZh.jsx";
 // Merged over VD_FORMS at render time when the user works in Spanish. Field
 // "help" paragraphs intentionally fall back to English until translated.
 const N = {
@@ -199,8 +200,15 @@ const CONTEXT_TITLES = {
   phenomenography: "Contexto de tu estudio fenomenográfico", design_based_research: "Contexto y límites",
 };
 
+// Per-language overlay tables; English (or any missing language) returns the
+// form untouched. Each overlay ships the same-shaped tables from its own module.
+const VD_ES = { N, F, D, L, CONTEXT_TITLES, TITLE_TEXTS, intro };
+const VD_OVERLAYS = { es: VD_ES, zh: VD_ZH };
+
 export function localizeVdForm(form, designKey, lang) {
-  if (lang !== "es" || !form) return form;
+  const overlay = VD_OVERLAYS[lang];
+  if (!overlay || !form) return form;
+  const { N, F, D, L, CONTEXT_TITLES, TITLE_TEXTS, intro } = overlay;
   const name = N[designKey] || form.designName;
   const perDesign = D[designKey] || {};
   const fields = (form.fields || []).map((f) => {
