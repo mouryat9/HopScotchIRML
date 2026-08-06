@@ -8,6 +8,7 @@
 // uses (n.d.) with a retrieval date generated at render/print time - keep this
 // unless the tool gets a formal publication year.
 import React, { useState } from "react";
+import { useLang } from "./i18n.jsx";
 
 const AUTHORS =
   "Jorrín-Abellán, I. M., Kunuku, M. T., Noble-Healy, J., Dehbozorgi, N., Chang, M., Vásquez, A., Zhang, X., Koz, O., & González Suárez, R.";
@@ -37,6 +38,7 @@ async function copyText(text) {
 }
 
 export default function VDCitation() {
+  const { t } = useLang();
   const [copied, setCopied] = useState(null); // "ref" | "note" | null
   const date = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
 
@@ -55,14 +57,14 @@ export default function VDCitation() {
   return (
     <div className="vd-citation">
       <span className="vd-citation__ref">
-        <strong>Suggested citation:</strong> {AUTHORS} (n.d.). <em>Hopscotch 4-All</em> [Web application]. {PUBLISHER} Retrieved {date}, from {URL}
+        <strong>{t("cite.label")}</strong> {AUTHORS} (n.d.). <em>Hopscotch 4-All</em> [Web application]. {PUBLISHER} Retrieved {date}, from {URL}
       </span>
       <span className="vd-citation__actions">
         <button type="button" className="vd-citation__copy" onClick={() => doCopy("ref", reference)}>
-          {copied === "ref" ? "Copied ✓" : "Copy citation"}
+          {copied === "ref" ? t("cite.copied") : t("cite.copy")}
         </button>
         <button type="button" className="vd-citation__copy" onClick={() => doCopy("note", figureNote)}>
-          {copied === "note" ? "Copied ✓" : "Copy figure note"}
+          {copied === "note" ? t("cite.copied") : t("cite.copyNote")}
         </button>
       </span>
     </div>

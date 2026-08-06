@@ -6,6 +6,7 @@
 // Each design (narrative, phenomenology, ...) passes its own labels + colors.
 import React from "react";
 import VDCitation from "./VDCitation";
+import { useLang } from "./i18n.jsx";
 
 // Hexagon geometry from the PPTX (inches on a 10 x 7.5 slide, w=2.65 h=2.31)
 const HEX_W = 26.5; // % of width
@@ -72,6 +73,7 @@ function ContextFootball({ x, y, rot, color = "#999999", triangle = false, flip 
 }
 
 export default function VDTemplateHoneycomb({ layout, name, email, fields, upd, E, activeKey, onJumpToField, embedded = false }) {
+  const { t } = useLang();
   const jump = (key) => onJumpToField && onJumpToField(key);
 
   const hexes = ["informants", "other_documents", "data_gathering", "central_item", "strategies", "process_support", "question"];
@@ -87,7 +89,7 @@ export default function VDTemplateHoneycomb({ layout, name, email, fields, upd, 
       {/* Student identity (hidden when embedded in a mixed methods canvas) */}
       {!embedded && (
         <div className="vd-identity">
-          <div className="vd-identity__caption">Designed by</div>
+          <div className="vd-identity__caption">{t("vd.designedBy")}</div>
           <div className="vd-identity__name">{name}</div>
           <div className="vd-identity__email">{email}</div>
         </div>
@@ -107,7 +109,7 @@ export default function VDTemplateHoneycomb({ layout, name, email, fields, upd, 
             value={fields[rail.key]}
             onChange={(v) => upd(rail.key, v)}
             className="vd-context__text"
-            placeholder="Click to write…"
+            placeholder={t("vd.clickWrite")}
           />
         </div>
       ))}
@@ -122,7 +124,7 @@ export default function VDTemplateHoneycomb({ layout, name, email, fields, upd, 
           value={fields.context}
           onChange={(v) => upd("context", v)}
           className="vd-context__text"
-          placeholder="Describe the setting where your study will take place…"
+          placeholder={t("vd.clickWrite")}
         />
       </div>
       )}
@@ -171,7 +173,7 @@ export default function VDTemplateHoneycomb({ layout, name, email, fields, upd, 
                     value={fields[layout.centerExtra.key]}
                     onChange={(v) => upd(layout.centerExtra.key, v)}
                     className="vd-hex__text vd-hex__text--extra"
-                    placeholder="Click to write…"
+                    placeholder={t("vd.clickWrite")}
                   />
                 </>
               )}
@@ -187,7 +189,7 @@ export default function VDTemplateHoneycomb({ layout, name, email, fields, upd, 
                 value={fields[key]}
                 onChange={(v) => upd(key, v)}
                 className="vd-hex__text"
-                placeholder="Click to write…"
+                placeholder={t("vd.clickWrite")}
               />
             </div>
           </div>
@@ -202,7 +204,7 @@ export default function VDTemplateHoneycomb({ layout, name, email, fields, upd, 
             value={fields[layout.splitStrategies.key]}
             onChange={(v) => upd(layout.splitStrategies.key, v)}
             className="vd-minicases__text"
-            placeholder="Click to write…"
+            placeholder={t("vd.clickWrite")}
           />
         </div>
       )}
@@ -210,12 +212,12 @@ export default function VDTemplateHoneycomb({ layout, name, email, fields, upd, 
       {/* Minicases (inside the lower half of the Process Support hexagon) */}
       {layout.hasMinicases && (
         <div className={`vd-minicases${activeKey === "minicases" ? " vd-minicases--active" : ""}`}>
-          <div className="vd-minicases__label" onClick={() => jump("minicases")} title="Edit in the form">Minicases</div>
+          <div className="vd-minicases__label" onClick={() => jump("minicases")} title="Edit in the form">{t("tpl.minicases")}</div>
           <E
             value={fields.minicases}
             onChange={(v) => upd("minicases", v)}
             className="vd-minicases__text"
-            placeholder="Click to write…"
+            placeholder={t("vd.clickWrite")}
           />
         </div>
       )}
@@ -223,12 +225,12 @@ export default function VDTemplateHoneycomb({ layout, name, email, fields, upd, 
       {/* Topics (inside the lower half of the question hexagon) */}
       <div className={`vd-topics${activeKey === "topics" ? " vd-topics--active" : ""}`}>
         <div className="vd-topics__rule" />
-        <div className="vd-topics__label" onClick={() => jump("topics")} title="Edit in the form">Topics</div>
+        <div className="vd-topics__label" onClick={() => jump("topics")} title="Edit in the form">{t("tpl.topics")}</div>
         <E
           value={fields.topics}
           onChange={(v) => upd("topics", v)}
           className="vd-topics__text"
-          placeholder="One topic per line…"
+          placeholder={t("vd.clickWrite")}
         />
       </div>
 

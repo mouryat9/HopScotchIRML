@@ -7,6 +7,8 @@ import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
 import { API } from "./api";
 import { notify } from "./Toast";
+import { useLang } from "./i18n.jsx";
+import { localizeVdForm } from "./vdEs.jsx";
 import VDTemplateHoneycomb from "./VDTemplateHoneycomb";
 import VDTemplatePentagonFlower from "./VDTemplatePentagonFlower";
 import VDTemplateMixed from "./VDTemplateMixed";
@@ -1776,7 +1778,8 @@ export default function VisualDesignEditor({ sessionId, data, onClose, aiEnabled
   // falling back to the primary methodology
   const embeddedHost = data.primary || "qualitative";
   const formKey = data.design === "embedded" && embeddedHost === "quantitative" ? "embedded_quant" : data.design;
-  const form = VD_FORMS[formKey];
+  const { t, lang } = useLang();
+  const form = localizeVdForm(VD_FORMS[formKey], formKey, lang);
   const [saveState, setSaveState] = useState("saved"); // saved | dirty | saving | error
   const [printing, setPrinting] = useState(false);
   const [activeKey, setActiveKey] = useState(null);
@@ -1904,10 +1907,10 @@ export default function VisualDesignEditor({ sessionId, data, onClose, aiEnabled
   const progressPct = Math.round((filledCount / form.fields.length) * 100);
 
   const saveLabel =
-    saveState === "saving" ? "Saving…" :
-    saveState === "dirty" ? "Unsaved" :
-    saveState === "error" ? "Save failed" :
-    "Saved";
+    saveState === "saving" ? t("vd.saving") :
+    saveState === "dirty" ? t("vd.unsaved") :
+    saveState === "error" ? t("vd.saveFailed") :
+    t("vd.saved");
 
   return (
     <div className={`vd-overlay${showIdentity ? "" : " vd-overlay--anon"}`}>
@@ -1915,10 +1918,10 @@ export default function VisualDesignEditor({ sessionId, data, onClose, aiEnabled
       <div className="vd-toolbar no-print">
         <div className="vd-toolbar__left">
           <button className="vd-btn vd-btn--ghost" onClick={onClose} title="Close this tab and return to your research design">
-            &larr; Back
+            {t("vd.back")}
           </button>
           <div className="vd-toolbar__titles">
-            <span className="vd-toolbar__title">Visual Design</span>
+            <span className="vd-toolbar__title">{t("vd.title")}</span>
             <span className="vd-toolbar__badge">{form.designName}</span>
           </div>
         </div>
@@ -1932,10 +1935,10 @@ export default function VisualDesignEditor({ sessionId, data, onClose, aiEnabled
               checked={showIdentity}
               onChange={(e) => setShowIdentity(e.target.checked)}
             />
-            Show name &amp; email
+            {t("vd.showIdentity")}
           </label>
           <button className="vd-btn vd-btn--primary" onClick={handlePrint} disabled={printing}>
-            {printing ? "Capturing…" : "⬇ Save PDF"}
+            {printing ? t("vd.capturing") : t("vd.savePdf")}
           </button>
         </div>
       </div>
@@ -1949,7 +1952,7 @@ export default function VisualDesignEditor({ sessionId, data, onClose, aiEnabled
               <div className="vd-form__progress-bar">
                 <div className="vd-form__progress-fill" style={{ width: `${progressPct}%` }} />
               </div>
-              <span className="vd-form__progress-text">{filledCount} of {form.fields.length} completed</span>
+              <span className="vd-form__progress-text">{t("vd.progress", { a: filledCount, b: form.fields.length })}</span>
             </div>
           </div>
 
@@ -1969,7 +1972,7 @@ export default function VisualDesignEditor({ sessionId, data, onClose, aiEnabled
                   </div>
                 </div>
                 <details className="vd-field__guide">
-                  <summary>Guidance &amp; examples</summary>
+                  <summary>{t("vd.guide")}</summary>
                   <p>{f.help}</p>
                   {f.helpImage && (
                     <img className="vd-field__guide-img" src={f.helpImage} alt={f.helpImageAlt || ""} loading="lazy" />
@@ -1979,7 +1982,7 @@ export default function VisualDesignEditor({ sessionId, data, onClose, aiEnabled
                   id={`vd-${f.key}`}
                   className="vd-field__input"
                   rows={3}
-                  placeholder={f.placeholder || "Write your answer here…"}
+                  placeholder={f.placeholder || t("vd.writeHere")}
                   value={fields[f.key] || ""}
                   onChange={(e) => upd(f.key, e.target.value)}
                   onFocus={() => setActiveKey(f.key)}
@@ -2005,7 +2008,7 @@ export default function VisualDesignEditor({ sessionId, data, onClose, aiEnabled
               onJumpToField={jumpToField}
             />
             <p className="vd-stage__hint no-print">
-              This is your study at a glance - click any text in the diagram to edit it, or use the form on the left.
+              {t("vd.stageHint")}
             </p>
           </div>
         </div>
@@ -2015,12 +2018,12 @@ export default function VisualDesignEditor({ sessionId, data, onClose, aiEnabled
       {!chatOpen && (
         <button className="vd-chat-toggle no-print" onClick={() => setChatOpen(true)} title="Ask the AI assistant for help with your visual design">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-          AI Assistant
+          {t("vd.aiBtn")}
         </button>
       )}
       <div className={`vd-chat-drawer no-print${chatOpen ? " vd-chat-drawer--open" : ""}`}>
         <div className="vd-chat-drawer__head">
-          <span className="vd-chat-drawer__title">AI Assistant</span>
+          <span className="vd-chat-drawer__title">{t("vd.aiBtn")}</span>
           <span className="vd-chat-drawer__hint">Ask for help with your {form.designName.toLowerCase()}</span>
           <button className="vd-chat-drawer__close" onClick={() => setChatOpen(false)} title="Close the assistant" aria-label="Close the assistant">&times;</button>
         </div>

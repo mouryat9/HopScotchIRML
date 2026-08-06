@@ -9,6 +9,7 @@
 // Each design passes fixed characteristic values + slider positions.
 import React from "react";
 import VDCitation from "./VDCitation";
+import { useLang } from "./i18n.jsx";
 
 const PENT_W = 28.4; // % of width
 const PENT_H = 35.1; // % of height
@@ -108,6 +109,7 @@ function Label({ k, jump, children }) {
 }
 
 export default function VDTemplatePentagonFlower({ layout, name, email, fields, upd, E, activeKey, onJumpToField, embedded = false }) {
+  const { t } = useLang();
   const jump = (key) => onJumpToField && onJumpToField(key);
 
   // Slider values: the student's saved position (0-100 string), falling back
@@ -124,7 +126,7 @@ export default function VDTemplatePentagonFlower({ layout, name, email, fields, 
       {/* Identity + title (hidden when embedded in a mixed methods canvas) */}
       {!embedded && (
         <div className="vd-identity">
-          <div className="vd-identity__caption">Designed by</div>
+          <div className="vd-identity__caption">{t("vd.designedBy")}</div>
           <div className="vd-identity__name">{name}</div>
           <div className="vd-identity__email">{email}</div>
         </div>
@@ -144,62 +146,62 @@ export default function VDTemplatePentagonFlower({ layout, name, email, fields, 
       {/* Top pentagon: Hypothesis / Variables + Research Question */}
       <Pent activeKey={activeKey} pos="top" focusKeys={["variables", "question"]}>
         <Label jump={jump} k="variables">Hypothesis: Variables</Label>
-        <E value={fields.variables} onChange={(v) => upd("variables", v)} className="vdq-text" placeholder="Click to write…" />
+        <E value={fields.variables} onChange={(v) => upd("variables", v)} className="vdq-text" placeholder={t("vd.clickWrite")} />
         <div className="vdq-divider" />
         <Label jump={jump} k="question">Research Question</Label>
-        <E value={fields.question} onChange={(v) => upd("question", v)} className="vdq-text vdq-text--grow" placeholder="Click to write…" />
+        <E value={fields.question} onChange={(v) => upd("question", v)} className="vdq-text vdq-text--grow" placeholder={t("vd.clickWrite")} />
       </Pent>
 
       {/* Left pentagon: Data Gathering */}
       <Pent activeKey={activeKey} pos="left" focusKeys={["data_gathering"]}>
-        <Label jump={jump} k="data_gathering">Data Gathering</Label>
-        <E value={fields.data_gathering} onChange={(v) => upd("data_gathering", v)} className="vdq-text" placeholder="Click to write…" />
+        <Label jump={jump} k="data_gathering">{t("tpl.dataGathering")}</Label>
+        <E value={fields.data_gathering} onChange={(v) => upd("data_gathering", v)} className="vdq-text" placeholder={t("vd.clickWrite")} />
       </Pent>
 
       {/* Right pentagon: Process Support */}
       <Pent activeKey={activeKey} pos="right" focusKeys={["process_support"]}>
-        <Label jump={jump} k="process_support">Process Support</Label>
-        <E value={fields.process_support} onChange={(v) => upd("process_support", v)} className="vdq-text" placeholder="Click to write…" />
+        <Label jump={jump} k="process_support">{t("tpl.processSupport")}</Label>
+        <E value={fields.process_support} onChange={(v) => upd("process_support", v)} className="vdq-text" placeholder={t("vd.clickWrite")} />
       </Pent>
 
       {/* Center pentagon (point-down): continuum sliders + phenomenon */}
       <Pent activeKey={activeKey} pos="center" focusKeys={["central_item"]} flip centerFill={layout.centerColor}>
-        <Slider label="Control of Variance" value={sliderVal("slider_variance", layout.sliders.variance)} onChange={setSlider("slider_variance")} />
-        <Slider label="Causality" value={sliderVal("slider_causality", layout.sliders.causality)} onChange={setSlider("slider_causality")} />
+        <Slider label={t("tpl.controlVariance")} value={sliderVal("slider_variance", layout.sliders.variance)} onChange={setSlider("slider_variance")} />
+        <Slider label={t("tpl.causality")} value={sliderVal("slider_causality", layout.sliders.causality)} onChange={setSlider("slider_causality")} />
         <div className="vdq-poles">
-          <span>Descriptive</span>
-          <span>Experimental</span>
+          <span>{t("tpl.descriptive")}</span>
+          <span>{t("tpl.experimental")}</span>
         </div>
-        <Label jump={jump} k="central_item">Phenomenon under Study</Label>
-        <E value={fields.central_item} onChange={(v) => upd("central_item", v)} className="vdq-text vdq-text--grow" placeholder="Click to write…" />
+        <Label jump={jump} k="central_item">{t("tpl.phenomenon")}</Label>
+        <E value={fields.central_item} onChange={(v) => upd("central_item", v)} className="vdq-text vdq-text--grow" placeholder={t("vd.clickWrite")} />
       </Pent>
 
       {/* Bottom-left pentagon: Type / # of Groups / Analysis */}
       <Pent activeKey={activeKey} pos="bottom_left" focusKeys={["groups", "data_analysis"]}>
-        <div className="vdq-label">Type</div>
+        <div className="vdq-label">{t("tpl.type")}</div>
         <div className="vdq-fixed">{layout.fixed.type}</div>
         <div className="vdq-divider" />
-        <Label jump={jump} k="groups"># of Groups</Label>
-        <E value={fields.groups} onChange={(v) => upd("groups", v)} className="vdq-text" placeholder="Click to write…" />
+        <Label jump={jump} k="groups">{t("tpl.numGroups")}</Label>
+        <E value={fields.groups} onChange={(v) => upd("groups", v)} className="vdq-text" placeholder={t("vd.clickWrite")} />
         <div className="vdq-divider" />
-        <Label jump={jump} k="data_analysis">Analysis</Label>
-        <E value={fields.data_analysis} onChange={(v) => upd("data_analysis", v)} className="vdq-text vdq-text--grow" placeholder="Click to write…" />
+        <Label jump={jump} k="data_analysis">{t("tpl.analysis")}</Label>
+        <E value={fields.data_analysis} onChange={(v) => upd("data_analysis", v)} className="vdq-text vdq-text--grow" placeholder={t("vd.clickWrite")} />
       </Pent>
 
       {/* Bottom-right pentagon: IV control / Groups / Representativeness / Sample */}
       <Pent activeKey={activeKey} pos="bottom_right" focusKeys={["sample"]}>
-        <Slider label="Control of Independent Variable" value={sliderVal("slider_iv_control", layout.sliders.ivControl)} onChange={setSlider("slider_iv_control")} />
+        <Slider label={t("tpl.controlIV")} value={sliderVal("slider_iv_control", layout.sliders.ivControl)} onChange={setSlider("slider_iv_control")} />
         <div className="vdq-row">
-          <span className="vdq-row__key">Groups</span>
+          <span className="vdq-row__key">{t("tpl.groups")}</span>
           <span className="vdq-fixed">{layout.fixed.groups}</span>
         </div>
         <div className="vdq-row">
-          <span className="vdq-row__key">Representativeness</span>
+          <span className="vdq-row__key">{t("tpl.representativeness")}</span>
           <span className="vdq-fixed">{layout.fixed.representativeness}</span>
         </div>
         <div className="vdq-divider" />
-        <Label jump={jump} k="sample">Sample</Label>
-        <E value={fields.sample} onChange={(v) => upd("sample", v)} className="vdq-text vdq-text--grow" placeholder="Click to write…" />
+        <Label jump={jump} k="sample">{t("tpl.sample")}</Label>
+        <E value={fields.sample} onChange={(v) => upd("sample", v)} className="vdq-text vdq-text--grow" placeholder={t("vd.clickWrite")} />
       </Pent>
 
       {/* Footer: Hopscotch 4 All logo + animated hopscotch squares + citation */}

@@ -9,6 +9,7 @@ import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
 import { API } from "./api";
 import { notify } from "./Toast";
+import { useLang } from "./i18n.jsx";
 import CFTemplatePolygon from "./CFTemplatePolygon";
 import CFTemplateBoxed from "./CFTemplateBoxed";
 import CFTemplateExtended from "./CFTemplateExtended";
@@ -81,7 +82,20 @@ const textToList = (text) => {
   return (lines.concat(["", "", "", "", ""])).slice(0, 5);
 };
 
+const CF_FIELDS_ES = {
+  topic: { label: "Tema de investigación", hint: "El tema al centro de tu marco" },
+  personal_goals: { label: "Intereses y metas personales", hint: "Metas personales, prácticas e intelectuales" },
+  worldview: { label: "Identidad y posicionalidad", hint: "Tu cosmovisión y desde dónde investigas" },
+  topics: { label: "Investigación temática", hint: "Hasta 5 áreas de tu revisión de literatura", placeholder: "Un tema por línea (hasta 5)" },
+  frameworks: { label: "Marcos teóricos", hint: "Hasta 5 marcos con sus autores", placeholder: "Un marco por línea (hasta 5)" },
+  gaps: { label: "Vacíos encontrados", hint: "¿Qué falta en la literatura?" },
+  problem_statement: { label: "Planteamiento del problema", hint: "El problema que aborda tu estudio" },
+  research_questions: { label: "Pregunta(s) de investigación", hint: "La(s) pregunta(s) que guían tu estudio" },
+  research_design: { label: "Diseño de investigación", hint: "El diseño que responderá tu(s) pregunta(s)" },
+};
+
 export default function ConceptualFrameworkEditor({ data, sessionId, onClose }) {
+  const { t, lang } = useLang();
   const [d, setD] = useState(() => ({
     ...data,
     topics: [...(data.topics || ["", "", "", "", ""])],
@@ -242,10 +256,10 @@ export default function ConceptualFrameworkEditor({ data, sessionId, onClose }) 
   const progressPct = Math.round((filledCount / CF_FORM_FIELDS.length) * 100);
 
   const saveLabel =
-    saveState === "saving" ? "Saving…" :
-    saveState === "dirty" ? "Unsaved" :
-    saveState === "error" ? "Save failed" :
-    "Saved";
+    saveState === "saving" ? t("vd.saving") :
+    saveState === "dirty" ? t("vd.unsaved") :
+    saveState === "error" ? t("vd.saveFailed") :
+    t("vd.saved");
 
   return (
     <div className={`vd-overlay${showIdentity ? "" : " vd-overlay--anon"}`}>
@@ -253,14 +267,14 @@ export default function ConceptualFrameworkEditor({ data, sessionId, onClose }) 
       <div className="vd-toolbar no-print">
         <div className="vd-toolbar__left">
           <button className="vd-btn vd-btn--ghost" onClick={onClose} title="Close this tab and return to your research design">
-            &larr; Back
+            {t("vd.back")}
           </button>
           <div className="vd-toolbar__titles">
-            <span className="vd-toolbar__title">Conceptual Framework</span>
+            <span className="vd-toolbar__title">{t("cf.title")}</span>
           </div>
         </div>
         <div className="cf-toolbar__template-toggle">
-          {[["polygon", "Mosaic"], ["boxed", "Boxed"], ["extended", "Extended"]].map(([id, label]) => (
+          {[["polygon", t("cf.mosaic")], ["boxed", t("cf.boxed")], ["extended", t("cf.extended")]].map(([id, label]) => (
             <button
               key={id}
               className={`cf-toolbar__template-btn${template === id ? " cf-toolbar__template-btn--active" : ""}`}
@@ -280,10 +294,10 @@ export default function ConceptualFrameworkEditor({ data, sessionId, onClose }) 
               checked={showIdentity}
               onChange={(e) => setShowIdentity(e.target.checked)}
             />
-            Show personal info
+            {t("cf.showIdentity")}
           </label>
           <button className="vd-btn vd-btn--primary" onClick={handlePrint} disabled={printing}>
-            {printing ? "Capturing…" : "⬇ Save PDF"}
+            {printing ? t("vd.capturing") : t("vd.savePdf")}
           </button>
         </div>
       </div>
@@ -293,18 +307,19 @@ export default function ConceptualFrameworkEditor({ data, sessionId, onClose }) 
         <div className="vd-form no-print">
           <div className="vd-form__header">
             <p className="vd-form__intro">
-              Answer the questions below to build your one-page conceptual framework. Everything you write appears
-              in the diagram on the right - and you can click any text in the diagram to edit it directly.
+              {t("cf.intro")}
             </p>
             <div className="vd-form__progress">
               <div className="vd-form__progress-bar">
                 <div className="vd-form__progress-fill" style={{ width: `${progressPct}%` }} />
               </div>
-              <span className="vd-form__progress-text">{filledCount} of {CF_FORM_FIELDS.length} completed</span>
+              <span className="vd-form__progress-text">{t("vd.progress", { a: filledCount, b: CF_FORM_FIELDS.length })}</span>
             </div>
           </div>
 
-          {CF_FORM_FIELDS.map((f, i) => {
+          {CF_FORM_FIELDS.map((f0, i) => {
+            const ov = lang === "es" ? (CF_FIELDS_ES[f0.key] || {}) : {};
+            const f = { ...f0, label: ov.label || f0.label, hint: ov.hint || f0.hint, placeholder: ov.placeholder || f0.placeholder };
             const val = formValue(f);
             const filled = val.trim();
             return (
@@ -320,14 +335,14 @@ export default function ConceptualFrameworkEditor({ data, sessionId, onClose }) 
                   </div>
                 </div>
                 <details className="vd-field__guide">
-                  <summary>Guidance &amp; examples</summary>
+                  <summary>{t("vd.guide")}</summary>
                   <p>{f.help}</p>
                 </details>
                 <textarea
                   id={`cf-${f.key}`}
                   className="vd-field__input"
                   rows={f.list ? 5 : 3}
-                  placeholder={f.placeholder || "Write your answer here…"}
+                  placeholder={f.placeholder || t("vd.writeHere")}
                   value={val}
                   onChange={(e) => {
                     if (f.list) {
@@ -357,7 +372,7 @@ export default function ConceptualFrameworkEditor({ data, sessionId, onClose }) 
               E={E}
             />
             <p className="vd-stage__hint no-print">
-              This is your framework at a glance - click any text in the diagram to edit it, or use the form on the left.
+              {t("cf.stageHint")}
             </p>
           </div>
         </div>

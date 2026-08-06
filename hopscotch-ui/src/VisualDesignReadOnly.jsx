@@ -4,6 +4,8 @@
 // is plain (not contentEditable) and edits are no-ops.
 import React from "react";
 import { VD_FORMS } from "./VisualDesignEditor";
+import { useLang } from "./i18n.jsx";
+import { localizeVdForm } from "./vdEs.jsx";
 import VDTemplateHoneycomb from "./VDTemplateHoneycomb";
 import VDTemplatePentagonFlower from "./VDTemplatePentagonFlower";
 import VDTemplateMixed from "./VDTemplateMixed";
@@ -11,7 +13,8 @@ import VDTemplateMixed from "./VDTemplateMixed";
 export default function VisualDesignReadOnly({ data }) {
   const embeddedHost = data.primary || "qualitative";
   const formKey = data.design === "embedded" && embeddedHost === "quantitative" ? "embedded_quant" : data.design;
-  const form = VD_FORMS[formKey];
+  const { lang } = useLang();
+  const form = localizeVdForm(VD_FORMS[formKey], formKey, lang);
   if (!form) {
     return (
       <div className="sdv-vd-unsupported">
