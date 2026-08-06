@@ -310,6 +310,9 @@ export const API = {
   async chatSend(session_id, message, active_step = null) {
     const body = { session_id, message };
     if (active_step !== null) body.active_step = active_step;
+    // Current UI language; the account setting is only a server-side fallback
+    const lang = localStorage.getItem("hop_lang");
+    if (lang) body.language = lang;
     const res = await fetch(`${API_BASE}/chat/send`, {
       method: "POST",
       headers: { "Content-Type": "application/json", ...authHeaders() },
@@ -370,6 +373,9 @@ export const API = {
   async chatSendStream(session_id, message, active_step = null, signal = null) {
     const body = { session_id, message };
     if (active_step !== null) body.active_step = active_step;
+    // Current UI language; the account setting is only a server-side fallback
+    const lang = localStorage.getItem("hop_lang");
+    if (lang) body.language = lang;
     const opts = {
       method: "POST",
       headers: { "Content-Type": "application/json", ...authHeaders() },

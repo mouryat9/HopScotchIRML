@@ -237,6 +237,10 @@ class ChatSendReq(BaseModel):
     session_id: str
     message: str
     active_step: Optional[int] = None
+    # The client's current UI language. The account setting is only a fallback —
+    # it can lag behind a just-made switch (or a switch made while the backend
+    # didn't yet accept the language).
+    language: Optional[str] = None
 
 
 class ChatHistoryResp(BaseModel):
@@ -2257,8 +2261,7 @@ _SAFETY_REFUSAL_ZH = (
 )
 
 
-def _canned(user: dict, en_text: str, es_text: str, zh_text: str = None) -> str:
-    lang = (user or {}).get("language")
+def _canned(lang: str, en_text: str, es_text: str, zh_text: str = None) -> str:
     if lang == "es":
         return es_text
     if lang == "zh" and zh_text:
@@ -2563,6 +2566,9 @@ def _asks_ai_to_author(user_msg: str, active_step) -> bool:
 def chat_send(req: ChatSendReq = Body(...), user: dict = Depends(get_current_user)):
     sess = _require_session(req.session_id)
     history = _get_chat(sess)
+    chat_lang = (req.language or "").strip().lower()
+    if chat_lang not in SUPPORTED_LANGUAGES:
+        chat_lang = user.get("language", "en")
 
     user_msg = (req.message or "").strip()
     if not user_msg:
@@ -2573,7 +2579,7 @@ def chat_send(req: ChatSendReq = Body(...), user: dict = Depends(get_current_use
 
     # Teacher-controlled mode: AI assistant may be turned off for this student's class.
     if not _student_ai_enabled(user):
-        history.append(ChatTurn(role="assistant", content=_canned(user, _AI_OFF_MESSAGE, _AI_OFF_MESSAGE_ES, _AI_OFF_MESSAGE_ZH), step=req.active_step))
+        history.append(ChatTurn(role="assistant", content=_canned(chat_lang,_AI_OFF_MESSAGE, _AI_OFF_MESSAGE_ES, _AI_OFF_MESSAGE_ZH), step=req.active_step))
         _persist_session(sess)
         return ChatHistoryResp(session_id=req.session_id, history=history)
 
@@ -2588,7 +2594,7 @@ def chat_send(req: ChatSendReq = Body(...), user: dict = Depends(get_current_use
     # Safety gate: refuse harmful/unethical requests (Llama Guard 3, local).
     is_safe, _cats = _moderate_input(user_msg)
     if not is_safe:
-        history.append(ChatTurn(role="assistant", content=_canned(user, _SAFETY_REFUSAL, _SAFETY_REFUSAL_ES, _SAFETY_REFUSAL_ZH), step=req.active_step))
+        history.append(ChatTurn(role="assistant", content=_canned(chat_lang,_SAFETY_REFUSAL, _SAFETY_REFUSAL_ES, _SAFETY_REFUSAL_ZH), step=req.active_step))
         _persist_session(sess)
         return ChatHistoryResp(session_id=req.session_id, history=history)
 
@@ -2608,7 +2614,7 @@ def chat_send(req: ChatSendReq = Body(...), user: dict = Depends(get_current_use
     answer = call_llm(
         worldview_profile, step_context, user_msg, passages,
         active_step=req.active_step, step_llm_guidance=step_llm_guidance,
-        chat_history=history, language=user.get("language", "en"),
+        chat_history=history, language=chat_lang,
     )
     # Output guard: strip any handed-over deliverable blocks the model slipped in.
     answer = _strip_handed_answers(answer)
@@ -2626,6 +2632,9 @@ def chat_send_stream(req: ChatSendReq = Body(...), user: dict = Depends(get_curr
     """
     sess = _require_session(req.session_id)
     history = _get_chat(sess)
+    chat_lang = (req.language or "").strip().lower()
+    if chat_lang not in SUPPORTED_LANGUAGES:
+        chat_lang = user.get("language", "en")
 
     user_msg = (req.message or "").strip()
     if not user_msg:
@@ -2638,9 +2647,9 @@ def chat_send_stream(req: ChatSendReq = Body(...), user: dict = Depends(get_curr
     if not _student_ai_enabled(user):
         def _ai_off_stream():
             try:
-                yield _canned(user, _AI_OFF_MESSAGE, _AI_OFF_MESSAGE_ES, _AI_OFF_MESSAGE_ZH)
+                yield _canned(chat_lang,_AI_OFF_MESSAGE, _AI_OFF_MESSAGE_ES, _AI_OFF_MESSAGE_ZH)
             finally:
-                history.append(ChatTurn(role="assistant", content=_canned(user, _AI_OFF_MESSAGE, _AI_OFF_MESSAGE_ES, _AI_OFF_MESSAGE_ZH), step=req.active_step))
+                history.append(ChatTurn(role="assistant", content=_canned(chat_lang,_AI_OFF_MESSAGE, _AI_OFF_MESSAGE_ES, _AI_OFF_MESSAGE_ZH), step=req.active_step))
                 _persist_session(sess)
         return StreamingResponse(_ai_off_stream(), media_type="text/plain")
 
@@ -2665,9 +2674,9 @@ def chat_send_stream(req: ChatSendReq = Body(...), user: dict = Depends(get_curr
     if not is_safe:
         def _refusal_stream():
             try:
-                yield _canned(user, _SAFETY_REFUSAL, _SAFETY_REFUSAL_ES, _SAFETY_REFUSAL_ZH)
+                yield _canned(chat_lang,_SAFETY_REFUSAL, _SAFETY_REFUSAL_ES, _SAFETY_REFUSAL_ZH)
             finally:
-                history.append(ChatTurn(role="assistant", content=_canned(user, _SAFETY_REFUSAL, _SAFETY_REFUSAL_ES, _SAFETY_REFUSAL_ZH), step=req.active_step))
+                history.append(ChatTurn(role="assistant", content=_canned(chat_lang,_SAFETY_REFUSAL, _SAFETY_REFUSAL_ES, _SAFETY_REFUSAL_ZH), step=req.active_step))
                 _persist_session(sess)
         return StreamingResponse(_refusal_stream(), media_type="text/plain")
 
@@ -2695,7 +2704,7 @@ def chat_send_stream(req: ChatSendReq = Body(...), user: dict = Depends(get_curr
     payload = build_ollama_payload(
         worldview_profile, step_context, user_msg, passages,
         stream=True, active_step=req.active_step, step_llm_guidance=step_llm_guidance,
-        chat_history=history, language=user.get("language", "en"),
+        chat_history=history, language=chat_lang,
     )
 
     # Capture session_id for persistence inside the generator
