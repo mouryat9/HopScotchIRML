@@ -10988,6 +10988,16 @@ body.wl-dragging, body.wl-dragging * { cursor: grabbing !important; user-select:
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
 }
 .ad-stepres__levels { margin: 14px 0 6px; }
+.ad-stepres__langpick {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--hop-ink);
+}
+.ad-stepres__langpick select { max-width: 240px; }
 
 .ad-stepres__list { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
 .ad-stepres__row {

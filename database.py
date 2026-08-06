@@ -39,7 +39,15 @@ def ensure_indexes():
     login_history_col.create_index([("lat", 1), ("lng", 1)])
     admin_audit_col.create_index("timestamp")
     glossary_col.create_index("term")
-    step_resources_col.create_index([("step", 1), ("level", 1)], unique=True)
+    # Step resources are now keyed by language too. Retire the old
+    # (step, level) unique index and stamp legacy docs as English so the
+    # wider (step, level, lang) key stays unique.
+    try:
+        step_resources_col.drop_index("step_1_level_1")
+    except OperationFailure:
+        pass
+    step_resources_col.update_many({"lang": {"$exists": False}}, {"$set": {"lang": "en"}})
+    step_resources_col.create_index([("step", 1), ("level", 1), ("lang", 1)], unique=True)
 
 
 # --------------- User CRUD ---------------
@@ -879,27 +887,55 @@ def seed_glossary_if_empty(terms: List[Dict]) -> int:
 # --------------- Step resources (student Resources panel) ---------------
 
 STEP_LEVELS = ("high_school", "higher_ed")
+STEP_LANGS = ("en", "es")
 
 
-def get_step_resources() -> Dict[str, Dict[str, Dict[str, str]]]:
-    """Return {level: {step(str): {video_url, interactive_url}}} for all steps."""
+def get_step_resources(lang: str = "en") -> Dict[str, Dict[str, Dict[str, str]]]:
+    """Return {level: {step(str): {video_url, interactive_url}}} for one language.
+
+    Fields left blank in a non-English language fall back to the English value,
+    so a step with no Spanish Genially yet still shows the English one.
+    """
+    lang = lang if lang in STEP_LANGS else "en"
     out: Dict[str, Dict[str, Dict[str, str]]] = {lvl: {} for lvl in STEP_LEVELS}
+    langs = {"en"} if lang == "en" else {"en", lang}
+    docs = {}  # (level, step, lang) -> doc
+    for d in step_resources_col.find({"lang": {"$in": list(langs)}}):
+        if d.get("level") in out:
+            docs[(d["level"], str(d.get("step")), d.get("lang", "en"))] = d
+    steps = {(lvl, s) for (lvl, s, _l) in docs}
+    for lvl, s in steps:
+        base = docs.get((lvl, s, "en"), {})
+        loc = docs.get((lvl, s, lang), {}) if lang != "en" else base
+        out[lvl][s] = {
+            "video_url": (loc.get("video_url") or base.get("video_url") or "").strip(),
+            "interactive_url": (loc.get("interactive_url") or base.get("interactive_url") or "").strip(),
+        }
+    return out
+
+
+def get_step_resources_all() -> Dict[str, Dict[str, Dict[str, Dict[str, str]]]]:
+    """Return {lang: {level: {step(str): {video_url, interactive_url}}}}, raw
+    (no English fallback) — what the admin editor needs to show stored values."""
+    out = {lg: {lvl: {} for lvl in STEP_LEVELS} for lg in STEP_LANGS}
     for d in step_resources_col.find({}):
+        lg = d.get("lang", "en")
         lvl = d.get("level")
-        if lvl not in out:
+        if lg not in out or lvl not in out[lg]:
             continue
-        out[lvl][str(d.get("step"))] = {
+        out[lg][lvl][str(d.get("step"))] = {
             "video_url": d.get("video_url", ""),
             "interactive_url": d.get("interactive_url", ""),
         }
     return out
 
 
-def upsert_step_resource(step: int, level: str, video_url: str, interactive_url: str) -> bool:
-    if level not in STEP_LEVELS or not (1 <= int(step) <= 9):
+def upsert_step_resource(step: int, level: str, video_url: str, interactive_url: str,
+                         lang: str = "en") -> bool:
+    if level not in STEP_LEVELS or lang not in STEP_LANGS or not (1 <= int(step) <= 9):
         return False
     step_resources_col.update_one(
-        {"step": int(step), "level": level},
+        {"step": int(step), "level": level, "lang": lang},
         {"$set": {
             "video_url": (video_url or "").strip(),
             "interactive_url": (interactive_url or "").strip(),
@@ -921,6 +957,7 @@ def seed_step_resources_if_empty(seed: Dict[str, Dict[str, Dict[str, str]]]) -> 
             docs.append({
                 "step": int(step_str),
                 "level": level,
+                "lang": "en",
                 "video_url": (vals.get("video_url") or "").strip(),
                 "interactive_url": (vals.get("interactive_url") or "").strip(),
                 "updated_at": now,

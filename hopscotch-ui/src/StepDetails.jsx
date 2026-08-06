@@ -72,7 +72,7 @@ export default function StepDetails({ step, sessionId, onChatRefresh, onAutoSend
     }
     let cancelled = false;
     setConfigLoading(true);
-    API.getStepConfig(sessionId, step)
+    API.getStepConfig(sessionId, step, lang)
       .then((cfg) => {
         if (!cancelled) setStepConfig(cfg);
       })
@@ -85,7 +85,7 @@ export default function StepDetails({ step, sessionId, onChatRefresh, onAutoSend
     return () => {
       cancelled = true;
     };
-  }, [step, sessionId]);
+  }, [step, sessionId, lang]);
 
   // Load saved data whenever step or session changes
   useEffect(() => {
@@ -516,7 +516,7 @@ export default function StepDetails({ step, sessionId, onChatRefresh, onAutoSend
           <textarea
             className="textarea"
             rows={3}
-            placeholder={`Write any additional questions for Step ${step} here...`}
+            placeholder={t("common.additionalQuestionsPh", { n: step })}
             value={data.notes || ""}
             onChange={(e) => updateField("notes", e.target.value)}
             disabled={!sessionId}
@@ -544,9 +544,9 @@ export default function StepDetails({ step, sessionId, onChatRefresh, onAutoSend
                   const url = `${window.location.origin}${window.location.pathname}?view=vd&session=${encodeURIComponent(sessionId)}`;
                   window.open(url, "_blank", "noopener");
                 }}
-                title="Build the one-page visual design of your study (opens in a new tab)"
+                title={t("common.createVdTitle")}
               >
-                Create Visual Design ↗
+                {t("common.createVd")}
               </button>
             )}
             {saving && <span className="badge">Saving...</span>}
@@ -896,20 +896,20 @@ function MethodologyDecision({ config, data, updateField, sessionId, disabled })
               onChange={(e) => updateField("mixed_design", e.target.value)}
               disabled={disabled}
             >
-              <option value="">-- Choose a mixed methods design --</option>
+              <option value="">{t("meth.chooseMixed")}</option>
               {MIXED_DESIGN_OPTIONS.map((opt) => (
-                <option key={opt.id} value={opt.id}>{opt.label}</option>
+                <option key={opt.id} value={opt.id}>{t(`mixed.${opt.id}.label`)}</option>
               ))}
             </select>
-            {data.mixed_design && MIXED_DESIGN_OPTIONS.find((o) => o.id === data.mixed_design)?.description && (
+            {data.mixed_design && MIXED_DESIGN_OPTIONS.some((o) => o.id === data.mixed_design) && (
               <p className="hop-desc" style={{ marginTop: 8, fontStyle: "italic", fontSize: 13 }}>
-                {MIXED_DESIGN_OPTIONS.find((o) => o.id === data.mixed_design).description}
+                {t(`mixed.${data.mixed_design}.desc`)}
               </p>
             )}
             {data.mixed_design === "embedded" && (
               <div style={{ marginTop: 12 }}>
                 <label className="hop-desc" style={{ display: "block", marginBottom: 6 }}>
-                  Which strand is your main (host) study?
+                  {t("meth.hostStrand")}
                 </label>
                 <span className="vd-host-switch">
                   <button
@@ -918,7 +918,7 @@ function MethodologyDecision({ config, data, updateField, sessionId, disabled })
                     onClick={() => updateField("embedded_host", "qualitative")}
                     disabled={disabled}
                   >
-                    Qualitative primary
+                    {t("meth.hostQual")}
                   </button>
                   <button
                     type="button"
@@ -926,7 +926,7 @@ function MethodologyDecision({ config, data, updateField, sessionId, disabled })
                     onClick={() => updateField("embedded_host", "quantitative")}
                     disabled={disabled}
                   >
-                    Quantitative primary
+                    {t("meth.hostQuant")}
                   </button>
                 </span>
               </div>

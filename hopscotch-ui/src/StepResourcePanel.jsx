@@ -2,6 +2,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { GLOSSARY } from "./glossary";
 import { API } from "./api";
+import { useLang } from "./i18n";
 
 const STEP_VIDEOS = {
   1: "https://share.synthesia.io/embeds/videos/29442014-85bd-4e46-993b-c27216013d33",
@@ -138,16 +139,19 @@ const FALLBACK_STEP_RES = (() => {
 export default function StepResourcePanel({ activeStep, educationLevel = "high_school" }) {
   const isHighSchool = educationLevel !== "higher_ed";
   const level = isHighSchool ? "high_school" : "higher_ed";
+  const { lang, t } = useLang();
 
-  // Live per-step resources from the admin-managed database; fall back to bundled.
+  // Live per-step resources from the admin-managed database, in the user's
+  // language (the server falls back to English per field); bundled English
+  // defaults cover the moment before the fetch lands or if it fails.
   const [resMap, setResMap] = useState(FALLBACK_STEP_RES);
   useEffect(() => {
     let alive = true;
-    API.getStepResources()
+    API.getStepResources(lang)
       .then((d) => { if (alive && d.resources) setResMap(d.resources); })
       .catch(() => {});
     return () => { alive = false; };
-  }, []);
+  }, [lang]);
 
   const entry = resMap[level]?.[activeStep] || {};
   const videoUrl = entry.video_url || "";
@@ -166,20 +170,20 @@ export default function StepResourcePanel({ activeStep, educationLevel = "high_s
             className={`embed-tabs__btn${activeTab === "video" ? " embed-tabs__btn--active" : ""}`}
             onClick={() => setTab("video")}
           >
-            Video
+            {t("respanel.tab.video")}
           </button>
         )}
         <button
           className={`embed-tabs__btn${activeTab === "resource" ? " embed-tabs__btn--active" : ""}`}
           onClick={() => setTab("resource")}
         >
-          Interactive
+          {t("respanel.tab.interactive")}
         </button>
         <button
           className={`embed-tabs__btn${activeTab === "dictionary" ? " embed-tabs__btn--active" : ""}`}
           onClick={() => setTab("dictionary")}
         >
-          Glossary
+          {t("respanel.tab.glossary")}
         </button>
       </div>
 
@@ -205,7 +209,7 @@ export default function StepResourcePanel({ activeStep, educationLevel = "high_s
             />
           )}
           {activeTab === "resource" && !geniallyUrl && (
-            <p className="embed-placeholder">No interactive resource available for this step yet.</p>
+            <p className="embed-placeholder">{t("respanel.empty")}</p>
           )}
         </div>
       )}

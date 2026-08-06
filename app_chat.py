@@ -70,7 +70,8 @@ from database import (
     get_all_glossary_terms, count_glossary_terms, create_glossary_term,
     update_glossary_term, delete_glossary_term, seed_glossary_if_empty,
     # Step resources
-    get_step_resources, upsert_step_resource, seed_step_resources_if_empty,
+    get_step_resources, get_step_resources_all, upsert_step_resource,
+    seed_step_resources_if_empty,
 )
 
 # -------------------------------------------------
@@ -1962,12 +1963,15 @@ class StepConfigResp(BaseModel):
 def get_step_config(
     session_id: str = Query(...),
     step: int = Query(...),
+    lang: Optional[str] = Query(None),
     user: dict = Depends(get_current_user),
 ):
     """Return the path-resolved configuration for a given step."""
     sess = _require_session(session_id)
     paths_cfg = load_paths_config()
-    lang = (user or {}).get("language", "en")
+    # The client sends its current language explicitly; the account setting is
+    # only a fallback (it may lag behind a just-made switch in the UI).
+    lang = lang or (user or {}).get("language", "en")
 
     # Steps 1-3 are handled entirely by the frontend
     if step <= 3:
@@ -4089,21 +4093,25 @@ def admin_get_resource_file(filename: str, download: int = Query(0), admin: dict
 # ── Step resources (student Resources panel: video + interactive per step) ──
 
 @app.get("/step-resources")
-def public_step_resources():
-    """All per-step video + interactive URLs, keyed by level. Read by students."""
-    return {"resources": get_step_resources()}
+def public_step_resources(lang: Optional[str] = Query(None)):
+    """Per-step video + interactive URLs, keyed by level, in the requested
+    language. Blank non-English fields fall back to English. Read by students."""
+    lang = lang if lang in SUPPORTED_LANGUAGES else "en"
+    return {"resources": get_step_resources(lang), "lang": lang}
 
 
 class StepResourceReq(BaseModel):
     step: int
     level: str
+    lang: Optional[str] = "en"
     video_url: Optional[str] = ""
     interactive_url: Optional[str] = ""
 
 
 @app.get("/admin/step-resources")
 def admin_list_step_resources(admin: dict = Depends(require_admin)):
-    return {"resources": get_step_resources()}
+    """Raw stored values for every language (no fallback), for the editor."""
+    return {"resources": get_step_resources_all(), "languages": sorted(SUPPORTED_LANGUAGES)}
 
 
 @app.patch("/admin/step-resources")
@@ -4112,12 +4120,16 @@ def admin_update_step_resource(req: StepResourceReq, admin: dict = Depends(requi
         raise HTTPException(status_code=400, detail="Invalid education level")
     if not (1 <= req.step <= 9):
         raise HTTPException(status_code=400, detail="Step must be 1–9")
-    ok = upsert_step_resource(req.step, req.level, req.video_url or "", req.interactive_url or "")
+    lang = (req.lang or "en").strip().lower()
+    if lang not in SUPPORTED_LANGUAGES:
+        raise HTTPException(status_code=400, detail="Unsupported language")
+    ok = upsert_step_resource(req.step, req.level, req.video_url or "",
+                              req.interactive_url or "", lang)
     if not ok:
         raise HTTPException(status_code=400, detail="Could not save step resource")
     record_admin_action(
         str(admin["_id"]), admin.get("email", ""),
-        "update_step_resource", "", "", {"step": req.step, "level": req.level}
+        "update_step_resource", "", "", {"step": req.step, "level": req.level, "lang": lang}
     )
     return {"ok": True}
 

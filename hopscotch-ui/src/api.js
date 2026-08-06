@@ -354,11 +354,12 @@ export const API = {
     return res.json();
   },
 
-  async getStepConfig(session_id, step) {
+  async getStepConfig(session_id, step, lang = null) {
     const params = new URLSearchParams({
       session_id,
       step: String(step),
     });
+    if (lang) params.set("lang", lang);
     const res = await fetch(`${API_BASE}/step/config?` + params.toString(), {
       headers: authHeaders(),
     });
@@ -854,8 +855,8 @@ export const API = {
 
   // ---------- Step resources (student Resources panel) ----------
 
-  async getStepResources() {
-    const res = await fetch(`${API_BASE}/step-resources`);
+  async getStepResources(lang = "en") {
+    const res = await fetch(`${API_BASE}/step-resources?lang=${encodeURIComponent(lang)}`);
     if (!res.ok) throw new Error(`Failed to load step resources: ${res.status}`);
     return res.json();
   },
@@ -866,11 +867,11 @@ export const API = {
     return res.json();
   },
 
-  async adminStepResourceUpdate({ step, level, video_url, interactive_url }) {
+  async adminStepResourceUpdate({ step, level, lang = "en", video_url, interactive_url }) {
     const res = await fetch(`${API_BASE}/admin/step-resources`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json", ...authHeaders() },
-      body: JSON.stringify({ step, level, video_url, interactive_url }),
+      body: JSON.stringify({ step, level, lang, video_url, interactive_url }),
     });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));

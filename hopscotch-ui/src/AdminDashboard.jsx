@@ -287,8 +287,9 @@ export default function AdminDashboard() {
   const resourceFileRef = useRef(null);
 
   // Step resources (student panel: video + interactive per step/level)
-  const [stepRes, setStepRes] = useState(null);
+  const [stepRes, setStepRes] = useState(null); // {lang: {level: {step: {video_url, interactive_url}}}}
   const [stepResLevel, setStepResLevel] = useState("high_school");
+  const [stepResLang, setStepResLang] = useState("en");
   const [stepResLoading, setStepResLoading] = useState(false);
   const [stepResSaving, setStepResSaving] = useState("");
   const [stepResSaved, setStepResSaved] = useState("");
@@ -415,25 +416,31 @@ export default function AdminDashboard() {
   const loadStepRes = useCallback(() => {
     setStepResLoading(true);
     API.adminStepResourcesList()
-      .then((d) => setStepRes(d.resources || { high_school: {}, higher_ed: {} }))
+      .then((d) => setStepRes(d.resources || {
+        en: { high_school: {}, higher_ed: {} },
+        es: { high_school: {}, higher_ed: {} },
+      }))
       .catch(console.error)
       .finally(() => setStepResLoading(false));
   }, []);
 
-  function setStepField(level, step, field, value) {
+  function setStepField(lang, level, step, field, value) {
     setStepRes((r) => ({
       ...r,
-      [level]: { ...r[level], [step]: { ...(r[level]?.[step] || {}), [field]: value } },
+      [lang]: {
+        ...r[lang],
+        [level]: { ...r[lang]?.[level], [step]: { ...(r[lang]?.[level]?.[step] || {}), [field]: value } },
+      },
     }));
   }
 
-  async function saveStepRes(level, step) {
-    const e = stepRes[level]?.[step] || {};
-    const key = `${level}:${step}`;
+  async function saveStepRes(lang, level, step) {
+    const e = stepRes[lang]?.[level]?.[step] || {};
+    const key = `${lang}:${level}:${step}`;
     setStepResSaving(key);
     try {
       await API.adminStepResourceUpdate({
-        step: Number(step), level,
+        step: Number(step), level, lang,
         video_url: e.video_url || "", interactive_url: e.interactive_url || "",
       });
       setStepResSaved(key);
@@ -2163,15 +2170,38 @@ export default function AdminDashboard() {
           {tab === "stepres" && (
             <div className="ad-stepres">
               <p className="ad-res__lead">
-                The <strong>Video</strong> and <strong>Interactive</strong> resources shown to students in each
-                step's Resources panel. Edit them per education level - changes go live immediately (students
-                see them next time they open the panel). Leave a field blank to hide that resource.
+                The <strong>Video</strong> and <strong>Interactive</strong> (e.g. Genially) resources shown to
+                students in each step's Resources panel. Edit them per education level and language - changes go
+                live immediately (students see them next time they open the panel). Students using Spanish get
+                the Spanish URL when one is set; a blank Spanish field falls back to the English resource, so
+                you only need to fill in the steps that have a translated version.
               </p>
+
+              <label className="ad-stepres__langpick">
+                <span>Language</span>
+                <select
+                  className="ad-users__filter"
+                  value={stepResLang}
+                  onChange={(e) => setStepResLang(e.target.value)}
+                >
+                  {[["en", "English"], ["es", "Español"]].map(([id, label]) => {
+                    const filled = Object.values(stepRes?.[id] || {}).reduce(
+                      (n, lvl) => n + Object.values(lvl || {}).filter((e) => e?.video_url || e?.interactive_url).length,
+                      0
+                    );
+                    return (
+                      <option key={id} value={id}>
+                        {label}{stepRes ? ` (${filled}/18 filled)` : ""}
+                      </option>
+                    );
+                  })}
+                </select>
+              </label>
 
               <div className="ad-seg ad-stepres__levels">
                 {[["high_school", "High / Middle School"], ["higher_ed", "Higher Ed"]].map(([id, label]) => {
                   const filled = stepRes
-                    ? Object.values(stepRes[id] || {}).filter((e) => e?.video_url || e?.interactive_url).length
+                    ? Object.values(stepRes[stepResLang]?.[id] || {}).filter((e) => e?.video_url || e?.interactive_url).length
                     : 0;
                   return (
                     <button
@@ -2192,10 +2222,12 @@ export default function AdminDashboard() {
                 <div className="ad-stepres__list">
                   {STEP_LABELS.map((label, i) => {
                     const step = i + 1;
-                    const e = stepRes[stepResLevel]?.[step] || {};
-                    const key = `${stepResLevel}:${step}`;
+                    const e = stepRes[stepResLang]?.[stepResLevel]?.[step] || {};
+                    const en = stepRes.en?.[stepResLevel]?.[step] || {};
+                    const isEs = stepResLang === "es";
+                    const key = `${stepResLang}:${stepResLevel}:${step}`;
                     return (
-                      <div className="ad-stepres__row" key={step}>
+                      <div className="ad-stepres__row" key={key}>
                         <div className="ad-stepres__head">
                           <span className="ad-stepres__num">{step}</span>
                           <span className="ad-stepres__label">{label}</span>
@@ -2205,16 +2237,16 @@ export default function AdminDashboard() {
                             <span>Video URL</span>
                             <input
                               value={e.video_url || ""}
-                              onChange={(ev) => setStepField(stepResLevel, step, "video_url", ev.target.value)}
-                              placeholder="Video embed URL (optional)"
+                              onChange={(ev) => setStepField(stepResLang, stepResLevel, step, "video_url", ev.target.value)}
+                              placeholder={isEs && en.video_url ? "Blank = English video" : "Video embed URL (optional)"}
                             />
                           </label>
                           <label className="ad-stepres__field">
                             <span>Interactive URL</span>
                             <input
                               value={e.interactive_url || ""}
-                              onChange={(ev) => setStepField(stepResLevel, step, "interactive_url", ev.target.value)}
-                              placeholder="Genially / interactive embed URL"
+                              onChange={(ev) => setStepField(stepResLang, stepResLevel, step, "interactive_url", ev.target.value)}
+                              placeholder={isEs && en.interactive_url ? "Blank = English interactive" : "Genially / interactive embed URL"}
                             />
                           </label>
                         </div>
@@ -2224,7 +2256,7 @@ export default function AdminDashboard() {
                           <button
                             className="td-btn td-btn--primary td-btn--sm"
                             disabled={stepResSaving === key}
-                            onClick={() => saveStepRes(stepResLevel, step)}
+                            onClick={() => saveStepRes(stepResLang, stepResLevel, step)}
                           >
                             {stepResSaving === key ? "Saving…" : stepResSaved === key ? "Saved ✓" : "Save"}
                           </button>
