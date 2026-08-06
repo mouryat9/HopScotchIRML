@@ -229,9 +229,15 @@ const HOPSCOTCH_COLUMNS = [
   { type: "single", steps: [9] },
 ];
 
+/* Languages with their own step-tile set under /steps/<lang>/StepN.png
+   (generated from the English tiles: same shapes/colors, text swapped for the
+   stepQ translations); other languages fall back to the English /StepN.png. */
+const STEP_TILE_LANGS = ["es", "zh"];
+
 /* ----- Animated step diagram ----- */
 function StepDiagram({ activeStep, completedSteps = [], onStepChange, lockedSteps = [] }) {
-  const { t } = useLang();
+  const { lang, t } = useLang();
+  const stepImg = (n) => (STEP_TILE_LANGS.includes(lang) ? `/steps/${lang}/Step${n}.png` : `/Step${n}.png`);
   return (
     <div className="hop-diagram">
       {HOPSCOTCH_COLUMNS.map((col, ci) => (
@@ -254,7 +260,7 @@ function StepDiagram({ activeStep, completedSteps = [], onStepChange, lockedStep
                 aria-label={`Step ${stepNum}: ${t(`stepQ.${card.num ?? stepNum ?? num}`)}${isLocked ? " (locked by your teacher)" : ""}`}
                 title={isLocked ? "Locked by your teacher" : t(`stepQ.${card.num ?? stepNum ?? num}`)}
               >
-                <img src={`/Step${stepNum}.png`} alt={`Step ${stepNum}: ${t(`stepQ.${card.num ?? stepNum ?? num}`)}`} className="hop-step-card__img" />
+                <img src={stepImg(stepNum)} alt={`Step ${stepNum}: ${t(`stepQ.${card.num ?? stepNum ?? num}`)}`} className="hop-step-card__img" />
                 {isLocked && <span className="hop-step-card__lock">🔒</span>}
               </button>
             );
