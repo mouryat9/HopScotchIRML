@@ -6,11 +6,6 @@ const STEP_COLORS = [
   "#2B5EA7", "#E8618C", "#D94040", "#1A8A7D", "#B0A47A",
   "#00AEEF", "#F0B429", "#F5922A", "#7B8794",
 ];
-const STEP_LABELS = [
-  "Worldview", "Topic", "Framework", "Design", "Research Questions",
-  "Data", "Analysis", "Trustworthiness", "Ethics",
-];
-
 // Steps 1-8 as squares of the hopscotch court (same layout as the logo
 // loader); step 9 is the semicircle "home". STEP_COLORS already matches the
 // court's square colors 1:1.
@@ -24,6 +19,9 @@ const COURT_SQUARES = [
 const COURT_IDLE = "#E4E9F0";
 
 function HopscotchProgress({ completed, activeStep }) {
+  const { t } = useLang();
+  const stepTip = (n) =>
+    t("panel.stepTip", { n, label: t(`strip.${n}`) }) + (completed.includes(n) ? t("panel.done") : "");
   const shapeProps = (n) => {
     const done = completed.includes(n);
     const active = activeStep === n;
@@ -39,12 +37,12 @@ function HopscotchProgress({ completed, activeStep }) {
         const n = i + 1;
         return (
           <rect key={n} x={p.x} y={p.y} width="18" height="22" rx="6" {...shapeProps(n)}>
-            <title>{`Step ${n}: ${STEP_LABELS[i]}${completed.includes(n) ? " (done)" : ""}`}</title>
+            <title>{stepTip(n)}</title>
           </rect>
         );
       })}
       <path d="M110,7 A16,16 0 0,1 110,39 Z" {...shapeProps(9)}>
-        <title>{`Step 9: ${STEP_LABELS[8]}${completed.includes(9) ? " (done)" : ""}`}</title>
+        <title>{stepTip(9)}</title>
       </path>
     </svg>
   );
@@ -57,7 +55,7 @@ export default function SessionHistoryPanel({
   onSelectSession,
   onNewSession,
 }) {
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -84,9 +82,9 @@ export default function SessionHistoryPanel({
   if (!isOpen) return null;
 
   function formatDate(iso) {
-    if (!iso) return "Unknown date";
+    if (!iso) return t("panel.unknownDate");
     try {
-      return new Date(iso).toLocaleDateString("en-US", {
+      return new Date(iso).toLocaleDateString(lang === "es" ? "es" : "en-US", {
         month: "short",
         day: "numeric",
         year: "numeric",
@@ -108,7 +106,7 @@ export default function SessionHistoryPanel({
             <h2 className="session-panel__title">{t("panel.title")}</h2>
             <p className="session-panel__sub">{t("panel.sub")}</p>
           </div>
-          <button className="session-panel__close" onClick={onClose} aria-label="Close">
+          <button className="session-panel__close" onClick={onClose} aria-label={t("common.close")}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
               <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
             </svg>
@@ -158,7 +156,7 @@ export default function SessionHistoryPanel({
                       <span>{formatDate(s.created_at)}</span>
                       <span className="session-card__dotsep">•</span>
                       {s.resolved_path
-                        ? <span className="session-card__path" style={{ color }}>{s.resolved_path}</span>
+                        ? <span className="session-card__path" style={{ color }}>{t(`path.${s.resolved_path}`)}</span>
                         : <span className="session-card__path session-card__path--none">{t("panel.noPath")}</span>}
                     </div>
                   </div>
