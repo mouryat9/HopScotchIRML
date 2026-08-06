@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { API } from "./api";
+import { useLang } from "./i18n.jsx";
 
 const STEP_COLORS = [
   "#2B5EA7", "#E8618C", "#D94040", "#1A8A7D", "#B0A47A",
@@ -56,6 +57,7 @@ export default function SessionHistoryPanel({
   onSelectSession,
   onNewSession,
 }) {
+  const { t } = useLang();
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -103,8 +105,8 @@ export default function SessionHistoryPanel({
         {/* Header */}
         <div className="session-panel__header">
           <div className="session-panel__headtext">
-            <h2 className="session-panel__title">My Designs</h2>
-            <p className="session-panel__sub">Switch between your research designs or start a new one.</p>
+            <h2 className="session-panel__title">{t("panel.title")}</h2>
+            <p className="session-panel__sub">{t("panel.sub")}</p>
           </div>
           <button className="session-panel__close" onClick={onClose} aria-label="Close">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
@@ -119,26 +121,26 @@ export default function SessionHistoryPanel({
           onClick={() => { onNewSession(); onClose(); }}
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          Start a new design
+          {t("panel.new")}
         </button>
 
         {/* Session List */}
         <div className="session-panel__list">
           {loading && (
-            <div className="session-panel__empty"><span className="session-spinner" />Loading your designs…</div>
+            <div className="session-panel__empty"><span className="session-spinner" />{t("panel.loading")}</div>
           )}
           {!loading && sessions.length === 0 && (
             <div className="session-panel__empty session-panel__empty--none">
               <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-              <p>No designs yet</p>
-              <span>Start your first research design above.</span>
+              <p>{t("panel.emptyTitle")}</p>
+              <span>{t("panel.emptySub")}</span>
             </div>
           )}
           {!loading && sessions.map((s) => {
             const isCurrent = s.session_id === currentSessionId;
             const completed = s.completed_steps || [];
             const pct = Math.round((completed.length / 9) * 100);
-            const title = s.topic || "Untitled research design";
+            const title = s.topic || t("panel.untitled");
             const color = PATH_COLOR[s.resolved_path] || "#7B8794";
             return (
               <button
@@ -157,10 +159,10 @@ export default function SessionHistoryPanel({
                       <span className="session-card__dotsep">•</span>
                       {s.resolved_path
                         ? <span className="session-card__path" style={{ color }}>{s.resolved_path}</span>
-                        : <span className="session-card__path session-card__path--none">no path yet</span>}
+                        : <span className="session-card__path session-card__path--none">{t("panel.noPath")}</span>}
                     </div>
                   </div>
-                  {isCurrent && <span className="session-card__current-badge">Current</span>}
+                  {isCurrent && <span className="session-card__current-badge">{t("panel.current")}</span>}
                 </div>
 
                 <div className="session-card__progress">

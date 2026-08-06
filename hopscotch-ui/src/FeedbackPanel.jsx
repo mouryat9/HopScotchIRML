@@ -6,18 +6,19 @@
 import React, { useEffect, useState, useRef } from "react";
 import { API } from "./api";
 import { notify } from "./Toast";
+import { useLang } from "./i18n.jsx";
 
-function timeAgo(dateStr) {
+function timeAgo(dateStr, t) {
   if (!dateStr) return "";
   const ts = dateStr.endsWith("Z") ? dateStr : dateStr + "Z";
   const diff = Date.now() - new Date(ts).getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "Just now";
-  if (mins < 60) return `${mins}m ago`;
+  if (mins < 1) return t ? t("time.justNow") : "Just now";
+  if (mins < 60) return t ? t("time.mAgo", { n: mins }) : `${mins}m ago`;
   const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
+  if (hrs < 24) return t ? t("time.hAgo", { n: hrs }) : `${hrs}h ago`;
   const days = Math.floor(hrs / 24);
-  if (days < 7) return `${days}d ago`;
+  if (days < 7) return t ? t("time.dAgo", { n: days }) : `${days}d ago`;
   return new Date(dateStr).toLocaleDateString();
 }
 
@@ -34,6 +35,7 @@ function initials(name = "") {
 }
 
 export default function FeedbackPanel() {
+  const { t } = useLang();
   const [feedback, setFeedback] = useState([]);
   const [unread, setUnread] = useState(0);
   const [open, setOpen] = useState(false);
@@ -58,8 +60,8 @@ export default function FeedbackPanel() {
           setTimeout(() => setRinging(false), 1200);
           const latest = items[items.length - 1];
           notify.info(
-            latest?.teacher_name ? `from ${latest.teacher_name}` : "Your teacher left you feedback.",
-            { title: "💬 New feedback" }
+            latest?.teacher_name ? t("fb.toastFrom", { name: latest.teacher_name }) : t("fb.emptyTitle"),
+            { title: t("fb.toastTitle") }
           );
         }
         prevUnreadRef.current = count;
@@ -102,7 +104,7 @@ export default function FeedbackPanel() {
         </span>
         <strong>{fb.teacher_name}</strong>
         {isNew && <span className="fb-newdot" aria-label="New" />}
-        <span className="fb-slide__time">{timeAgo(fb.created_at)}</span>
+        <span className="fb-slide__time">{timeAgo(fb.created_at, t)}</span>
       </div>
       <p className="fb-slide__text">{fb.text}</p>
     </div>
@@ -113,7 +115,7 @@ export default function FeedbackPanel() {
       <button
         className={`fb-bell${ringing ? " fb-bell--ring" : ""}`}
         onClick={handleToggle}
-        title="Teacher Feedback"
+        title={t("fb.title")}
         aria-label={unread > 0 ? `Teacher feedback, ${unread} unread` : "Teacher feedback"}
       >
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -128,7 +130,7 @@ export default function FeedbackPanel() {
           <div className={`fb-backdrop${closing ? " fb-backdrop--closing" : ""}`} onClick={closePanel} />
           <div className={`fb-slide${closing ? " fb-slide--closing" : ""}`} role="dialog" aria-label="Teacher feedback">
             <div className="fb-slide__header">
-              <h3 className="fb-slide__title">Teacher Feedback</h3>
+              <h3 className="fb-slide__title">{t("fb.title")}</h3>
               <button className="fb-slide__close" onClick={closePanel} aria-label="Close">&times;</button>
             </div>
 
@@ -141,20 +143,20 @@ export default function FeedbackPanel() {
                       <path d="M13.73 21a2 2 0 0 1-3.46 0" />
                     </svg>
                   </span>
-                  <p>No feedback yet</p>
-                  <p className="fb-slide__hint">When your teacher reviews your research design, their feedback will appear here - and you'll see it arrive on the bell.</p>
+                  <p>{t("fb.emptyTitle")}</p>
+                  <p className="fb-slide__hint">{t("fb.emptySub")}</p>
                 </div>
               ) : (
                 <div className="fb-slide__list">
                   {fresh.length > 0 && (
                     <>
-                      <div className="fb-section">New</div>
+                      <div className="fb-section">{t("fb.new")}</div>
                       {fresh.map((fb) => <Item key={fb.id} fb={fb} isNew />)}
                     </>
                   )}
                   {earlier.length > 0 && (
                     <>
-                      {fresh.length > 0 && <div className="fb-section">Earlier</div>}
+                      {fresh.length > 0 && <div className="fb-section">{t("fb.earlier")}</div>}
                       {earlier.map((fb) => <Item key={fb.id} fb={fb} isNew={false} />)}
                     </>
                   )}

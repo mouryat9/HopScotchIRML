@@ -3,6 +3,7 @@ import "./App.css";
 import React, { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { API } from "./api";
 import { notify } from "./Toast";
+import { useLang } from "./i18n.jsx";
 import SplitPanelLayout from "./SplitPanelLayout";
 import { useAuth } from "./AuthContext";
 import { useTheme } from "./ThemeContext";
@@ -82,6 +83,7 @@ function TourTooltip({
   tooltipProps,
   size,
 }) {
+  const { t } = useLang();
   const progress = ((index + 1) / size) * 100;
   return (
     <div {...tooltipProps} className="tour-tooltip">
@@ -95,7 +97,7 @@ function TourTooltip({
         <div className="tour-tooltip__top">
           {step.icon && <span className="tour-tooltip__icon">{step.icon}</span>}
           <span className="tour-tooltip__counter">
-            {index + 1} of {size}
+            {t("tour.counter", { i: index + 1, n: size })}
           </span>
         </div>
 
@@ -113,9 +115,7 @@ function TourTooltip({
             onClick={skipProps.onClick}
             role={skipProps.role}
             className="tour-tooltip__skip"
-          >
-            Skip Tour
-          </button>
+          >{t("tour.skip")}</button>
           <div className="tour-tooltip__nav">
             {index > 0 && (
               <button
@@ -124,9 +124,7 @@ function TourTooltip({
                 onClick={backProps.onClick}
                 role={backProps.role}
                 className="tour-tooltip__back"
-              >
-                Back
-              </button>
+              >{t("tour.back")}</button>
             )}
             <button
               aria-label={primaryProps["aria-label"]}
@@ -181,9 +179,10 @@ function isStepLocked(step, accessMode = "full", unlockedPhase = null, completed
 }
 
 function StepProgressBar({ activeStep, completedSteps = [], onStepChange, lockedSteps = [] }) {
+  const { t } = useLang();
   return (
     <nav className="step-progress" aria-label="Research steps">
-      {STEP_LABELS.map((label, i) => {
+      {STEP_LABELS.map((_label, i) => {
         const num = i + 1;
         const isActive = num === activeStep;
         const isCompleted = completedSteps.includes(num);
@@ -194,7 +193,7 @@ function StepProgressBar({ activeStep, completedSteps = [], onStepChange, locked
               className={`step-progress__dot${isActive ? " step-progress__dot--active" : ""}${isCompleted ? " step-progress__dot--completed" : ""}${isLocked ? " step-progress__dot--locked" : ""}`}
               onClick={() => !isLocked && onStepChange(num)}
               disabled={isLocked}
-              aria-label={`Step ${num}: ${label}${isLocked ? " (locked by your teacher)" : ""}`}
+              aria-label={`${t("chat.step", { n: num })}: ${t(`strip.${num}`)}${isLocked ? " (locked)" : ""}`}
               title={isLocked ? `${label} \u2014 locked by your teacher` : label}
             >
               {isLocked ? "\ud83d\udd12" : isCompleted ? "\u2713" : num}
@@ -232,6 +231,7 @@ const HOPSCOTCH_COLUMNS = [
 
 /* ----- Animated step diagram ----- */
 function StepDiagram({ activeStep, completedSteps = [], onStepChange, lockedSteps = [] }) {
+  const { t } = useLang();
   return (
     <div className="hop-diagram">
       {HOPSCOTCH_COLUMNS.map((col, ci) => (
@@ -251,10 +251,10 @@ function StepDiagram({ activeStep, completedSteps = [], onStepChange, lockedStep
                 }}
                 onClick={() => !isLocked && onStepChange(stepNum)}
                 disabled={isLocked}
-                aria-label={`Step ${stepNum}: ${card.label}${isLocked ? " (locked by your teacher)" : ""}`}
-                title={isLocked ? "Locked by your teacher" : card.label}
+                aria-label={`Step ${stepNum}: ${t(`stepQ.${card.num ?? stepNum ?? num}`)}${isLocked ? " (locked by your teacher)" : ""}`}
+                title={isLocked ? "Locked by your teacher" : t(`stepQ.${card.num ?? stepNum ?? num}`)}
               >
-                <img src={`/Step${stepNum}.png`} alt={`Step ${stepNum}: ${card.label}`} className="hop-step-card__img" />
+                <img src={`/Step${stepNum}.png`} alt={`Step ${stepNum}: ${t(`stepQ.${card.num ?? stepNum ?? num}`)}`} className="hop-step-card__img" />
                 {isLocked && <span className="hop-step-card__lock">🔒</span>}
               </button>
             );
@@ -268,6 +268,7 @@ function StepDiagram({ activeStep, completedSteps = [], onStepChange, lockedStep
 /* ----- Compact step strip: 9 colored chips + Map button (replaces the
    stacked dots row + always-open diagram so the workspace gets the screen) ----- */
 function StepStrip({ activeStep, completedSteps = [], onStepChange, lockedSteps = [], onOpenMap, mapOpen = false }) {
+  const { t } = useLang();
   return (
     <div className="step-strip">
       <div className="step-strip__chips" role="tablist" aria-label="Research steps">
@@ -285,8 +286,8 @@ function StepStrip({ activeStep, completedSteps = [], onStepChange, lockedSteps 
               disabled={isLocked}
               role="tab"
               aria-selected={isActive}
-              aria-label={`Step ${num}: ${card.label}${isCompleted ? " (completed)" : ""}${isLocked ? " (locked by your teacher)" : ""}`}
-              title={isLocked ? `${card.label} - locked by your teacher` : isCompleted ? `${card.label} - done` : card.label}
+              aria-label={`Step ${num}: ${t(`stepQ.${card.num ?? stepNum ?? num}`)}${isCompleted ? " (completed)" : ""}${isLocked ? " (locked by your teacher)" : ""}`}
+              title={isLocked ? `${t(`stepQ.${card.num ?? stepNum ?? num}`)} - locked by your teacher` : isCompleted ? `${t(`stepQ.${card.num ?? stepNum ?? num}`)} - done` : t(`stepQ.${card.num ?? stepNum ?? num}`)}
             >
               {isCompleted && !isLocked && (
                 <span className="step-chip__medal" aria-hidden="true">
@@ -294,7 +295,7 @@ function StepStrip({ activeStep, completedSteps = [], onStepChange, lockedSteps 
                 </span>
               )}
               <span className="step-chip__num">{isLocked ? "🔒" : num}</span>
-              <span className="step-chip__label">{STEP_LABELS[num - 1]}</span>
+              <span className="step-chip__label">{t(`strip.${num}`)}</span>
             </button>
           );
         })}
@@ -321,6 +322,7 @@ function StepStrip({ activeStep, completedSteps = [], onStepChange, lockedSteps 
 
 /* ----- Persistent mini Hopscotch board (always-visible navigator) ----- */
 function MiniBoard({ activeStep, completedSteps = [], onStepChange, lockedSteps = [], onOpenMap }) {
+  const { t } = useLang();
   const doneCount = completedSteps.length;
   return (
     <div className="mini-board" aria-label="Hopscotch board - research steps">
@@ -339,9 +341,9 @@ function MiniBoard({ activeStep, completedSteps = [], onStepChange, lockedSteps 
                   style={{ "--sq-color": card.color }}
                   onClick={() => !isLocked && onStepChange(num)}
                   disabled={isLocked}
-                  aria-label={`Step ${num}: ${card.label}${isCompleted ? " (done)" : ""}${isLocked ? " (locked)" : ""}`}
+                  aria-label={`Step ${num}: ${t(`stepQ.${card.num ?? stepNum ?? num}`)}${isCompleted ? " (done)" : ""}${isLocked ? " (locked)" : ""}`}
                   aria-current={isActive ? "step" : undefined}
-                  title={isLocked ? `${card.label} - locked by your teacher` : card.label}
+                  title={isLocked ? `${t(`stepQ.${card.num ?? stepNum ?? num}`)} - locked by your teacher` : t(`stepQ.${card.num ?? stepNum ?? num}`)}
                 >
                   <span className="mini-sq__mark">{isLocked ? "🔒" : isCompleted ? "✓" : num}</span>
                 </button>
@@ -371,6 +373,12 @@ function MiniBoard({ activeStep, completedSteps = [], onStepChange, lockedSteps 
 
 function StudentApp({ onBackToDashboard }) {
   const { user, logout } = useAuth();
+  const { t } = useLang();
+  const tourSteps = TOUR_STEPS.map((st, i) => ({
+    ...st,
+    title: t(`tour.${i + 1}.title`),
+    content: t(`tour.${i + 1}.content`),
+  }));
   const { theme, toggleTheme } = useTheme();
   const [sessionId, setSessionId] = useState(null);
   const [activeStep, setActiveStep] = useState(1);
@@ -515,7 +523,7 @@ function StudentApp({ onBackToDashboard }) {
       } catch (e) {
         if (cancelled) return;
         console.error(e);
-        notify.error("We couldn't start your session. Please check your connection and refresh.", { title: "Session error" });
+        notify.error(t("toast.sessionError"), { title: t("toast.sessionErrorTitle") });
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -582,7 +590,7 @@ function StudentApp({ onBackToDashboard }) {
       setCompletedSteps([]);
       setChatRefreshKey((k) => k + 1);
       setAutoMessage(null);
-      notify.success("Started a fresh design. Good luck!");
+      notify.success(t("toast.freshDesign"));
     } catch (e) {
       console.error("resetSession error:", e);
       if (e.message?.includes("401")) {
@@ -590,7 +598,7 @@ function StudentApp({ onBackToDashboard }) {
         // this) so the user lands on the login screen instead of a broken UI.
         window.dispatchEvent(new CustomEvent("hopscotch:unauthorized"));
       } else {
-        notify.error(e.message, { title: "Couldn't start a new design" });
+        notify.error(e.message, { title: t("toast.newDesignFailTitle") });
       }
     } finally {
       setLoading(false);
@@ -627,7 +635,7 @@ function StudentApp({ onBackToDashboard }) {
       await API.downloadResearchDesign(sessionId);
     } catch (e) {
       console.error("PDF download failed:", e);
-      notify.error("The research design PDF could not be downloaded. Please try again.", { title: "Download failed" });
+      notify.error(t("toast.pdfFail"), { title: t("toast.downloadFailTitle") });
     }
   }
 
@@ -669,9 +677,7 @@ function StudentApp({ onBackToDashboard }) {
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-            </svg>
-            My Designs
-          </button>
+            </svg>{t("nav.myDesigns")}</button>
         </div>
         {/* Center: Layout personalization - toggle side panels */}
         <div className="hop-header__center">
@@ -688,7 +694,7 @@ function StudentApp({ onBackToDashboard }) {
                   <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
                 </svg>
               </span>
-              <span className="cmd-bar__label">Resources</span>
+              <span className="cmd-bar__label">{t("nav.resources")}</span>
             </button>
             <button
               className={`cmd-bar__btn cmd-bar__btn--assistant${rightOpen ? " cmd-bar__btn--active" : ""}`}
@@ -701,7 +707,7 @@ function StudentApp({ onBackToDashboard }) {
                   <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
                 </svg>
               </span>
-              <span className="cmd-bar__label">Assistant</span>
+              <span className="cmd-bar__label">{t("nav.assistant")}</span>
             </button>
           </div>
         </div>
@@ -711,27 +717,27 @@ function StudentApp({ onBackToDashboard }) {
             <button
               className="hop-header__download"
               onClick={() => setDownloadOpen((o) => !o)}
-              title="Download designs"
+              title={t("nav.downloadTitle")}
             >
-              Download Design
+              {t("nav.download")}
               <span className={`hop-download__arrow${downloadOpen ? " hop-download__arrow--open" : ""}`}>&#9662;</span>
             </button>
             {downloadOpen && (
               <div className="hop-download__menu">
                 <button className="hop-download__item" onClick={handleDownloadPDF}>
                   <span className="hop-download__icon">PDF</span>
-                  Research Design
+                  {t("dl.researchDesign")}
                 </button>
                 <button
                   className={`hop-download__item${!step3Completed ? " hop-download__item--disabled" : ""}`}
                   onClick={step3Completed ? handleOpenConceptualFramework : undefined}
                   disabled={!step3Completed}
-                  title={!step3Completed ? "Complete Step 3 (Literature) to unlock" : "Edit & Print Conceptual Framework (opens in a new tab)"}
+                  title={!step3Completed ? t("dl.cfLocked") : t("dl.cfReady")}
                 >
                   <span className="hop-download__icon" style={{ background: "#6AA84F" }}>CF</span>
-                  Conceptual Framework
+                  {t("dl.cf")}
                   {!step3Completed ? (
-                    <span className="hop-download__lock">Step 3</span>
+                    <span className="hop-download__lock">{t("dl.step3")}</span>
                   ) : (
                     <span className="hop-download__newtab" aria-hidden="true" title="Opens in a new tab">
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -894,7 +900,7 @@ function StudentApp({ onBackToDashboard }) {
 
       <Joyride
         key={tourKey}
-        steps={TOUR_STEPS}
+        steps={tourSteps}
         run={runTour}
         continuous
         showSkipButton

@@ -201,7 +201,7 @@ export default function StepDetails({ step, sessionId, onChatRefresh, onAutoSend
     });
   };
 
-  const title = step === 1 ? t("step1.title") : (STEP_TITLES[step] || `Step ${step}`);
+  const title = step <= 3 ? t(`step${step}.title`) : (STEP_TITLES[step] || `Step ${step}`);
 
   // ---------------- Step 1 ----------------
   if (step === 1) {
@@ -264,9 +264,7 @@ export default function StepDetails({ step, sessionId, onChatRefresh, onAutoSend
           )}
 
           {saving && (
-            <div className="badge">
-              Saving…
-            </div>
+            <div className="badge">{t("common.saving")}</div>
           )}
           {saveError && (
             <div className="badge badge--error">
@@ -286,63 +284,53 @@ export default function StepDetails({ step, sessionId, onChatRefresh, onAutoSend
         <section className="hop-card">
           <h2 className="hop-title">{title}</h2>
           <p className="hop-desc">
-            <strong>Directions</strong>
+            <strong>{t("common.directions")}</strong>
             <br />
-            {STEP_DIRECTIONS[2]}
+            {t("step2.directions")}
           </p>
         </section>
 
         {/* Inputs card */}
         <section className="hop-card">
           <p className="hop-desc">
-            After reviewing the interactive resources on the left side, please
-            clearly define your topic and research goal. Then use the AI
-            Assistant to help you refine or further narrow your topic.
+            {t("step2.intro")}
           </p>
 
-          <label className="hop-desc" style={{ display: "block", marginTop: 4 }}>
-            Research topic
-          </label>
+          <label className="hop-desc" style={{ display: "block", marginTop: 4 }}>{t("step2.topicLabel")}</label>
           <input
             className="input"
             type="text"
-            placeholder="Please describe your research topic…"
+            placeholder={t("step2.topicPh")}
             value={data.topic || ""}
             onChange={(e) => updateField("topic", e.target.value)}
             disabled={!sessionId}
           />
 
-          <label className="hop-desc" style={{ display: "block", marginTop: 10 }}>
-            Personal goals driving your study
-          </label>
+          <label className="hop-desc" style={{ display: "block", marginTop: 10 }}>{t("step2.personalLabel")}</label>
           <textarea
             className="textarea"
             rows={2}
-            placeholder="What personal motivations drive this research?"
+            placeholder={t("step2.personalPh")}
             value={data.personalGoals || ""}
             onChange={(e) => updateField("personalGoals", e.target.value)}
             disabled={!sessionId}
           />
 
-          <label className="hop-desc" style={{ display: "block", marginTop: 10 }}>
-            Practical goals driving your study
-          </label>
+          <label className="hop-desc" style={{ display: "block", marginTop: 10 }}>{t("step2.practicalLabel")}</label>
           <textarea
             className="textarea"
             rows={2}
-            placeholder="What practical problems do you want to address?"
+            placeholder={t("step2.practicalPh")}
             value={data.practicalGoals || ""}
             onChange={(e) => updateField("practicalGoals", e.target.value)}
             disabled={!sessionId}
           />
 
-          <label className="hop-desc" style={{ display: "block", marginTop: 10 }}>
-            Intellectual goals driving your study
-          </label>
+          <label className="hop-desc" style={{ display: "block", marginTop: 10 }}>{t("step2.intellectualLabel")}</label>
           <textarea
             className="textarea"
             rows={2}
-            placeholder="What do you want to understand or contribute to the field?"
+            placeholder={t("step2.intellectualPh")}
             value={data.intellectualGoals || ""}
             onChange={(e) => updateField("intellectualGoals", e.target.value)}
             disabled={!sessionId}
@@ -354,13 +342,11 @@ export default function StepDetails({ step, sessionId, onChatRefresh, onAutoSend
               disabled={!sessionId || !data.topic}
               onClick={() => {
                 if (onAutoSend) onAutoSend(
-                  `I'm on Step 2. My research topic is: "${data.topic || ""}". My personal goals: "${data.personalGoals || ""}". My practical goals: "${data.practicalGoals || ""}". My intellectual goals: "${data.intellectualGoals || ""}". Can you give me feedback on my topic and goals, and help me refine them?`
+                  t("step2.autoMsg", { topic: data.topic || "", personal: data.personalGoals || "", practical: data.practicalGoals || "", intellectual: data.intellectualGoals || "" })
                 );
               }}
-            >
-              Get AI Guidance
-            </button>
-            {saving && <span className="badge">Saving…</span>}
+            >{t("common.getAI")}</button>
+            {saving && <span className="badge">{t("common.saving")}</span>}
           </div>
           {saveError && (
             <div className="badge badge--error">
@@ -380,9 +366,9 @@ export default function StepDetails({ step, sessionId, onChatRefresh, onAutoSend
         <section className="hop-card">
           <h2 className="hop-title">{title}</h2>
           <p className="hop-desc">
-            <strong>Directions</strong>
+            <strong>{t("common.directions")}</strong>
             <br />
-            {STEP_DIRECTIONS[3]}
+            {t("step3.directions")}
           </p>
         </section>
 
@@ -397,25 +383,21 @@ export default function StepDetails({ step, sessionId, onChatRefresh, onAutoSend
             strategies for your literature search.
           </p>
 
-          <label className="hop-desc" style={{ display: "block", marginTop: 4 }}>
-            Topical research
-          </label>
+          <label className="hop-desc" style={{ display: "block", marginTop: 4 }}>{t("step3.topicalLabel")}</label>
           <textarea
             className="textarea"
             rows={3}
-            placeholder="Please describe your topical research…"
+            placeholder={t("step3.topicalPh")}
             value={data.topicalResearch || ""}
             onChange={(e) => updateField("topicalResearch", e.target.value)}
             disabled={!sessionId}
           />
 
-          <label className="hop-desc" style={{ display: "block", marginTop: 10 }}>
-            Theoretical frameworks
-          </label>
+          <label className="hop-desc" style={{ display: "block", marginTop: 10 }}>{t("step3.theoreticalLabel")}</label>
           <textarea
             className="textarea"
             rows={3}
-            placeholder="Please describe your theoretical frameworks…"
+            placeholder={t("step3.theoreticalPh")}
             value={data.theoreticalFrameworks || ""}
             onChange={(e) => updateField("theoreticalFrameworks", e.target.value)}
             disabled={!sessionId}
@@ -427,29 +409,27 @@ export default function StepDetails({ step, sessionId, onChatRefresh, onAutoSend
           <textarea
             className="textarea"
             rows={3}
-            placeholder="What has existing research not yet answered? Describe the gap your study will help fill…"
+            placeholder={t("step3.gapsPh")}
             value={data.gaps || ""}
             onChange={(e) => updateField("gaps", e.target.value)}
             disabled={!sessionId}
           />
 
-          <label className="hop-desc" style={{ display: "block", marginTop: 10 }}>
-            Problem statement
-          </label>
+          <label className="hop-desc" style={{ display: "block", marginTop: 10 }}>{t("step3.problemLabel")}</label>
           <details className="hop-template">
-            <summary>Need help? Open the problem statement template</summary>
+            <summary>{t("step3.helperSummary")}</summary>
             <div className="hop-template__body">
-              <p><strong>Part 1. Describe the real-world problem.</strong> Within [community, organization, population, or setting], there is a problem concerning [___]. Although [what should ideally be happening], [the problem] continues to occur. Evidence includes [statistics, reports, or scholarly evidence].</p>
-              <p><strong>Part 2. Explain why it matters.</strong> This problem negatively affects [individuals, communities, or systems] by [___]. If it continues, it may result in [___].</p>
-              <p><strong>Part 3. Connect to existing research.</strong> Previous research has shown [___]. Researchers suggest factors such as [___] may contribute. However, little is known about [___], particularly among [___].</p>
-              <p><strong>Part 4. State the research problem (knowledge gap).</strong> Because existing literature does not adequately explain [___], there is a need for research that examines [___]. Understanding this could help [educators, policymakers, practitioners] make more informed decisions.</p>
-              <p><strong>Part 5. Connect to your proposed study.</strong> Therefore, this study will investigate [___] using a [qualitative, quantitative, or mixed-methods] approach in order to [explore, examine, measure, compare, or understand ___]. The findings may contribute by [___].</p>
+              <p><strong>{t("step3.h1t")}</strong> {t("step3.h1")}</p>
+              <p><strong>{t("step3.h2t")}</strong> {t("step3.h2")}</p>
+              <p><strong>{t("step3.h3t")}</strong> {t("step3.h3")}</p>
+              <p><strong>{t("step3.h4t")}</strong> {t("step3.h4")}</p>
+              <p><strong>{t("step3.h5t")}</strong> {t("step3.h5")}</p>
             </div>
           </details>
           <textarea
             className="textarea"
             rows={5}
-            placeholder="Write your problem statement here. Open the template above if you'd like a structure to follow…"
+            placeholder={t("step3.problemPh")}
             value={data.problem_statement || ""}
             onChange={(e) => updateField("problem_statement", e.target.value)}
             disabled={!sessionId}
@@ -461,13 +441,11 @@ export default function StepDetails({ step, sessionId, onChatRefresh, onAutoSend
               disabled={!sessionId || (!data.topicalResearch && !data.theoreticalFrameworks && !data.gaps && !data.problem_statement)}
               onClick={() => {
                 if (onAutoSend) onAutoSend(
-                  `I'm on Step 3. My topical research is: "${data.topicalResearch || ""}". My theoretical frameworks are: "${data.theoreticalFrameworks || ""}". The gap I identified is: "${data.gaps || ""}". My draft problem statement is: "${data.problem_statement || ""}". Can you give me feedback and help me strengthen my literature review and problem statement?`
+                  t("step3.autoMsg", { topical: data.topicalResearch || "", theoretical: data.theoreticalFrameworks || "", gaps: data.gaps || "", problem: data.problem_statement || "" })
                 );
               }}
-            >
-              Get AI Guidance
-            </button>
-            {saving && <span className="badge">Saving…</span>}
+            >{t("common.getAI")}</button>
+            {saving && <span className="badge">{t("common.saving")}</span>}
           </div>
           {saveError && (
             <div className="badge badge--error">
@@ -509,7 +487,7 @@ export default function StepDetails({ step, sessionId, onChatRefresh, onAutoSend
         <section className="hop-card">
           <h2 className="hop-title">{stepConfig.title}</h2>
           <p className="hop-desc">
-            <strong>Directions</strong>
+            <strong>{t("common.directions")}</strong>
             <br />
             {stepConfig.directions}
           </p>
@@ -533,7 +511,7 @@ export default function StepDetails({ step, sessionId, onChatRefresh, onAutoSend
         {/* Additional notes textarea for every step */}
         <section className="hop-card">
           <label className="hop-desc" style={{ display: "block", marginBottom: 6 }}>
-            Additional questions for Step {step}
+            {t("common.additionalQuestions", { n: step })}
           </label>
           <textarea
             className="textarea"
@@ -557,9 +535,7 @@ export default function StepDetails({ step, sessionId, onChatRefresh, onAutoSend
                   `I'm on Step ${step} (${stepConfig.title}). Here are my inputs: ${summary || "I haven't filled anything in yet"}. Can you give me feedback and guidance?`
                 );
               }}
-            >
-              Get AI Guidance
-            </button>
+            >{t("common.getAI")}</button>
             {step === 4 && (vdEditorSupports(data.mixed_design) || vdEditorSupports(data.design)) && (
               <button
                 className="btn btn--vd"
@@ -821,6 +797,7 @@ function StepFieldRenderer({ config, data, updateField, sessionId, disabled }) {
  * side by side and lets the student choose a primary methodology.
  */
 function MethodologyDecision({ config, data, updateField, sessionId, disabled }) {
+  const { t } = useLang();
   const [chosenMethodology, setChosenMethodology] = useState(
     data.chosen_methodology || ""
   );
@@ -865,26 +842,22 @@ function MethodologyDecision({ config, data, updateField, sessionId, disabled })
       <div>
         <div className="methodology-confirmed">
           <span>
-            Primary methodology:{" "}
+            {t("meth.primary")}{" "}
             <strong>
-              {chosenMethodology === "quantitative"
-                ? "Quantitative"
-                : "Qualitative"}
+              {chosenMethodology === "quantitative" ? t("meth.quantitative") : t("meth.qualitative")}
             </strong>
           </span>
           <button
             className="link-btn"
             onClick={resetChoice}
             style={{ marginLeft: 12 }}
-          >
-            Change
-          </button>
+          >{t("meth.change")}</button>
         </div>
         <label
           className="hop-desc"
           style={{ display: "block", marginTop: 12, marginBottom: 6 }}
         >
-          Now select your research design:
+          {t("meth.selectDesign")}
         </label>
         <select
           className="input"
@@ -892,7 +865,7 @@ function MethodologyDecision({ config, data, updateField, sessionId, disabled })
           onChange={(e) => updateField(config.field_key, e.target.value)}
           disabled={disabled}
         >
-          <option value="">-- Choose a design --</option>
+          <option value="">{t("meth.chooseDesign")}</option>
           {(opts || []).map((opt) => (
             <option key={opt.id} value={opt.id}>
               {opt.label}
@@ -915,7 +888,7 @@ function MethodologyDecision({ config, data, updateField, sessionId, disabled })
         {config.path === "mixed" && (
           <div style={{ marginTop: 16 }}>
             <label className="hop-desc" style={{ display: "block", marginBottom: 6 }}>
-              Now select your mixed methods design - how will the two strands combine?
+              {t("meth.selectMixed")}
             </label>
             <select
               className="input"
@@ -968,8 +941,8 @@ function MethodologyDecision({ config, data, updateField, sessionId, disabled })
   const recommended = config.recommended_methodology; // "quantitative", "qualitative", or null
 
   const introText = recommended
-    ? `Based on your worldview, we recommend a ${recommended} approach - but you're free to choose either. Explore the options below and chat with the AI assistant to help decide which fits your study.`
-    : "As a pragmatist, you can draw from both quantitative and qualitative approaches. Explore the options below and chat with the AI assistant to help decide which fits your study. Then confirm your choice.";
+    ? t("meth.introRecommended", { rec: t(recommended === "quantitative" ? "meth.quantitative" : "meth.qualitative").toLowerCase() })
+    : t("meth.introPragmatist");
 
   return (
     <div>
@@ -978,9 +951,9 @@ function MethodologyDecision({ config, data, updateField, sessionId, disabled })
       <div className="methodology-grid">
         <div className={`methodology-col${recommended === "quantitative" ? " methodology-col--recommended" : ""}`}>
           <h4 className="methodology-heading">
-            Quantitative Designs
+            {t("meth.quantHeading")}
             {recommended === "quantitative" && (
-              <span className="methodology-badge">Recommended</span>
+              <span className="methodology-badge">{t("meth.recommendedBadge")}</span>
             )}
           </h4>
           <ul className="methodology-list">
@@ -996,15 +969,15 @@ function MethodologyDecision({ config, data, updateField, sessionId, disabled })
             onClick={() => confirmMethodology("quantitative")}
             disabled={confirming || disabled}
           >
-            {confirming ? "Saving..." : "Choose Quantitative"}
+            {confirming ? t("meth.saving") : t("meth.chooseQuant")}
           </button>
         </div>
 
         <div className={`methodology-col${recommended === "qualitative" ? " methodology-col--recommended" : ""}`}>
           <h4 className="methodology-heading">
-            Qualitative Designs
+            {t("meth.qualHeading")}
             {recommended === "qualitative" && (
-              <span className="methodology-badge">Recommended</span>
+              <span className="methodology-badge">{t("meth.recommendedBadge")}</span>
             )}
           </h4>
           <ul className="methodology-list">
@@ -1020,7 +993,7 @@ function MethodologyDecision({ config, data, updateField, sessionId, disabled })
             onClick={() => confirmMethodology("qualitative")}
             disabled={confirming || disabled}
           >
-            {confirming ? "Saving..." : "Choose Qualitative"}
+            {confirming ? t("meth.saving") : t("meth.chooseQual")}
           </button>
         </div>
       </div>
