@@ -234,13 +234,19 @@ const CONTEXT_TITLES = {
 
 // Per-language overlay tables; English (or any missing language) returns the
 // form untouched. Each overlay ships the same-shaped tables from its own module.
-const VD_ES = { N, F, D, L, CONTEXT_TITLES, TITLE_TEXTS, intro };
+const VD_ES = {
+  N, F, D, L, CONTEXT_TITLES, TITLE_TEXTS, TITLE_NAMES, FIXED_VALUES,
+  DBR_RAIL_TITLES, DBR_CENTER_EXTRA_LABEL, DBR_SPLIT_STRATEGIES_LABEL, intro,
+};
 const VD_OVERLAYS = { es: VD_ES, zh: VD_ZH };
 
 export function localizeVdForm(form, designKey, lang) {
   const overlay = VD_OVERLAYS[lang];
   if (!overlay || !form) return form;
-  const { N, F, D, L, CONTEXT_TITLES, TITLE_TEXTS, intro } = overlay;
+  const {
+    N, F, D, L, CONTEXT_TITLES, TITLE_TEXTS, TITLE_NAMES = {}, FIXED_VALUES = {},
+    DBR_RAIL_TITLES = {}, DBR_CENTER_EXTRA_LABEL, DBR_SPLIT_STRATEGIES_LABEL, intro,
+  } = overlay;
   const name = N[designKey] || form.designName;
   const perDesign = D[designKey] || {};
   const fields = (form.fields || []).map((f) => {
@@ -263,8 +269,8 @@ export function localizeVdForm(form, designKey, lang) {
     ...(form.layout?.leftRails
       ? { leftRails: form.layout.leftRails.map((r) => ({ ...r, title: DBR_RAIL_TITLES[r.key] || r.title })) }
       : {}),
-    ...(form.layout?.centerExtra ? { centerExtra: { ...form.layout.centerExtra, label: DBR_CENTER_EXTRA_LABEL } } : {}),
-    ...(form.layout?.splitStrategies ? { splitStrategies: { ...form.layout.splitStrategies, label: DBR_SPLIT_STRATEGIES_LABEL } } : {}),
+    ...(form.layout?.centerExtra ? { centerExtra: { ...form.layout.centerExtra, label: DBR_CENTER_EXTRA_LABEL || form.layout.centerExtra.label } } : {}),
+    ...(form.layout?.splitStrategies ? { splitStrategies: { ...form.layout.splitStrategies, label: DBR_SPLIT_STRATEGIES_LABEL || form.layout.splitStrategies.label } } : {}),
   };
   return { ...form, designName: name, intro: intro(name), fields, layout };
 }

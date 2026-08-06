@@ -200,9 +200,44 @@ const CONTEXT_TITLES = {
   phenomenography: "你的现象图析学研究背景", design_based_research: "背景与边界",
 };
 
+// Quantitative pentagon: short title above the diagram, per design
+const TITLE_NAMES = {
+  descriptive: "描述性非实验研究", correlational: "相关性非实验研究",
+  quasi_experimental: "准实验研究", experimental: "实验研究",
+  cross_sectional_survey: "横断面调查研究", pre_experimental: "前实验研究",
+};
+
+// Fixed characteristic chips on the pentagon diagram, mapped by English value
+const FIXED_VALUES = {
+  "Exploratory/Descriptive": "探索性/描述性",
+  "No control group": "无对照组",
+  "Desirable": "值得追求",
+  "Correlational": "相关性",
+  "Explanatory": "解释性",
+  "Treatment & control group": "实验组与对照组",
+  "Natural groups": "自然分组",
+  "Descriptive / Survey": "描述性 / 调查",
+  "Essential": "必不可少",
+  "Exploratory": "探索性",
+  "1 group (no control)": "1 组（无对照）",
+  "Limited": "有限",
+};
+
+// DBR-only diagram areas that carry their own titles in the layout
+const DBR_RAIL_TITLES = {
+  context: "背景与边界",
+  hypothesis: "初始设计猜想",
+  variables: "干预与设计要求",
+};
+const DBR_CENTER_EXTRA_LABEL = "你的基于设计的研究名称";
+const DBR_SPLIT_STRATEGIES_LABEL = "设计原则与知识贡献";
+
 // Data-only overlay bundle, mirroring the tables localizeVdForm reads
-// (N, F, D, L, CONTEXT_TITLES, TITLE_TEXTS, intro). No merge logic here.
-export const VD_ZH = { N, F, D, L, CONTEXT_TITLES, TITLE_TEXTS, intro };
+// (N, F, D, L, CONTEXT_TITLES, TITLE_TEXTS, ... intro). No merge logic here.
+export const VD_ZH = {
+  N, F, D, L, CONTEXT_TITLES, TITLE_TEXTS, TITLE_NAMES, FIXED_VALUES,
+  DBR_RAIL_TITLES, DBR_CENTER_EXTRA_LABEL, DBR_SPLIT_STRATEGIES_LABEL, intro,
+};
 export { N, F, D, L, CONTEXT_TITLES, TITLE_TEXTS, intro };
 export const VD_DESIGN_NAMES_ZH = N;
 export default VD_ZH;
