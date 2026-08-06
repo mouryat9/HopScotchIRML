@@ -143,10 +143,10 @@ function groupByStep(history) {
   return groups;
 }
 
-function StepGroup({ group, isActive, streaming }) {
+function StepGroup({ group, isActive, streaming, t }) {
   const [open, setOpen] = useState(isActive);
   const color = STEP_COLORS[group.step] || "var(--hop-navy-dark)";
-  const label = STEP_LABELS[group.step] || "General";
+  const label = (t ? t(`stepQ.${group.step}`) : STEP_LABELS[group.step]) || (t ? t("stepQ.general") : "General");
   const msgCount = group.turns.length;
 
   // Auto-expand when step becomes active
@@ -164,7 +164,7 @@ function StepGroup({ group, isActive, streaming }) {
         onClick={() => setOpen((o) => !o)}
       >
         <span className="chat-step-group__pill" style={{ background: color }}>
-          Step {group.step}
+          {t ? t("chat.step", { n: group.step }) : `Step ${group.step}`}
         </span>
         <span className="chat-step-group__label">{label}</span>
         <span className="chat-step-group__count">{msgCount} msg{msgCount !== 1 ? "s" : ""}</span>
@@ -378,6 +378,7 @@ export default function ChatBox({ sessionId, activeStep, refreshKey, autoMessage
         )}
         {groups.map((g, i) => (
           <StepGroup
+            t={t}
             key={`${g.step}-${i}`}
             group={g}
             isActive={g.step === activeStep}
@@ -423,7 +424,7 @@ export default function ChatBox({ sessionId, activeStep, refreshKey, autoMessage
           onClick={() => send()}
           disabled={!aiEnabled || !input.trim() || sending || !sessionId}
         >
-          {sending ? "Sending…" : "Send"}
+          {sending ? t("chat.sending") : t("chat.send")}
         </button>
       </div>
 

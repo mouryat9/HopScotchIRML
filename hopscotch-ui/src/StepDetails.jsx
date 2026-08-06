@@ -197,7 +197,7 @@ export default function StepDetails({ step, sessionId, onChatRefresh, onAutoSend
       : t("step1.autoMsgNoJustification", { label: localLabel });
     if (onAutoSend) onAutoSend({
       text,
-      event: `Worldview selected: ${label}`,
+      event: t("chat.worldviewSelected", { label: localLabel }),
     });
   };
 
