@@ -78,6 +78,7 @@ from database import (
 # -------------------------------------------------
 ROOT = Path(__file__).parent
 PATHS_PATH = ROOT / "server" / "config" / "paths" / "research_paths.json"
+PATHS_ES_PATH = ROOT / "server" / "config" / "paths" / "research_paths.es.json"
 TEMPLATE_DIR = ROOT / "server" / "templates"
 
 # -------------------------------------------------
@@ -167,6 +168,32 @@ def load_paths_config() -> Dict[str, Any]:
         logger.warning("Paths config JSON invalid: %s", e)
         _paths_config = {}
     return _paths_config
+
+
+_paths_config_es = None
+
+def load_paths_config_es() -> Dict[str, Any]:
+    """Spanish overlay for student-visible step-config strings (optional file)."""
+    global _paths_config_es
+    if _paths_config_es is None:
+        try:
+            with open(PATHS_ES_PATH, "r", encoding="utf-8") as f:
+                _paths_config_es = json.load(f)
+        except Exception:
+            _paths_config_es = {}
+    return _paths_config_es
+
+
+def _localize_step_cfg(path_name: str, step_key: str, step_cfg: dict, lang: str) -> dict:
+    """Merge the Spanish overlay over a step config. Overlay keys replace the
+    English ones wholesale (arrays keep the same ids); anything untranslated
+    falls through to English. llm_guidance is never overlaid."""
+    if lang != "es" or not step_cfg:
+        return step_cfg
+    ov = (load_paths_config_es().get("paths", {}).get(path_name, {})
+          .get("steps", {}).get(step_key) or {})
+    return {**step_cfg, **ov} if ov else step_cfg
+
 
 
 # -------------------------------------------------
@@ -1940,6 +1967,7 @@ def get_step_config(
     """Return the path-resolved configuration for a given step."""
     sess = _require_session(session_id)
     paths_cfg = load_paths_config()
+    lang = (user or {}).get("language", "en")
 
     # Steps 1-3 are handled entirely by the frontend
     if step <= 3:
@@ -1974,6 +2002,7 @@ def get_step_config(
                 )
             inherited_cfg = all_paths.get(chosen, {}).get("steps", {}).get(step_key, {})
             guidance = inherited_cfg.get("llm_guidance", "")
+            inherited_cfg = _localize_step_cfg(chosen, step_key, inherited_cfg, lang)
             addendum = step_cfg.get("llm_guidance_addendum", "")
             if addendum:
                 guidance = f"{guidance}\n{addendum}" if guidance else addendum
@@ -1991,6 +2020,7 @@ def get_step_config(
         # Non-mixed path but student overrode methodology at Step 4
         if resolved != "mixed" and sess.chosen_methodology and sess.chosen_methodology != resolved:
             override_cfg = all_paths.get(sess.chosen_methodology, {}).get("steps", {}).get(step_key, {})
+            override_cfg = _localize_step_cfg(sess.chosen_methodology, step_key, override_cfg, lang)
             if override_cfg:
                 return StepConfigResp(
                     step=step,
@@ -2006,13 +2036,16 @@ def get_step_config(
 
     # --- Step 4: methodology decision for ALL paths ---
     if step == 4:
+        step_cfg = _localize_step_cfg(resolved, "4", step_cfg, lang)
         quant_opts = (
-            all_paths.get("quantitative", {})
-            .get("steps", {}).get("4", {}).get("options")
+            _localize_step_cfg("quantitative", "4",
+                               all_paths.get("quantitative", {}).get("steps", {}).get("4", {}), lang)
+            .get("options")
         )
         qual_opts = (
-            all_paths.get("qualitative", {})
-            .get("steps", {}).get("4", {}).get("options")
+            _localize_step_cfg("qualitative", "4",
+                               all_paths.get("qualitative", {}).get("steps", {}).get("4", {}), lang)
+            .get("options")
         )
         # Determine recommendation based on worldview path
         recommended = None
@@ -2028,7 +2061,9 @@ def get_step_config(
         # "(Qualitative Design)" in the header).
         title_cfg = step_cfg
         if resolved != "mixed" and sess.chosen_methodology and sess.chosen_methodology in all_paths:
-            title_cfg = all_paths[sess.chosen_methodology].get("steps", {}).get("4", step_cfg)
+            title_cfg = _localize_step_cfg(
+                sess.chosen_methodology, "4",
+                all_paths[sess.chosen_methodology].get("steps", {}).get("4", step_cfg), lang)
         return StepConfigResp(
             step=step,
             path=resolved,
@@ -2044,6 +2079,7 @@ def get_step_config(
             recommended_methodology=recommended,
         )
 
+    step_cfg = _localize_step_cfg(resolved, step_key, step_cfg, lang)
     return StepConfigResp(
         step=step,
         path=resolved,

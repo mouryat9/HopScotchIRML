@@ -1,0 +1,219 @@
+{
+  "meta": {
+    "id": "hopscotch_paths_v1_es",
+    "version": "1.0.0",
+    "description": "Spanish overlay for student-visible strings of steps 4-9. llm_guidance stays in English (model instructions); the chat language directive makes the assistant answer in Spanish."
+  },
+
+  "paths": {
+    "quantitative": {
+      "label": "Cuantitativa",
+      "steps": {
+        "4": {
+          "title": "Paso 4: ¿Cómo lo estudiaré? (Diseño cuantitativo)",
+          "directions": "El Paso Cuatro consiste en elegir un enfoque de investigación (cualitativo, cuantitativo o mixto) que se alinee con tu cosmovisión y tus metas de investigación, y en seleccionar un diseño de investigación apropiado según tus habilidades y limitaciones, como el tiempo o los recursos. Los recursos interactivos de la izquierda te guiarán en este proceso.",
+          "input_prompt": "Después de revisar los recursos interactivos del lado izquierdo, explora las opciones a continuación y conversa con el asistente de IA para determinar qué enfoque y diseño se ajustan mejor a tu estudio. Cuando tomes tu decisión, selecciona tu enfoque y diseño de investigación y justifica tu elección según tu cosmovisión y tu tema. Luego usa el Asistente de IA para aclarar dudas sobre tu enfoque o diseño.",
+          "options": [
+            {"id": "descriptive", "label": "Descriptivo no experimental", "description": "Describe las características de una población o un fenómeno."},
+            {"id": "correlational", "label": "Correlacional", "description": "Examina relaciones entre dos o más variables."},
+            {"id": "pre_experimental", "label": "Preexperimental", "description": "Utiliza un solo grupo con controles limitados."},
+            {"id": "quasi_experimental", "label": "Cuasiexperimental", "description": "Se asemeja a los experimentos pero sin asignación aleatoria."},
+            {"id": "experimental", "label": "Experimental", "description": "Utiliza asignación aleatoria y grupos de control para probar causalidad."}
+          ]
+        },
+        "5": {
+          "title": "Paso 5: ¿Cuál es mi pregunta de investigación? (Hipótesis)",
+          "directions": "El Paso Cinco consiste en generar una pregunta de investigación alineada con tu enfoque de investigación. Los recursos interactivos de la izquierda te guiarán en este proceso.",
+          "input_prompt": "Después de revisar los recursos interactivos del lado izquierdo, escribe tu pregunta de investigación y usa el Asistente de IA para refinarla.",
+          "fields": [
+            {"field_key": "research_aim", "label": "Objetivo de la investigación", "type": "textarea", "placeholder": "Enuncia el objetivo de tu estudio..."},
+            {"field_key": "hypothesis", "label": "Hipótesis", "type": "textarea", "placeholder": "Enuncia tu hipótesis comprobable..."}
+          ]
+        },
+        "6": {
+          "title": "Paso 6: ¿Qué datos recolectaré? (Recolección cuantitativa)",
+          "directions": "El Paso Seis consiste en crear un plan de recolección de datos y elegir métodos de recolección que se alineen con tu enfoque de investigación y te ayuden a responder tu pregunta de investigación. Los recursos interactivos de la izquierda te guiarán en este proceso.",
+          "input_prompt": "Después de revisar los recursos interactivos del lado izquierdo, describe tu plan de recolección de datos, incluyendo tu método, participantes y estrategia de muestreo. Explica tu justificación para cada elección. Luego usa el Asistente de IA para refinar tu plan.",
+          "fields": [
+            {"field_key": "collection_method", "label": "Método de recolección", "type": "multi_select", "placeholder": "Selecciona todas las que apliquen…", "options": [
+              {"id": "experiments", "label": "Experimentos"},
+              {"id": "questionnaires", "label": "Cuestionarios"},
+              {"id": "surveys", "label": "Encuestas"},
+              {"id": "systematic_observations", "label": "Observaciones sistemáticas"},
+              {"id": "instrumental_measurements", "label": "Mediciones instrumentales"},
+              {"id": "other", "label": "Otro"}
+            ]},
+            {"field_key": "participants", "label": "Participantes", "type": "textarea", "placeholder": "Describe a los participantes de tu estudio (quiénes son, cuántos, criterios de inclusión/exclusión)..."},
+            {"field_key": "sampling_method", "label": "Método de muestreo", "type": "textarea", "placeholder": "¿Qué método de muestreo usarás? (aleatorio, estratificado, por conveniencia, intencional)..."}
+          ]
+        },
+        "7": {
+          "title": "Paso 7: ¿Cómo analizaré los datos? (Análisis cuantitativo)",
+          "directions": "El Paso Siete consiste en desarrollar un plan de análisis de datos y seleccionar métodos de análisis alineados con tu enfoque de investigación para ayudarte a responder tu pregunta de investigación. Los recursos interactivos de la izquierda te guiarán en este proceso.",
+          "input_prompt": "Después de revisar los recursos interactivos del lado izquierdo, describe tu método y plan de análisis de datos, y explica tu justificación. Luego usa el Asistente de IA para refinar tu plan.",
+          "fields": [
+            {"field_key": "analysis_method", "label": "Método de análisis", "type": "select", "placeholder": "Selecciona un método de análisis…", "options": [
+              {"id": "descriptive_stats", "label": "Estadística descriptiva"},
+              {"id": "inferential_stats", "label": "Estadística inferencial"},
+              {"id": "visualization", "label": "Visualización de datos"},
+              {"id": "other", "label": "Otro"}
+            ]},
+            {"field_key": "analysis_notes", "label": "Describe tu plan de análisis", "type": "textarea", "placeholder": "¿Cómo analizarás tus datos? ¿Qué técnicas específicas usarás?"}
+          ]
+        },
+        "8": {
+          "title": "Paso 8: ¿Cómo aseguraré la confiabilidad? (Validez y fiabilidad)",
+          "directions": "El Paso Ocho se centra en las estrategias que puedes usar para asegurar que tu estudio sea confiable. Los recursos interactivos de la izquierda te guiarán en este proceso.",
+          "input_prompt": "Después de revisar los recursos interactivos del lado izquierdo, describe los pasos que tomarás para asegurar que tu estudio sea confiable. Luego usa el Asistente de IA para refinar tu plan y explorar las estrategias disponibles según tu diseño, recolección y análisis de datos.",
+          "options": [
+            {"id": "internal_validity", "label": "Validez interna"},
+            {"id": "external_validity", "label": "Validez externa"},
+            {"id": "generalizability", "label": "Generalizabilidad (mediante estrategias de muestreo)"},
+            {"id": "construct_validity", "label": "Validez de constructo"},
+            {"id": "content_validity", "label": "Validez de contenido"}
+          ]
+        },
+        "9": {
+          "title": "Paso 9: ¿Cómo seré ético/a? (Integridad y ética)",
+          "directions": "El Paso Nueve se centra en las estrategias que puedes usar para mantenerte seguro/a y ético/a como investigador/a. Los recursos interactivos de la izquierda te guiarán en este proceso.",
+          "input_prompt": "Después de revisar los recursos interactivos del lado izquierdo, describe los pasos específicos que tomarás para hacer las consideraciones éticas necesarias respecto a aspectos de tu diseño como el muestreo y la recolección y el análisis de datos. Luego usa el Asistente de IA para refinar tu plan y explorar estrategias adicionales.",
+          "fields": [
+            {"field_key": "involves_humans", "label": "¿Tu estudio involucra participantes humanos?", "type": "select", "placeholder": "Selecciona…", "options": [
+              {"id": "yes", "label": "Sí"},
+              {"id": "no", "label": "No"}
+            ]},
+            {"field_key": "ethics_approach", "label": "Consideraciones de ética e integridad", "type": "multi_select", "placeholder": "Selecciona todas las que apliquen…", "options": [
+              {"id": "irb", "label": "Aprobación del IRB (comité de ética)"},
+              {"id": "respect_for_persons", "label": "Respeto por las personas"},
+              {"id": "beneficence", "label": "Beneficencia"},
+              {"id": "justice", "label": "Justicia"},
+              {"id": "informed_consent", "label": "Consentimiento informado"},
+              {"id": "confidentiality", "label": "Confidencialidad"},
+              {"id": "data_ethics", "label": "Ética de los datos"},
+              {"id": "academic_integrity", "label": "Integridad académica"},
+              {"id": "other", "label": "Otro"}
+            ]},
+            {"field_key": "ethics_notes", "label": "Describe tu plan de ética", "type": "textarea", "placeholder": "¿Cómo asegurarás que tu investigación sea ética y segura?"}
+          ]
+        }
+      }
+    },
+
+    "qualitative": {
+      "label": "Cualitativa",
+      "steps": {
+        "4": {
+          "title": "Paso 4: ¿Cómo lo estudiaré? (Diseño cualitativo)",
+          "directions": "El Paso Cuatro consiste en elegir un enfoque de investigación (cualitativo, cuantitativo o mixto) que se alinee con tu cosmovisión y tus metas de investigación, y en seleccionar un diseño de investigación apropiado según tus habilidades y limitaciones, como el tiempo o los recursos. Los recursos interactivos de la izquierda te guiarán en este proceso.",
+          "input_prompt": "Después de revisar los recursos interactivos del lado izquierdo, explora las opciones a continuación y conversa con el asistente de IA para determinar qué enfoque y diseño se ajustan mejor a tu estudio. Cuando tomes tu decisión, selecciona tu enfoque y diseño de investigación y justifica tu elección según tu cosmovisión y tu tema. Luego usa el Asistente de IA para aclarar dudas sobre tu enfoque o diseño.",
+          "options": [
+            {"id": "narrative", "label": "Narrativo", "description": "Explora historias y experiencias individuales vividas a lo largo del tiempo."},
+            {"id": "phenomenology", "label": "Fenomenología", "description": "Estudia la esencia de la experiencia vivida de un fenómeno."},
+            {"id": "phenomenography", "label": "Fenomenografía", "description": "Explora las diferentes maneras en que las personas experimentan un fenómeno."},
+            {"id": "ethnography", "label": "Etnografía", "description": "Estudia grupos culturales mediante inmersión y observación prolongadas."},
+            {"id": "school_ethnography", "label": "Etnografía escolar", "description": "Métodos etnográficos aplicados específicamente a contextos educativos."},
+            {"id": "grounded_theory", "label": "Teoría fundamentada", "description": "Desarrolla teoría sistemáticamente a partir de los datos mediante análisis iterativo."},
+            {"id": "case_study", "label": "Estudio de caso", "description": "Investigación en profundidad de un caso delimitado o de múltiples casos."},
+            {"id": "action_research", "label": "Investigación-acción", "description": "Indagación cíclica orientada a mejorar la práctica mediante la reflexión."},
+            {"id": "design_based_research", "label": "Investigación basada en diseño", "description": "Diseño y estudio iterativos de intervenciones educativas."}
+          ]
+        },
+        "5": {
+          "title": "Paso 5: ¿Cuál es mi pregunta de investigación? (Asunto cualitativo)",
+          "directions": "El Paso Cinco consiste en generar una pregunta de investigación alineada con tu enfoque de investigación. Los recursos interactivos de la izquierda te guiarán en este proceso.",
+          "input_prompt": "Después de revisar los recursos interactivos del lado izquierdo, escribe tu pregunta de investigación y usa el Asistente de IA para refinarla.",
+          "fields": [
+            {"field_key": "research_question", "label": "Pregunta de investigación / Asunto central", "type": "textarea", "placeholder": "Enuncia tu pregunta de investigación cualitativa o tu asunto central..."}
+          ]
+        },
+        "6": {
+          "title": "Paso 6: ¿Qué datos recolectaré? (Recolección cualitativa)",
+          "directions": "El Paso Seis consiste en crear un plan de recolección de datos y elegir métodos de recolección que se alineen con tu enfoque de investigación y te ayuden a responder tu pregunta de investigación. Los recursos interactivos de la izquierda te guiarán en este proceso.",
+          "input_prompt": "Después de revisar los recursos interactivos del lado izquierdo, describe tu plan de recolección de datos, incluyendo tu método, participantes y estrategia de muestreo. Explica tu justificación para cada elección. Luego usa el Asistente de IA para refinar tu plan.",
+          "fields": [
+            {"field_key": "collection_method", "label": "Método de recolección", "type": "multi_select", "placeholder": "Selecciona todas las que apliquen…", "options": [
+              {"id": "interview", "label": "Entrevista"},
+              {"id": "field_notes", "label": "Notas de campo"},
+              {"id": "document_analysis", "label": "Análisis documental"},
+              {"id": "images", "label": "Imágenes"},
+              {"id": "focus_groups", "label": "Grupos focales"},
+              {"id": "surveys_open", "label": "Encuestas (preguntas abiertas)"},
+              {"id": "observation_naturalistic", "label": "Observación (naturalista)"},
+              {"id": "geo_narratives", "label": "Geonarrativas"},
+              {"id": "photo_elicitation", "label": "Fotoelicitación"},
+              {"id": "performance", "label": "Performance (palabra hablada, poesía, grafiti)"},
+              {"id": "other", "label": "Otro"}
+            ]},
+            {"field_key": "participants", "label": "Participantes", "type": "textarea", "placeholder": "Describe a los participantes de tu estudio (quiénes son, cuántos, criterios de selección)..."},
+            {"field_key": "sampling_method", "label": "Método de muestreo", "type": "textarea", "placeholder": "¿Qué método de muestreo usarás? (intencional, bola de nieve, por criterio, máxima variación)..."}
+          ]
+        },
+        "7": {
+          "title": "Paso 7: ¿Cómo analizaré los datos? (Análisis cualitativo)",
+          "directions": "El Paso Siete consiste en desarrollar un plan de análisis de datos y seleccionar métodos de análisis alineados con tu enfoque de investigación para ayudarte a responder tu pregunta de investigación. Los recursos interactivos de la izquierda te guiarán en este proceso.",
+          "input_prompt": "Después de revisar los recursos interactivos del lado izquierdo, describe tu método y plan de análisis de datos, y explica tu justificación. Luego usa el Asistente de IA para refinar tu plan.",
+          "fields": [
+            {"field_key": "analysis_method", "label": "Método de análisis", "type": "select", "placeholder": "Selecciona un método de análisis…", "options": [
+              {"id": "coding", "label": "Codificación (abierta, axial, selectiva)"},
+              {"id": "memoing", "label": "Elaboración de memos"},
+              {"id": "data_saturation", "label": "Saturación de datos"},
+              {"id": "content_analysis", "label": "Análisis de contenido (citas)"},
+              {"id": "thematic_analysis", "label": "Análisis temático"},
+              {"id": "triangulation", "label": "Triangulación"},
+              {"id": "co_occurrence", "label": "Análisis de coocurrencia (tabla o diagrama de Sankey)"},
+              {"id": "network_views", "label": "Vistas de red"},
+              {"id": "other", "label": "Otro"}
+            ]},
+            {"field_key": "analysis_notes", "label": "Describe tu plan de análisis", "type": "textarea", "placeholder": "¿Cómo analizarás tus datos? ¿Qué técnicas específicas usarás?"}
+          ]
+        },
+        "8": {
+          "title": "Paso 8: ¿Cómo aseguraré la confiabilidad? (Criterios cualitativos)",
+          "directions": "El Paso Ocho se centra en las estrategias que puedes usar para asegurar que tu estudio sea confiable. Los recursos interactivos de la izquierda te guiarán en este proceso.",
+          "input_prompt": "Después de revisar los recursos interactivos del lado izquierdo, describe los pasos que tomarás para asegurar que tu estudio sea confiable. Luego usa el Asistente de IA para refinar tu plan y explorar las estrategias disponibles según tu diseño, recolección y análisis de datos.",
+          "options": [
+            {"id": "credibility", "label": "Credibilidad"},
+            {"id": "transferability", "label": "Transferibilidad"},
+            {"id": "dependability", "label": "Dependabilidad (consistencia)"},
+            {"id": "confirmability", "label": "Confirmabilidad"}
+          ]
+        },
+        "9": {
+          "title": "Paso 9: ¿Cómo seré ético/a? (Integridad y ética)",
+          "directions": "El Paso Nueve se centra en las estrategias que puedes usar para mantenerte seguro/a y ético/a como investigador/a. Los recursos interactivos de la izquierda te guiarán en este proceso.",
+          "input_prompt": "Después de revisar los recursos interactivos del lado izquierdo, describe los pasos específicos que tomarás para hacer las consideraciones éticas necesarias respecto a aspectos de tu diseño como el muestreo y la recolección y el análisis de datos. Luego usa el Asistente de IA para refinar tu plan y explorar estrategias adicionales.",
+          "fields": [
+            {"field_key": "involves_humans", "label": "¿Tu estudio involucra participantes humanos?", "type": "select", "placeholder": "Selecciona…", "options": [
+              {"id": "yes", "label": "Sí"},
+              {"id": "no", "label": "No"}
+            ]},
+            {"field_key": "ethics_approach", "label": "Consideraciones de ética e integridad", "type": "multi_select", "placeholder": "Selecciona todas las que apliquen…", "options": [
+              {"id": "irb", "label": "Aprobación del IRB (comité de ética)"},
+              {"id": "respect_for_persons", "label": "Respeto por las personas"},
+              {"id": "beneficence", "label": "Beneficencia"},
+              {"id": "justice", "label": "Justicia"},
+              {"id": "informed_consent", "label": "Consentimiento informado"},
+              {"id": "confidentiality", "label": "Confidencialidad"},
+              {"id": "positionality", "label": "Posicionalidad y reflexividad"},
+              {"id": "data_ethics", "label": "Ética de los datos"},
+              {"id": "academic_integrity", "label": "Integridad académica"},
+              {"id": "other", "label": "Otro"}
+            ]},
+            {"field_key": "ethics_notes", "label": "Describe tu plan de ética", "type": "textarea", "placeholder": "¿Cómo asegurarás que tu investigación sea ética y segura?"}
+          ]
+        }
+      }
+    },
+
+    "mixed": {
+      "label": "Métodos mixtos",
+      "steps": {
+        "4": {
+          "title": "Paso 4: ¿Cómo lo estudiaré? (Métodos mixtos)",
+          "directions": "El Paso Cuatro consiste en elegir un enfoque de investigación (cualitativo, cuantitativo o mixto) que se alinee con tu cosmovisión y tus metas de investigación, y en seleccionar un diseño de investigación apropiado según tus habilidades y limitaciones, como el tiempo o los recursos. Los recursos interactivos de la izquierda te guiarán en este proceso.",
+          "input_prompt": "Después de revisar los recursos interactivos del lado izquierdo, explora las opciones a continuación y conversa con el asistente de IA para determinar qué enfoque y diseño se ajustan mejor a tu estudio. Cuando tomes tu decisión, selecciona tu enfoque y diseño de investigación y justifica tu elección según tu cosmovisión y tu tema. Luego usa el Asistente de IA para aclarar dudas sobre tu enfoque o diseño."
+        }
+      }
+    }
+  }
+}
