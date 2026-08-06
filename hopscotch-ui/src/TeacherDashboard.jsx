@@ -938,7 +938,7 @@ export default function TeacherDashboard({ onOpenDesigns }) {
                             ) : "\u2014"}
                           </td>
                           <td>{s.worldview_label || "\u2014"}</td>
-                          <td className="td-table__cap">{s.resolved_path || "\u2014"}</td>
+                          <td className="td-table__cap">{(s.resolved_path !== "mixed" && s.chosen_methodology) || s.resolved_path || "\u2014"}</td>
                           <td>
                             {!s.session_id ? (
                               <span className="td-table__not-started">Not started</span>

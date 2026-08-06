@@ -203,7 +203,9 @@ export default function StudentDesignView({ sessionId, studentName, className: c
             <span className="sdv-badge" style={{ background: "#2B5EA7" }}>{sessionData.worldview_label}</span>
           )}
           {sessionData?.resolved_path && (
-            <span className="sdv-badge" style={{ background: "#1A8A7D" }}>{sessionData.resolved_path}</span>
+            <span className="sdv-badge" style={{ background: "#1A8A7D" }}>
+              {(sessionData.resolved_path !== "mixed" && sessionData.chosen_methodology) || sessionData.resolved_path}
+            </span>
           )}
         </div>
         <div className="sdv-header__right">

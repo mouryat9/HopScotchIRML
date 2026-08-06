@@ -1772,7 +1772,14 @@ def list_sessions(user: dict = Depends(get_current_user)):
             active_step=doc.get("active_step", 1),
             completed_steps=_compute_completed_steps_from_doc(doc),
             topic=topic,
-            resolved_path=doc.get("resolved_path"),
+            # Display the pathway the student actually chose (e.g. a
+            # constructivist running a quantitative study), falling back to
+            # the worldview's resolved default
+            resolved_path=(
+                doc.get("chosen_methodology")
+                if doc.get("chosen_methodology") and doc.get("resolved_path") != "mixed"
+                else doc.get("resolved_path")
+            ),
             worldview_label=doc.get("worldview_label"),
         ))
     return SessionListResponse(sessions=summaries)
@@ -1992,11 +1999,18 @@ def get_step_config(
             recommended = "qualitative"
         # For mixed (pragmatist): no recommendation — both are equally valid
 
+        # Once the student has confirmed a methodology, the title/directions
+        # follow their CHOICE, not the worldview's default pathway (a
+        # constructivist doing a quantitative study must not see
+        # "(Qualitative Design)" in the header).
+        title_cfg = step_cfg
+        if resolved != "mixed" and sess.chosen_methodology and sess.chosen_methodology in all_paths:
+            title_cfg = all_paths[sess.chosen_methodology].get("steps", {}).get("4", step_cfg)
         return StepConfigResp(
             step=step,
             path=resolved,
-            title=step_cfg.get("title", f"Step 4: How will I study it?"),
-            directions=step_cfg.get("directions", ""),
+            title=title_cfg.get("title", f"Step 4: How will I study it?"),
+            directions=title_cfg.get("directions", ""),
             field_type="methodology_decision",
             field_key=step_cfg.get("field_key", "design"),
             options=step_cfg.get("options"),
