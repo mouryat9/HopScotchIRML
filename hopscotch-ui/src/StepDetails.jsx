@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { API } from "./api";
 import { vdEditorSupports } from "./VisualDesignEditor";
 
@@ -118,7 +118,11 @@ export default function StepDetails({ step, sessionId, onChatRefresh, onAutoSend
     };
   }, [step, sessionId, baseShape]);
 
-  // helper to update + save
+  // helper to update + save. Saves fire on every change, so responses can
+  // return out of order - the sequence guard makes sure only the LATEST
+  // save's completed_steps reaches the strip/court (a stale response used
+  // to be able to flip a completed step back to unfinished).
+  const saveSeqRef = useRef(0);
   const updateField = (field, value) => {
     setData((prev) => {
       const next = { ...prev, [field]: value };
@@ -126,6 +130,7 @@ export default function StepDetails({ step, sessionId, onChatRefresh, onAutoSend
       if (sessionId) {
         setSaving(true);
         setSaveError("");
+        const seq = ++saveSeqRef.current;
 
         API.saveStepData({
           session_id: sessionId,
@@ -133,6 +138,7 @@ export default function StepDetails({ step, sessionId, onChatRefresh, onAutoSend
           data: next,
         })
           .then((res) => {
+            if (seq !== saveSeqRef.current) return; // stale response
             setSaving(false);
             if (res.completed_steps && onCompletedStepsChange) {
               onCompletedStepsChange(res.completed_steps);
@@ -140,6 +146,7 @@ export default function StepDetails({ step, sessionId, onChatRefresh, onAutoSend
           })
           .catch((err) => {
             console.error("Failed to save step data", err);
+            if (seq !== saveSeqRef.current) return;
             setSaving(false);
             setSaveError("Auto-save failed. Check your connection.");
           });

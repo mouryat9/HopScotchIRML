@@ -1437,17 +1437,7 @@ def get_teacher_student_sessions(user: dict = Depends(get_current_user)):
         s["_id"] = str(s["_id"])
         if "user" in s and "_id" in s["user"]:
             s["user"]["_id"] = str(s["user"]["_id"])
-        # Compute completed steps from step_notes
-        step_notes = s.get("step_notes") or {}
-        completed = []
-        s1 = step_notes.get("1") or {}
-        if s1.get("worldview_id"):
-            completed.append(1)
-        for step_num in range(2, 10):
-            data = step_notes.get(str(step_num)) or {}
-            if data:
-                completed.append(step_num)
-        s["completed_steps"] = completed
+        s["completed_steps"] = _completed_steps(s.get("step_notes"), s.get("worldview_band"))
         # When the teacher last left feedback (drives the "awaiting your
         # feedback" dashboard tile)
         fb = s.get("teacher_feedback") or []
@@ -1692,40 +1682,43 @@ class SessionResumeResponse(BaseModel):
     completed_steps: List[int] = []
 
 
-def _compute_completed_steps_from_session(sess: "SessionData") -> List[int]:
-    """Return list of step numbers that have meaningful saved data."""
+def _step_has_content(data: dict) -> bool:
+    """True when a step's saved data holds at least one non-empty value -
+    a dict full of empty strings (created by typing then deleting) does NOT
+    count as a completed step."""
+    for v in (data or {}).values():
+        if isinstance(v, str):
+            if v.strip():
+                return True
+        elif v:  # non-empty list/number/bool/dict
+            return True
+    return False
+
+
+def _completed_steps(notes: dict, worldview_band: Optional[str] = None) -> List[int]:
+    """SINGLE source of truth for step completion (used by every endpoint).
+
+    Step 1 is complete when a worldview was chosen - via the step notes OR the
+    session-level worldview_band, so a later /step/save that overwrites the
+    notes can never un-complete it. Steps 2-9 are complete when they hold at
+    least one non-empty value."""
+    notes = notes or {}
     completed = []
-    notes = sess.step_notes or {}
-
-    # Step 1: completed when worldview has been chosen
     s1 = notes.get("1") or {}
-    if s1.get("worldview_id"):
+    if s1.get("worldview_id") or s1.get("worldview") or worldview_band:
         completed.append(1)
-
-    # Steps 2-9: completed when step_notes has non-empty data
     for s in range(2, 10):
-        data = notes.get(str(s)) or {}
-        if data:
+        if _step_has_content(notes.get(str(s)) or {}):
             completed.append(s)
-
     return completed
+
+
+def _compute_completed_steps_from_session(sess: "SessionData") -> List[int]:
+    return _completed_steps(sess.step_notes, sess.worldview_band)
 
 
 def _compute_completed_steps_from_doc(doc: dict) -> List[int]:
-    """Return list of step numbers that have meaningful saved data (from raw MongoDB doc)."""
-    completed = []
-    notes = doc.get("step_notes") or {}
-
-    s1 = notes.get("1") or {}
-    if s1.get("worldview_id"):
-        completed.append(1)
-
-    for s in range(2, 10):
-        data = notes.get(str(s)) or {}
-        if data:
-            completed.append(s)
-
-    return completed
+    return _completed_steps(doc.get("step_notes"), doc.get("worldview_band"))
 
 
 @app.get("/session/resume", response_model=SessionResumeResponse)
@@ -1824,7 +1817,11 @@ def save_step_data(req: StepDataReq, user: dict = Depends(get_current_user)):
     sess = _require_session(req.session_id)
     _guard_step_access(user, sess, req.step)
     key = str(req.step)
-    sess.step_notes[key] = req.data or {}
+    # MERGE into the existing notes instead of replacing: the frontend only
+    # knows its own form fields, so a replace used to wipe backend-written
+    # keys (worldview_id from /worldview/set, chosen_methodology from
+    # /step/set_methodology), silently un-completing steps.
+    sess.step_notes[key] = {**(sess.step_notes.get(key) or {}), **(req.data or {})}
     _persist_session(sess)
     return StepDataResp(session_id=sess.id, step=req.step, data=sess.step_notes[key], completed_steps=_compute_completed_steps_from_session(sess))
 
