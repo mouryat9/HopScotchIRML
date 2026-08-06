@@ -3996,6 +3996,14 @@ def public_glossary(lang: Optional[str] = Query(None)):
 
 GLOSSARY_LANG_NAMES = {"es": "Spanish", "zh": "Simplified Chinese"}
 
+# Example JSON per language. The example primes the model to emit the target
+# script directly — without it, quantized models write CJK as \uXXXX escapes
+# and garble the hex digits, producing well-formed JSON full of gibberish.
+GLOSSARY_JSON_EXAMPLES = {
+    "es": '{"term": "Investigación cuantitativa", "def": "Método que examina relaciones entre variables con datos numéricos."}',
+    "zh": '{"term": "定量研究", "def": "以数字数据检验变量之间关系的研究方法。"}',
+}
+
 
 def _translate_glossary_term(term: str, definition: str, lang: str = "es") -> Optional[dict]:
     """One-shot LLM translation of a glossary entry into the target language.
@@ -4009,8 +4017,9 @@ def _translate_glossary_term(term: str, definition: str, lang: str = "es") -> Op
         "English term includes a parenthetical, keep an equivalent parenthetical.\n\n"
         f"TERM: {term}\n"
         f"DEFINITION: {definition}\n\n"
-        "Respond with ONLY valid JSON, no markdown, no explanation:\n"
-        '{"term": "", "def": ""}'
+        "Respond with ONLY valid JSON, no markdown, no explanation. Write the "
+        f"{lang_name} text directly in UTF-8 — never use \\uXXXX escape sequences.\n"
+        f"Example shape: {GLOSSARY_JSON_EXAMPLES.get(lang, GLOSSARY_JSON_EXAMPLES['es'])}"
     )
     messages = [{"role": "user", "content": prompt}]
     raw = None
@@ -4027,7 +4036,7 @@ def _translate_glossary_term(term: str, definition: str, lang: str = "es") -> Op
         return None
     try:
         match = re.search(r'\{[\s\S]*\}', raw)
-        data = _json.loads(match.group()) if match else None
+        data = json.loads(match.group()) if match else None
         if data and (data.get("term") or "").strip() and (data.get("def") or "").strip():
             return {"term": data["term"].strip(), "def": data["def"].strip()}
     except Exception as e:
