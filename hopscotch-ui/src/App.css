@@ -2476,6 +2476,7 @@ select.input:focus {
 /* Language pill on the login screens (header + split form) */
 .login-lang-switch { background: var(--hop-white); }
 .login-header .login-lang-switch { margin-left: auto; margin-right: 12px; }
+.login-header .hop-langdd { margin-left: auto; margin-right: 12px; }
 
 .login-split__form-area {
   flex: 1;
@@ -14208,6 +14209,68 @@ body.wl-dragging, body.wl-dragging * { cursor: grabbing !important; user-select:
   border-top: 1px solid var(--hop-border);
 }
 .hop-profile__langlabel { font-size: 0.78rem; font-weight: 650; color: var(--hop-ink-secondary); }
+/* ---- Globe language dropdown (login header + profile menu) ---- */
+.hop-langdd { position: relative; display: inline-flex; }
+.hop-langdd__trigger {
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 650;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border: 1px solid var(--hop-border);
+  border-radius: var(--hop-radius-pill, 999px);
+  background: var(--hop-surface, #fff);
+  color: var(--hop-ink-secondary);
+  cursor: pointer;
+  transition: border-color var(--hop-ease, 0.18s ease-out), color var(--hop-ease, 0.18s ease-out);
+}
+.hop-langdd__trigger:hover,
+.hop-langdd__trigger--open {
+  border-color: var(--hop-blue, #2B5EA7);
+  color: var(--hop-blue, #2B5EA7);
+}
+.hop-langdd__globe { flex: none; }
+.hop-langdd__chev { font-size: 0.62rem; opacity: 0.7; transition: transform 0.15s ease; }
+.hop-langdd__chev--open { transform: rotate(180deg); }
+.hop-langdd__menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 400;
+  min-width: 172px;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: var(--hop-surface, #fff);
+  border: 1px solid var(--hop-border);
+  border-radius: var(--hop-radius-md, 12px);
+  box-shadow: var(--hop-shadow-lg, 0 4px 16px rgba(0, 0, 0, 0.08));
+}
+.hop-langdd__menu--left { right: auto; left: 0; }
+.hop-langdd__item {
+  font: inherit;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 10px;
+  border: none;
+  border-radius: var(--hop-radius-sm, 8px);
+  background: none;
+  color: var(--hop-ink, #1A2332);
+  cursor: pointer;
+  text-align: left;
+}
+.hop-langdd__item:hover { background: var(--hop-neutral-bg, #F3F4F6); }
+.hop-langdd__item--active { color: var(--hop-blue, #2B5EA7); font-weight: 650; }
+.hop-langdd__names { display: flex; flex-direction: column; line-height: 1.3; }
+.hop-langdd__native { font-size: 0.82rem; }
+.hop-langdd__english { font-size: 0.68rem; font-weight: 500; color: var(--hop-ink-secondary); }
+.hop-langdd__item--active .hop-langdd__english { color: inherit; opacity: 0.75; }
+
 .hop-lang-switch { display: inline-flex; border: 1px solid var(--hop-border); border-radius: 999px; overflow: hidden; }
 .hop-lang-switch button {
   font: inherit;

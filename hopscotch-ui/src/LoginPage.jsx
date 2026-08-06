@@ -2,7 +2,8 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "./AuthContext";
 import { useTheme } from "./ThemeContext";
-import { useLang, LANGS } from "./i18n.jsx";
+import { useLang } from "./i18n.jsx";
+import LangSwitcher from "./LangSwitcher";
 import { API } from "./api";
 
 const ROTATING_KEYS = ["login.rotating1", "login.rotating2", "login.rotating3", "login.rotating4"];
@@ -10,7 +11,7 @@ const ROTATING_KEYS = ["login.rotating1", "login.rotating2", "login.rotating3", 
 export default function LoginPage() {
   const { login } = useAuth();
   const { theme, toggleTheme } = useTheme();
-  const { lang, setLang, t } = useLang();
+  const { t } = useLang();
   const [showForm, setShowForm] = useState(false);
   // "login" | "register" | "forgot" | "reset" | "classroom"
   const [view, setView] = useState("login");
@@ -176,21 +177,8 @@ export default function LoginPage() {
     </svg>
   );
 
-  // ---------- Language pill (shared by hero header and split form) ----------
-  const langSwitch = (
-    <span className="hop-lang-switch login-lang-switch" role="group" aria-label={t("profile.language")}>
-      {LANGS.map((l) => (
-        <button
-          key={l.id}
-          type="button"
-          className={lang === l.id ? "is-active" : ""}
-          onClick={() => setLang(l.id)}
-        >
-          {l.label}
-        </button>
-      ))}
-    </span>
-  );
+  // ---------- Language dropdown (shared by hero header and split form) ----------
+  const langSwitch = <LangSwitcher />;
 
   // ---------- Header (always visible) ----------
   const header = (
