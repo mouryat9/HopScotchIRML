@@ -942,6 +942,7 @@ function StudentApp({ onBackToDashboard }) {
 /* ----- Standalone Visual Design page (opened in its own tab) ----- */
 function VisualDesignPage({ sessionId }) {
   const { user } = useAuth();
+  const { t } = useLang();
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
 
@@ -968,9 +969,9 @@ function VisualDesignPage({ sessionId }) {
     return (
       <div className="cf-loading-overlay">
         <div className="cf-loading-card">
-          <p className="cf-loading-text">Couldn’t open the Visual Design</p>
+          <p className="cf-loading-text">{t("vdp.openFailed")}</p>
           <p className="cf-loading-sub">{error}</p>
-          <button className="hop-header__back-btn" style={{ marginTop: 12 }} onClick={handleClose}>Close tab</button>
+          <button className="hop-header__back-btn" style={{ marginTop: 12 }} onClick={handleClose}>{t("vdp.closeTab")}</button>
         </div>
       </div>
     );
@@ -981,8 +982,8 @@ function VisualDesignPage({ sessionId }) {
       <div className="cf-loading-overlay">
         <div className="cf-loading-card">
           <div className="cf-loading-spinner" />
-          <p className="cf-loading-text">Loading your Visual Design...</p>
-          <p className="cf-loading-sub">Fetching your research design data.</p>
+          <p className="cf-loading-text">{t("vdp.loading")}</p>
+          <p className="cf-loading-sub">{t("vdp.loadingSub")}</p>
         </div>
       </div>
     );
@@ -992,12 +993,12 @@ function VisualDesignPage({ sessionId }) {
     return (
       <div className="cf-loading-overlay">
         <div className="cf-loading-card">
-          <p className="cf-loading-text">Visual Design editor not available yet</p>
+          <p className="cf-loading-text">{t("vdp.notAvailable")}</p>
           <p className="cf-loading-sub">
-            The interactive editor does not support {data.design_label} yet - it is coming soon.
+            {t("vdp.notAvailableSub", { label: data.design_label })}
           </p>
           <div style={{ display: "flex", gap: 10, justifyContent: "center", marginTop: 12 }}>
-            <button className="hop-header__back-btn" onClick={handleClose}>Close tab</button>
+            <button className="hop-header__back-btn" onClick={handleClose}>{t("vdp.closeTab")}</button>
           </div>
         </div>
       </div>
@@ -1009,6 +1010,7 @@ function VisualDesignPage({ sessionId }) {
 
 /* ----- Standalone Conceptual Framework page (opened in its own tab) ----- */
 function ConceptualFrameworkPage({ sessionId }) {
+  const { t } = useLang();
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
 
@@ -1037,9 +1039,9 @@ function ConceptualFrameworkPage({ sessionId }) {
     return (
       <div className="cf-loading-overlay">
         <div className="cf-loading-card">
-          <p className="cf-loading-text">Couldn’t open the Conceptual Framework</p>
+          <p className="cf-loading-text">{t("cfp.openFailed")}</p>
           <p className="cf-loading-sub">{error}</p>
-          <button className="hop-header__back-btn" style={{ marginTop: 12 }} onClick={handleClose}>Close tab</button>
+          <button className="hop-header__back-btn" style={{ marginTop: 12 }} onClick={handleClose}>{t("vdp.closeTab")}</button>
         </div>
       </div>
     );
@@ -1050,8 +1052,8 @@ function ConceptualFrameworkPage({ sessionId }) {
       <div className="cf-loading-overlay">
         <div className="cf-loading-card">
           <div className="cf-loading-spinner" />
-          <p className="cf-loading-text">Generating Conceptual Framework...</p>
-          <p className="cf-loading-sub">The AI is analyzing your research data to structure the diagram.</p>
+          <p className="cf-loading-text">{t("cfp.generating")}</p>
+          <p className="cf-loading-sub">{t("cfp.generatingSub")}</p>
         </div>
       </div>
     );

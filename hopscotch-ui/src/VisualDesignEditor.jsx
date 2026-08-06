@@ -1802,7 +1802,7 @@ export default function VisualDesignEditor({ sessionId, data, onClose, aiEnabled
     } catch (e) {
       console.error("Visual design save failed:", e);
       setSaveState("error");
-      notify.error("Your latest edits could not be saved. Check your connection - we'll keep retrying as you type.", { title: "Save failed" });
+      notify.error(t("vd.saveFailedMsg"), { title: t("vd.saveFailedTitle") });
     }
   }, [sessionId]);
 
@@ -1917,7 +1917,7 @@ export default function VisualDesignEditor({ sessionId, data, onClose, aiEnabled
       {/* Toolbar */}
       <div className="vd-toolbar no-print">
         <div className="vd-toolbar__left">
-          <button className="vd-btn vd-btn--ghost" onClick={onClose} title="Close this tab and return to your research design">
+          <button className="vd-btn vd-btn--ghost" onClick={onClose} title={t("vd.closeTabTip")}>
             {t("vd.back")}
           </button>
           <div className="vd-toolbar__titles">
@@ -1926,10 +1926,10 @@ export default function VisualDesignEditor({ sessionId, data, onClose, aiEnabled
           </div>
         </div>
         <div className="vd-toolbar__right">
-          <span className={`vd-save-state vd-save-state--${saveState}`} title="Changes save automatically">
+          <span className={`vd-save-state vd-save-state--${saveState}`} title={t("vd.autoSaveTip")}>
             <span className="vd-save-state__dot" />{saveLabel}
           </span>
-          <label className="vd-identity-toggle" title="Turn off to print an anonymized version, e.g. for papers or posters">
+          <label className="vd-identity-toggle" title={t("vd.anonTip")}>
             <input
               type="checkbox"
               checked={showIdentity}
@@ -2016,7 +2016,7 @@ export default function VisualDesignEditor({ sessionId, data, onClose, aiEnabled
 
       {/* Floating AI assistant toggle + slide-in chat drawer */}
       {!chatOpen && (
-        <button className="vd-chat-toggle no-print" onClick={() => setChatOpen(true)} title="Ask the AI assistant for help with your visual design">
+        <button className="vd-chat-toggle no-print" onClick={() => setChatOpen(true)} title={t("vd.chatOpenTip")}>
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
           {t("vd.aiBtn")}
         </button>
@@ -2025,7 +2025,7 @@ export default function VisualDesignEditor({ sessionId, data, onClose, aiEnabled
         <div className="vd-chat-drawer__head">
           <span className="vd-chat-drawer__title">{t("vd.aiBtn")}</span>
           <span className="vd-chat-drawer__hint">Ask for help with your {form.designName.toLowerCase()}</span>
-          <button className="vd-chat-drawer__close" onClick={() => setChatOpen(false)} title="Close the assistant" aria-label="Close the assistant">&times;</button>
+          <button className="vd-chat-drawer__close" onClick={() => setChatOpen(false)} title={t("vd.chatCloseTip")} aria-label={t("vd.chatCloseTip")}>&times;</button>
         </div>
         <div className="vd-chat-drawer__body">
           {chatOpen && (

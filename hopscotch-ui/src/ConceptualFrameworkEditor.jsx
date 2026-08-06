@@ -83,15 +83,42 @@ const textToList = (text) => {
 };
 
 const CF_FIELDS_ES = {
-  topic: { label: "Tema de investigación", hint: "El tema al centro de tu marco" },
-  personal_goals: { label: "Intereses y metas personales", hint: "Metas personales, prácticas e intelectuales" },
-  worldview: { label: "Identidad y posicionalidad", hint: "Tu cosmovisión y desde dónde investigas" },
-  topics: { label: "Investigación temática", hint: "Hasta 5 áreas de tu revisión de literatura", placeholder: "Un tema por línea (hasta 5)" },
-  frameworks: { label: "Marcos teóricos", hint: "Hasta 5 marcos con sus autores", placeholder: "Un marco por línea (hasta 5)" },
-  gaps: { label: "Vacíos encontrados", hint: "¿Qué falta en la literatura?" },
-  problem_statement: { label: "Planteamiento del problema", hint: "El problema que aborda tu estudio" },
-  research_questions: { label: "Pregunta(s) de investigación", hint: "La(s) pregunta(s) que guían tu estudio" },
-  research_design: { label: "Diseño de investigación", hint: "El diseño que responderá tu(s) pregunta(s)" },
+  topic: {
+    label: "Tema de investigación", hint: "El tema al centro de tu marco",
+    help: "Enuncia tu tema de investigación en una frase corta. Está al centro del marco conceptual: todo lo demás (tus metas, la literatura, el vacío, el problema) se conecta con él.",
+  },
+  personal_goals: {
+    label: "Intereses y metas personales", hint: "Metas personales, prácticas e intelectuales",
+    help: "¿Por qué te importa este estudio? Resume tus metas personales, prácticas e intelectuales: moldean cada decisión de tu diseño y pertenecen al inicio del marco.",
+  },
+  worldview: {
+    label: "Identidad y posicionalidad", hint: "Tu cosmovisión y desde dónde investigas",
+    help: "Describe tu posicionalidad y cosmovisión (p. ej., constructivista, pospositivista, transformativa, pragmatista) y cómo tu identidad se relaciona con el estudio.",
+  },
+  topics: {
+    label: "Investigación temática", hint: "Hasta 5 áreas de tu revisión de literatura", placeholder: "Un tema por línea (hasta 5)",
+    help: "¿Qué áreas de investigación temática informan tu estudio? Enumera hasta cinco: cada una aparece como su propio mosaico en el marco.",
+  },
+  frameworks: {
+    label: "Marcos teóricos", hint: "Hasta 5 marcos con sus autores", placeholder: "Un marco por línea (hasta 5)",
+    help: "¿Qué marcos teóricos fundamentan tu estudio? Incluye autor y año cuando puedas (p. ej., Comunidades de práctica - Wenger, 1998). Enumera hasta cinco.",
+  },
+  gaps: {
+    label: "Vacíos encontrados", hint: "¿Qué falta en la literatura?",
+    help: "¿Qué vacío o vacíos reveló tu revisión de la literatura? El vacío es lo que tu estudio ayudará a llenar.",
+  },
+  problem_statement: {
+    label: "Planteamiento del problema", hint: "El problema que aborda tu estudio",
+    help: "Enuncia el problema que surge del vacío: el asunto concreto que aborda tu estudio y para quién importa.",
+  },
+  research_questions: {
+    label: "Pregunta(s) de investigación", hint: "La(s) pregunta(s) que guían tu estudio",
+    help: "Incluye la pregunta o preguntas de investigación (o los objetivos e hipótesis en estudios cuantitativos) que guiarán tu estudio.",
+  },
+  research_design: {
+    label: "Diseño de investigación", hint: "El diseño que responderá tu(s) pregunta(s)",
+    help: "¿Qué diseño de investigación usarás para responder tu(s) pregunta(s)? P. ej., estudio de caso, fenomenología, experimental, métodos mixtos convergente paralelo.",
+  },
 };
 
 const CF_FIELDS_ZH = {
@@ -176,7 +203,7 @@ export default function ConceptualFrameworkEditor({ data, sessionId, onClose }) 
     } catch (e) {
       console.error("Conceptual framework save failed:", e);
       setSaveState("error");
-      notify.error("Your latest edits could not be saved. Check your connection - we'll keep retrying as you type.", { title: "Save failed" });
+      notify.error(t("vd.saveFailedMsg"), { title: t("vd.saveFailedTitle") });
     }
   }, [sessionId]);
 
@@ -281,7 +308,7 @@ export default function ConceptualFrameworkEditor({ data, sessionId, onClose }) 
       {/* Toolbar (VD shell + the CF template toggle) */}
       <div className="vd-toolbar no-print">
         <div className="vd-toolbar__left">
-          <button className="vd-btn vd-btn--ghost" onClick={onClose} title="Close this tab and return to your research design">
+          <button className="vd-btn vd-btn--ghost" onClick={onClose} title={t("vd.closeTabTip")}>
             {t("vd.back")}
           </button>
           <div className="vd-toolbar__titles">
@@ -300,10 +327,10 @@ export default function ConceptualFrameworkEditor({ data, sessionId, onClose }) 
           ))}
         </div>
         <div className="vd-toolbar__right">
-          <span className={`vd-save-state vd-save-state--${saveState}`} title="Changes save automatically">
+          <span className={`vd-save-state vd-save-state--${saveState}`} title={t("vd.autoSaveTip")}>
             <span className="vd-save-state__dot" />{saveLabel}
           </span>
-          <label className="vd-identity-toggle" title="Turn off to print an anonymized version, e.g. for papers or posters">
+          <label className="vd-identity-toggle" title={t("vd.anonTip")}>
             <input
               type="checkbox"
               checked={showIdentity}
@@ -334,7 +361,7 @@ export default function ConceptualFrameworkEditor({ data, sessionId, onClose }) 
 
           {CF_FORM_FIELDS.map((f0, i) => {
             const ov = (CF_FIELDS_BY_LANG[lang] || {})[f0.key] || {};
-            const f = { ...f0, label: ov.label || f0.label, hint: ov.hint || f0.hint, placeholder: ov.placeholder || f0.placeholder };
+            const f = { ...f0, label: ov.label || f0.label, hint: ov.hint || f0.hint, placeholder: ov.placeholder || f0.placeholder, help: ov.help || f0.help };
             const val = formValue(f);
             const filled = val.trim();
             return (
