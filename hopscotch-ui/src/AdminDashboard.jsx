@@ -8,6 +8,7 @@ import UserLocationMap from "./UserLocationMap";
 import StudentDesignView from "./StudentDesignView";
 import ProfileMenu from "./ProfileMenu";
 import SettingsModal from "./SettingsModal";
+import { useLang } from "./i18n.jsx";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend, LineChart, Line, AreaChart, Area, ComposedChart,
@@ -27,16 +28,16 @@ const ROLE_COLORS = {
   classroom_student: "#0D9488",
 };
 
-const ROLE_LABELS = {
-  admin: "Admin",
-  teacher: "Teacher",
-  student: "Student",
-  classroom_student: "Classroom",
-};
+const roleLabels = (t) => ({
+  admin: t("ad.role.admin"),
+  teacher: t("td.roleTeacher"),
+  student: t("td.thStudent"),
+  classroom_student: t("ad.role.classroom"),
+});
 
-const STEP_LABELS = [
-  "Worldview", "Topic", "Framework", "Design", "Research Questions",
-  "Data", "Analysis", "Trustworthiness", "Ethics",
+const stepLabels = (t) => [
+  t("strip.1"), t("strip.2"), t("strip.3"), t("strip.4"), t("strip.5"),
+  t("strip.6"), t("strip.7"), t("strip.8"), t("strip.9"),
 ];
 
 const STEP_COLORS = [
@@ -49,21 +50,13 @@ const GEO_PALETTE = [
   "#00AEEF", "#F5922A", "#D94040", "#16A34A", "#B0A47A",
 ];
 
-// Audit log: human-readable action labels + verb-based colors
-const AUDIT_LABELS = {
-  create_user: "Created user", update_user: "Updated user", reset_password: "Reset password",
-  delete_user: "Deleted user", create_class: "Created class", update_class: "Updated class",
-  delete_class: "Deleted class", add_class_students: "Added students",
-  delete_session: "Deleted session", cleanup_sessions: "Cleaned up sessions",
-  create_glossary_term: "Added glossary term", update_glossary_term: "Updated glossary term",
-  delete_glossary_term: "Deleted glossary term", translate_glossary: "Queued glossary Spanish translation",
-  upload_resource: "Uploaded document",
-  delete_resource: "Deleted document", rebuild_knowledge_base: "Rebuilt knowledge base",
-  update_step_resource: "Updated step resource",
-};
-
-function auditLabel(action) {
-  return AUDIT_LABELS[action] || (action || "").replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase());
+// Audit log: human-readable action labels (i18n: ad.audit.<action>, with a
+// prettified fallback for unknown actions) + verb-based colors
+function auditLabel(action, t) {
+  const key = `ad.audit.${action}`;
+  const s = t(key);
+  if (s !== key) return s;
+  return (action || "").replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase());
 }
 
 function auditColor(action = "") {
@@ -81,18 +74,18 @@ function auditDetailChips(details) {
   });
 }
 
-function timeAgo(dateStr) {
+function timeAgo(dateStr, t, lang) {
   if (!dateStr) return "";
   const ts = dateStr.endsWith("Z") ? dateStr : dateStr + "Z";
   const diff = Date.now() - new Date(ts).getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "Just now";
-  if (mins < 60) return `${mins}m ago`;
+  if (mins < 1) return t("time.justNow");
+  if (mins < 60) return t("time.mAgo", { n: mins });
   const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
+  if (hrs < 24) return t("time.hAgo", { n: hrs });
   const days = Math.floor(hrs / 24);
-  if (days < 7) return `${days}d ago`;
-  return new Date(dateStr).toLocaleDateString();
+  if (days < 7) return t("time.dAgo", { n: days });
+  return new Date(dateStr).toLocaleDateString(lang === "es" ? "es-ES" : "en-US");
 }
 
 function formatUptime(seconds) {
@@ -107,6 +100,10 @@ function formatUptime(seconds) {
 export default function AdminDashboard() {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const { lang, t } = useLang();
+  const dateLocale = lang === "es" ? "es-ES" : "en-US";
+  const ROLE_LABELS = roleLabels(t);
+  const STEP_LABELS = stepLabels(t);
   const dark = theme === "dark";
   const tipStyle = {
     backgroundColor: dark ? "#252A34" : "#fff",
@@ -371,19 +368,19 @@ export default function AdminDashboard() {
       const r = await API.adminGlossaryTranslateMissing();
       notify.success(
         r.queued
-          ? `Queued ${r.queued} term${r.queued === 1 ? "" : "s"} for Spanish translation. They'll appear translated within a few minutes - refresh to check.`
-          : "All glossary terms already have a Spanish translation.",
-        { title: "Glossary translation" }
+          ? t(r.queued === 1 ? "ad.glossary.queuedOne" : "ad.glossary.queued", { n: r.queued })
+          : t("ad.glossary.allTranslated"),
+        { title: t("ad.glossary.translateTitle") }
       );
-    } catch (e) { notify.error(e.message, { title: "Action failed" }); }
+    } catch (e) { notify.error(e.message, { title: t("ad.actionFailed") }); }
   }
 
-  async function handleDeleteTerm(t) {
-    if (!window.confirm(`Delete the term "${t.term}"? This cannot be undone.`)) return;
+  async function handleDeleteTerm(term) {
+    if (!window.confirm(t("ad.glossary.deleteConfirm", { term: term.term }))) return;
     try {
-      await API.adminGlossaryDelete(t.id);
+      await API.adminGlossaryDelete(term.id);
       loadGlossary();
-    } catch (e) { notify.error(e.message, { title: "Action failed" }); }
+    } catch (e) { notify.error(e.message, { title: t("ad.actionFailed") }); }
   }
 
   const loadResources = useCallback(() => {
@@ -402,14 +399,14 @@ export default function AdminDashboard() {
     setUploadingResource(true);
     try {
       await API.adminResourcesUpload(file);
-      setResourceMsg(`Uploaded "${file.name}". Rebuild the knowledge base to apply it.`);
+      setResourceMsg(t("ad.res.uploaded", { name: file.name }));
       loadResources();
     } catch (err) { setResourceMsg(err.message); }
     finally { setUploadingResource(false); }
   }
 
   async function handleDeleteResource(name) {
-    if (!window.confirm(`Delete "${name}" from the knowledge base? Rebuild afterward to apply.`)) return;
+    if (!window.confirm(t("ad.res.deleteConfirm", { name }))) return;
     setResourceMsg("");
     try {
       await API.adminResourcesDelete(name);
@@ -458,7 +455,7 @@ export default function AdminDashboard() {
       });
       setStepResSaved(key);
       setTimeout(() => setStepResSaved((k) => (k === key ? "" : k)), 1800);
-    } catch (err) { notify.error(err.message, { title: "Action failed" }); }
+    } catch (err) { notify.error(err.message, { title: t("ad.actionFailed") }); }
     finally { setStepResSaving(""); }
   }
 
@@ -467,7 +464,7 @@ export default function AdminDashboard() {
     setRebuildingIndex(true);
     try {
       const r = await API.adminResourcesRebuild();
-      setResourceMsg(`Knowledge base rebuilt - ${r.sources} document${r.sources === 1 ? "" : "s"}, ${r.chunks} chunks indexed.`);
+      setResourceMsg(t(r.sources === 1 ? "ad.res.rebuiltOne" : "ad.res.rebuilt", { sources: r.sources, chunks: r.chunks }));
       loadResources();
     } catch (err) { setResourceMsg(err.message); }
     finally { setRebuildingIndex(false); }
@@ -519,7 +516,7 @@ export default function AdminDashboard() {
     setClassDetail(null);
     API.adminGetClassDetail(classId)
       .then(setClassDetail)
-      .catch((e) => { notify.error(e.message, { title: "Failed to load class" }); setClassDetailLoading(false); })
+      .catch((e) => { notify.error(e.message, { title: t("ad.class.loadFailed") }); setClassDetailLoading(false); })
       .finally(() => setClassDetailLoading(false));
   }
 
@@ -536,17 +533,17 @@ export default function AdminDashboard() {
       setEditingClass(null);
       loadClasses();
       if (classDetail && classDetail._id === classId) openClassDetail(classId);
-      notify.success("Class updated.");
+      notify.success(t("ad.class.updated"));
     } catch (e) { setClassModalError(e.message); }
   }
 
   async function handleRemoveStudent(student) {
-    if (!window.confirm(`Remove ${student.username} and their work? This cannot be undone.`)) return;
+    if (!window.confirm(t("ad.class.removeStudentConfirm", { username: student.username }))) return;
     try {
       await API.adminDeleteUser(student._id);
       if (classDetail) openClassDetail(classDetail._id);
       loadClasses();
-    } catch (e) { notify.error(e.message, { title: "Action failed" }); }
+    } catch (e) { notify.error(e.message, { title: t("ad.actionFailed") }); }
   }
 
   const loadSessions = useCallback(() => {
@@ -577,12 +574,12 @@ export default function AdminDashboard() {
   }
 
   async function handleDeleteSession(s) {
-    const who = s.user_name || s.user_email || "unknown user";
-    if (!window.confirm(`Delete this session by ${who}? All their design work in it is lost. This cannot be undone.`)) return;
+    const who = s.user_name || s.user_email || t("ad.sessions.unknownUser");
+    if (!window.confirm(t("ad.sessions.deleteConfirm", { who }))) return;
     try {
       await API.adminDeleteSession(s.session_id);
       loadSessions();
-    } catch (e) { notify.error(e.message, { title: "Action failed" }); }
+    } catch (e) { notify.error(e.message, { title: t("ad.actionFailed") }); }
   }
 
   // User detail drill-down
@@ -688,25 +685,25 @@ export default function AdminDashboard() {
     <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" dangerouslySetInnerHTML={{ __html: paths }} />
   );
   const TABS = [
-    { id: "overview", label: "Overview", sub: "Platform-wide signups, roles, and student progress at a glance.",
+    { id: "overview", label: t("ad.tab.overview"), sub: t("ad.tab.overviewSub"),
       icon: ic('<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>') },
-    { id: "users", label: "Users", sub: "Search, filter, and manage every account on the platform.",
+    { id: "users", label: t("ad.tab.users"), sub: t("ad.tab.usersSub"),
       icon: ic('<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>') },
-    { id: "classes", label: "Classes", sub: "All teacher-created classes and their student accounts.",
+    { id: "classes", label: t("ad.tab.classes"), sub: t("ad.tab.classesSub"),
       icon: ic('<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/>') },
-    { id: "sessions", label: "Sessions", sub: "Browse every student research design on the platform.",
+    { id: "sessions", label: t("ad.tab.sessions"), sub: t("ad.tab.sessionsSub"),
       icon: ic('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>') },
-    { id: "map", label: "Map", sub: "Where users sign in from around the world.",
+    { id: "map", label: t("ad.tab.map"), sub: t("ad.tab.mapSub"),
       icon: ic('<circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>') },
-    { id: "activity", label: "Activity", sub: "Login history and the admin audit trail.",
+    { id: "activity", label: t("ad.tab.activity"), sub: t("ad.tab.activitySub"),
       icon: ic('<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>') },
-    { id: "glossary", label: "Glossary", sub: "Research terms students can look up across the 9 steps.",
+    { id: "glossary", label: t("ad.tab.glossary"), sub: t("ad.tab.glossarySub"),
       icon: ic('<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>') },
-    { id: "resources", label: "Knowledge Base", sub: "Documents the AI assistant draws on when answering students.",
+    { id: "resources", label: t("ad.tab.resources"), sub: t("ad.tab.resourcesSub"),
       icon: ic('<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>') },
-    { id: "stepres", label: "Step Resources", sub: "Videos and interactives shown in each step's Resources panel.",
+    { id: "stepres", label: t("ad.tab.stepres"), sub: t("ad.tab.stepresSub"),
       icon: ic('<circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/>') },
-    { id: "health", label: "Health", sub: "Server, database, LLM, and disk status.",
+    { id: "health", label: t("ad.tab.health"), sub: t("ad.tab.healthSub"),
       icon: ic('<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>') },
   ];
   const activeTab = TABS.find((t) => t.id === tab) || TABS[0];
@@ -736,7 +733,7 @@ export default function AdminDashboard() {
                 setAddStudentsClass(null);
                 loadClasses();
                 if (classDetail && classDetail._id === addStudentsClass._id) openClassDetail(addStudentsClass._id);
-                notify.success(`Added ${r.students.length} student account${r.students.length === 1 ? "" : "s"}.`);
+                notify.success(t(r.students.length === 1 ? "ad.class.addedStudentsOne" : "ad.class.addedStudents", { n: r.students.length }));
               } catch (e) { setClassModalError(e.message); }
             }}
           />
@@ -752,7 +749,7 @@ export default function AdminDashboard() {
                 const r = await API.adminCreateClass(fields);
                 setCreatingClass(false);
                 loadClasses();
-                notify.success(`Class created - code "${r.class_code}".`);
+                notify.success(t("ad.class.created", { code: r.class_code }));
               } catch (e) { setClassModalError(e.message); }
             }}
           />
@@ -767,7 +764,7 @@ export default function AdminDashboard() {
               try {
                 await API.adminResetPassword(classResetPw._id, pw);
                 setClassResetPw(null);
-                notify.success("Student password reset.");
+                notify.success(t("ad.class.pwReset"));
               } catch (e) { setClassModalError(e.message); }
             }}
           />
@@ -793,19 +790,19 @@ export default function AdminDashboard() {
       <div className="ad-dashboard">
         <header className="ad-header">
           <div className="ad-header__left">
-            <button className="ad-back-btn" onClick={() => { setUserDetail(null); setUserDetailLoading(false); }}>&larr; Back to Users</button>
+            <button className="ad-back-btn" onClick={() => { setUserDetail(null); setUserDetailLoading(false); }}>{t("ad.backToUsers")}</button>
           </div>
           <div className="ad-header__right">
             <ProfileMenu
               user={user}
               onSignOut={logout}
               onOpenSettings={() => setSettingsOpen(true)}
-              roleLabel="Administrator"
+              roleLabel={t("ad.roleAdministrator")}
             />
           </div>
         </header>
         <div className="ad-body">
-          {userDetailLoading && <div className="ad-loading">Loading user details...</div>}
+          {userDetailLoading && <div className="ad-loading">{t("ad.loadingUserDetails")}</div>}
           {userDetail && <UserDetailView detail={userDetail} onViewSession={(sid, name) => setViewingSession({ sessionId: sid, name })} />}
         </div>
       </div>
@@ -818,19 +815,19 @@ export default function AdminDashboard() {
       <div className="ad-dashboard">
         <header className="ad-header">
           <div className="ad-header__left">
-            <button className="ad-back-btn" onClick={() => { setClassDetail(null); setClassDetailLoading(false); }}>&larr; Back to Classes</button>
+            <button className="ad-back-btn" onClick={() => { setClassDetail(null); setClassDetailLoading(false); }}>{t("ad.backToClasses")}</button>
           </div>
           <div className="ad-header__right">
             <ProfileMenu
               user={user}
               onSignOut={logout}
               onOpenSettings={() => setSettingsOpen(true)}
-              roleLabel="Administrator"
+              roleLabel={t("ad.roleAdministrator")}
             />
           </div>
         </header>
         <div className="ad-body">
-          {classDetailLoading && <div className="ad-loading">Loading class...</div>}
+          {classDetailLoading && <div className="ad-loading">{t("ad.loadingClass")}</div>}
           {classDetail && (
             <ClassDetailView
               detail={classDetail}
@@ -857,14 +854,14 @@ export default function AdminDashboard() {
             alt="Hopscotch 4 All"
             className="hop-logo"
           />
-          <span className="ad-header__badge">Admin</span>
+          <span className="ad-header__badge">{t("ad.role.admin")}</span>
         </div>
         <div className="ad-header__right">
           <ProfileMenu
             user={user}
             onSignOut={logout}
             onOpenSettings={() => setSettingsOpen(true)}
-            roleLabel="Administrator"
+            roleLabel={t("ad.roleAdministrator")}
           />
         </div>
       </header>
@@ -898,32 +895,32 @@ export default function AdminDashboard() {
         {tab === "overview" && stats && (
           <div className="ad-stats">
             <StatTile
-              label="Total Users" value={stats.total_users} color="#2B5EA7"
-              hint={`${stats.role_counts?.teacher || 0} teachers · ${(stats.role_counts?.student || 0) + (stats.role_counts?.classroom_student || 0)} students`}
+              label={t("ad.tile.totalUsers")} value={stats.total_users} color="#2B5EA7"
+              hint={t("ad.tile.totalUsersHint", { teachers: stats.role_counts?.teacher || 0, students: (stats.role_counts?.student || 0) + (stats.role_counts?.classroom_student || 0) })}
               onClick={() => setTab("users")}
               icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>}
             />
             <StatTile
-              label="Sessions" value={stats.total_sessions} color="#E8618C"
-              hint="student research designs"
+              label={t("ad.tile.sessions")} value={stats.total_sessions} color="#E8618C"
+              hint={t("ad.tile.sessionsHint")}
               onClick={() => setTab("sessions")}
               icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>}
             />
             <StatTile
-              label="Classes" value={stats.total_classes} color="#1A8A7D"
-              hint="teacher-created classes"
+              label={t("ad.tile.classes")} value={stats.total_classes} color="#1A8A7D"
+              hint={t("ad.tile.classesHint")}
               onClick={() => setTab("classes")}
               icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/></svg>}
             />
             <StatTile
-              label="Active (7d)" value={stats.active_users_7d} color="#F0B429"
-              hint="signed in this week"
+              label={t("ad.tile.active7")} value={stats.active_users_7d} color="#F0B429"
+              hint={t("ad.tile.active7Hint")}
               onClick={() => setTab("activity")}
               icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>}
             />
             <StatTile
-              label="Active (30d)" value={stats.active_users_30d} color="#F5922A"
-              hint="signed in this month"
+              label={t("ad.tile.active30")} value={stats.active_users_30d} color="#F5922A"
+              hint={t("ad.tile.active30Hint")}
               onClick={() => setTab("activity")}
               icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>}
             />
@@ -932,7 +929,7 @@ export default function AdminDashboard() {
 
         {/* Tab content */}
         <div className="ad-tab-content">
-          {loading && <div className="ad-loading">Loading...</div>}
+          {loading && <div className="ad-loading">{t("ad.loading")}</div>}
 
           {/* ===== OVERVIEW ===== */}
           {tab === "overview" && !loading && (
@@ -944,11 +941,11 @@ export default function AdminDashboard() {
                       <span className="ad-chart-card__ic" style={{ color: "#2B5EA7", background: "rgba(43,94,167,0.10)" }}>
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
                       </span>
-                      New Signups
+                      {t("ad.chart.newSignups")}
                       <span className="ad-chart-count">{signupTotal}</span>
                     </h4>
                     <div className="ad-seg ad-seg--sm">
-                      {[[7, "7d"], [30, "30d"], [90, "90d"]].map(([d, label]) => (
+                      {[[7, t("ad.seg.7d")], [30, t("ad.seg.30d")], [90, t("ad.seg.90d")]].map(([d, label]) => (
                         <button
                           key={d}
                           className={`ad-seg__btn${signupDays === d ? " ad-seg__btn--active" : ""}`}
@@ -959,7 +956,7 @@ export default function AdminDashboard() {
                       ))}
                     </div>
                   </div>
-                  <p className="ad-chart-card__desc">Accounts created per day over the last {signupDays} days</p>
+                  <p className="ad-chart-card__desc">{t("ad.chart.newSignupsDesc", { n: signupDays })}</p>
                   <ResponsiveContainer width="100%" height={220}>
                     <AreaChart data={signupSeries} margin={{ top: 8, right: 8, bottom: 0, left: -18 }}>
                       <defs>
@@ -976,7 +973,7 @@ export default function AdminDashboard() {
                       <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
                       <Tooltip
                         contentStyle={tipStyle} labelStyle={tipLabelStyle} itemStyle={{ color: tipStyle.color }}
-                        formatter={(v) => [`${v} signup${v === 1 ? "" : "s"}`]}
+                        formatter={(v) => [t(v === 1 ? "ad.chart.signupOne" : "ad.chart.signups", { n: v })]}
                       />
                       <Area type="monotone" dataKey="count" stroke="#2B5EA7" strokeWidth={2} fill="url(#adSignupGrad)" dot={false} activeDot={{ r: 4 }} />
                     </AreaChart>
@@ -988,9 +985,9 @@ export default function AdminDashboard() {
                     <span className="ad-chart-card__ic" style={{ color: "#7C3AED", background: "rgba(124,58,237,0.10)" }}>
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>
                     </span>
-                    Users by Role
+                    {t("ad.chart.usersByRole")}
                   </h4>
-                  <p className="ad-chart-card__desc">How the {stats?.total_users ?? 0} accounts split across roles</p>
+                  <p className="ad-chart-card__desc">{t("ad.chart.usersByRoleDesc", { n: stats?.total_users ?? 0 })}</p>
                   {rolePieData.length > 0 ? (
                     <div className="ad-donut">
                       <ResponsiveContainer width="100%" height={220}>
@@ -1002,18 +999,18 @@ export default function AdminDashboard() {
                           </Pie>
                           <Tooltip
                             contentStyle={tipStyle} labelStyle={tipLabelStyle} itemStyle={{ color: tipStyle.color }}
-                            formatter={(v, name) => [`${v} user${v === 1 ? "" : "s"}`, name]}
+                            formatter={(v, name) => [t(v === 1 ? "ad.chart.userOne" : "ad.chart.users", { n: v }), name]}
                           />
                           <Legend iconType="circle" wrapperStyle={{ fontSize: 12 }} />
                         </PieChart>
                       </ResponsiveContainer>
                       <div className="ad-donut__center">
                         <span className="ad-donut__num">{stats?.total_users ?? 0}</span>
-                        <span className="ad-donut__cap">users</span>
+                        <span className="ad-donut__cap">{t("ad.chart.usersCap")}</span>
                       </div>
                     </div>
                   ) : (
-                    <p className="ad-empty">No user data.</p>
+                    <p className="ad-empty">{t("ad.empty.userData")}</p>
                   )}
                 </div>
               </div>
@@ -1024,13 +1021,13 @@ export default function AdminDashboard() {
                     <span className="ad-chart-card__ic" style={{ color: "#1A8A7D", background: "rgba(26,138,125,0.10)" }}>
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
                     </span>
-                    Step Completion
+                    {t("ad.chart.stepCompletion")}
                   </h4>
-                  <p className="ad-chart-card__desc">Students across all sessions who completed each step</p>
+                  <p className="ad-chart-card__desc">{t("ad.chart.stepCompletionDesc")}</p>
                   {dropOff && (
                     <div className="td-bottleneck" style={{ cursor: "default" }}>
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
-                      Biggest drop-off after Step {dropOff.after}: {STEP_LABELS[dropOff.after - 1]} ({dropOff.lost} student{dropOff.lost === 1 ? "" : "s"} stall there)
+                      {t(dropOff.lost === 1 ? "ad.chart.dropOffOne" : "ad.chart.dropOff", { n: dropOff.after, label: STEP_LABELS[dropOff.after - 1], lost: dropOff.lost })}
                     </div>
                   )}
                   {stepMax > 1 ? (
@@ -1041,8 +1038,8 @@ export default function AdminDashboard() {
                         <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
                         <Tooltip
                           contentStyle={tipStyle} labelStyle={tipLabelStyle} itemStyle={{ color: tipStyle.color }}
-                          formatter={(v, _, props) => [`${v} student${v === 1 ? "" : "s"}`, props.payload.name]}
-                          labelFormatter={(n) => `Step ${n}`}
+                          formatter={(v, _, props) => [t(v === 1 ? "ad.chart.studentOne" : "ad.chart.students", { n: v }), props.payload.name]}
+                          labelFormatter={(n) => t("chat.step", { n })}
                         />
                         <Bar dataKey="count" radius={[4, 4, 0, 0]}>
                           {stepBarData.map((d, i) => (
@@ -1052,7 +1049,7 @@ export default function AdminDashboard() {
                       </BarChart>
                     </ResponsiveContainer>
                   ) : (
-                    <p className="ad-empty">No step completion data yet.</p>
+                    <p className="ad-empty">{t("ad.empty.stepCompletion")}</p>
                   )}
                 </div>
 
@@ -1062,11 +1059,11 @@ export default function AdminDashboard() {
                     <span className="ad-chart-card__ic" style={{ color: "#E8618C", background: "rgba(232,97,140,0.10)" }}>
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/></svg>
                     </span>
-                    Hopscotch Court
+                    {t("ad.chart.court")}
                   </h4>
-                  <p className="ad-chart-card__desc">The brighter a square, the more students completed that step</p>
+                  <p className="ad-chart-card__desc">{t("ad.chart.courtDesc")}</p>
                   <div className="td-court">
-                    <svg viewBox="-2 -8 132 62" className="td-court__svg" aria-label="All-student step completion court">
+                    <svg viewBox="-2 -8 132 62" className="td-court__svg" aria-label={t("ad.chart.courtAria")}>
                       {[
                         { x: 0, y: 0 }, { x: 0, y: 24 }, { x: 22, y: 12 }, { x: 44, y: 0 },
                         { x: 44, y: 24 }, { x: 66, y: 12 }, { x: 88, y: 0 }, { x: 88, y: 24 },
@@ -1078,7 +1075,7 @@ export default function AdminDashboard() {
                             <rect x={p.x} y={p.y} width="18" height="22" rx="6"
                               fill={STEP_COLORS[i]} fillOpacity={0.14 + 0.86 * pct}
                               stroke={STEP_COLORS[i]} strokeWidth="1.2" strokeOpacity="0.75">
-                              <title>{`Step ${i + 1}: ${STEP_LABELS[i]} - ${count} student${count === 1 ? "" : "s"} completed`}</title>
+                              <title>{t(count === 1 ? "ad.chart.courtSqOne" : "ad.chart.courtSq", { n: i + 1, label: STEP_LABELS[i], count })}</title>
                             </rect>
                             <text x={p.x + 9} y={p.y + 11} textAnchor="middle" dominantBaseline="central" fontSize="6.5" fontWeight="700"
                               fill={pct > 0.55 ? "#fff" : "var(--hop-ink-secondary)"} pointerEvents="none">
@@ -1095,7 +1092,7 @@ export default function AdminDashboard() {
                             <path d="M110,7 A16,16 0 0,1 110,39 Z"
                               fill={STEP_COLORS[8]} fillOpacity={0.14 + 0.86 * pct}
                               stroke={STEP_COLORS[8]} strokeWidth="1.2" strokeOpacity="0.75">
-                              <title>{`Step 9: ${STEP_LABELS[8]} - ${count} student${count === 1 ? "" : "s"} completed`}</title>
+                              <title>{t(count === 1 ? "ad.chart.courtSqOne" : "ad.chart.courtSq", { n: 9, label: STEP_LABELS[8], count })}</title>
                             </path>
                             <text x="116.8" y="23" textAnchor="middle" dominantBaseline="central" fontSize="6.5" fontWeight="700"
                               fill={pct > 0.55 ? "#fff" : "var(--hop-ink-secondary)"} pointerEvents="none">
@@ -1108,7 +1105,7 @@ export default function AdminDashboard() {
                     <div className="td-court__legend">
                       {STEP_LABELS.map((l, i) => (
                         <span key={i} className="td-court__leg" style={{ "--leg": STEP_COLORS[i] }}>
-                          <span className="td-court__leg-dot" />S{i + 1} {l}
+                          <span className="td-court__leg-dot" />{t("td.stepAbbr", { n: i + 1 })} {l}
                         </span>
                       ))}
                     </div>
@@ -1126,25 +1123,25 @@ export default function AdminDashboard() {
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                   <input
                     type="text"
-                    placeholder="Search by name, email, or username..."
+                    placeholder={t("ad.users.searchPh")}
                     value={userSearchInput}
                     onChange={(e) => setUserSearchInput(e.target.value)}
                   />
                   {userSearchInput && (
-                    <button className="ad-search__clear" title="Clear search" onClick={() => setUserSearchInput("")}>&times;</button>
+                    <button className="ad-search__clear" title={t("td.clearSearch")} onClick={() => setUserSearchInput("")}>&times;</button>
                   )}
                 </div>
                 <button className="td-btn td-btn--outline td-btn--sm" onClick={() => API.adminExportCSV("users")}>
-                  Export CSV
+                  {t("ad.exportCsv")}
                 </button>
                 <button className="td-btn td-btn--primary td-btn--sm" onClick={() => { setCreatingUser(true); setModalError(""); }}>
-                  + Create User
+                  {t("ad.users.create")}
                 </button>
               </div>
 
               {/* Role filter chips with live counts */}
               <div className="ad-rolechips">
-                {[["", "All", stats?.total_users], ...Object.keys(ROLE_LABELS).map((r) => [r, ROLE_LABELS[r], stats?.role_counts?.[r] || 0])].map(([id, label, count]) => (
+                {[["", t("ad.filter.all"), stats?.total_users], ...Object.keys(ROLE_LABELS).map((r) => [r, ROLE_LABELS[r], stats?.role_counts?.[r] || 0])].map(([id, label, count]) => (
                   <button
                     key={id || "all"}
                     className={`ad-rolechip${userRoleFilter === id ? " ad-rolechip--active" : ""}`}
@@ -1162,13 +1159,13 @@ export default function AdminDashboard() {
                 <table className="td-table">
                   <thead>
                     <tr>
-                      <SortTh label="User" col="name" sort={userSort} onSort={toggleUserSort} />
-                      <th>Role</th>
-                      <th>Education</th>
-                      <th>Status</th>
-                      <SortTh label="Last Login" col="last_login_at" sort={userSort} onSort={toggleUserSort} />
-                      <SortTh label="Created" col="created_at" sort={userSort} onSort={toggleUserSort} />
-                      <th>Actions</th>
+                      <SortTh label={t("ad.th.user")} col="name" sort={userSort} onSort={toggleUserSort} />
+                      <th>{t("ad.th.role")}</th>
+                      <th>{t("ad.th.education")}</th>
+                      <th>{t("ad.th.status")}</th>
+                      <SortTh label={t("ad.th.lastLogin")} col="last_login_at" sort={userSort} onSort={toggleUserSort} />
+                      <SortTh label={t("ad.th.created")} col="created_at" sort={userSort} onSort={toggleUserSort} />
+                      <th>{t("ad.th.actions")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1190,33 +1187,33 @@ export default function AdminDashboard() {
                             {ROLE_LABELS[u.role] || u.role}
                           </span>
                         </td>
-                        <td><span className="ad-edu-chip">{u.education_level === "higher_ed" ? "Higher Ed" : "High School"}</span></td>
+                        <td><span className="ad-edu-chip">{u.education_level === "higher_ed" ? t("ad.edu.higherEd") : t("ad.edu.highSchool")}</span></td>
                         <td>
                           <span className={`ad-pill ${u.is_active === false ? "ad-pill--off" : "ad-pill--ok"}`}>
-                            {u.is_active === false ? "Inactive" : "Active"}
+                            {u.is_active === false ? t("ad.status.inactive") : t("ad.status.active")}
                           </span>
                         </td>
                         <td>
-                          <div className="td-table__muted">{timeAgo(u.last_login_at) || "Never"}</div>
+                          <div className="td-table__muted">{timeAgo(u.last_login_at, t, lang) || t("td.never")}</div>
                           {u.last_login_ip && <div className="td-table__mono" style={{ fontSize: "0.7rem" }}>{u.last_login_ip}</div>}
                         </td>
-                        <td className="td-table__muted">{u.created_at ? new Date(u.created_at).toLocaleDateString() : ""}</td>
+                        <td className="td-table__muted">{u.created_at ? new Date(u.created_at).toLocaleDateString(dateLocale) : ""}</td>
                         <td onClick={(e) => e.stopPropagation()}>
                           <div className="ad-actions">
-                            <button className="ad-action-btn" title="Edit" onClick={() => { setEditingUser({ ...u }); setModalError(""); }}>
+                            <button className="ad-action-btn" title={t("ad.action.edit")} onClick={() => { setEditingUser({ ...u }); setModalError(""); }}>
                               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                             </button>
-                            <button className="ad-action-btn" title="Reset Password" onClick={() => { setResetPwUser(u); setModalError(""); }}>
+                            <button className="ad-action-btn" title={t("ad.action.resetPw")} onClick={() => { setResetPwUser(u); setModalError(""); }}>
                               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                             </button>
                             <button
                               className="ad-action-btn"
-                              title={u.is_active === false ? "Reactivate" : "Deactivate"}
+                              title={u.is_active === false ? t("ad.action.reactivate") : t("ad.action.deactivate")}
                               onClick={() => handleToggleActive(u)}
                             >
                               {u.is_active === false ? "\u25B6" : "\u23F8"}
                             </button>
-                            <button className="ad-action-btn ad-action-btn--danger" title="Delete" onClick={() => setDeleteUser(u)}>
+                            <button className="ad-action-btn ad-action-btn--danger" title={t("ad.action.delete")} onClick={() => setDeleteUser(u)}>
                               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                             </button>
                           </div>
@@ -1228,12 +1225,12 @@ export default function AdminDashboard() {
                         <td colSpan={7} className="ad-empty" style={{ textAlign: "center", padding: 32 }}>
                           {userSearch || userRoleFilter ? (
                             <>
-                              No users match{userSearch ? <> "<strong>{userSearch}</strong>"</> : ""}{userRoleFilter ? ` in ${ROLE_LABELS[userRoleFilter]}` : ""}.{" "}
+                              {t("ad.users.noMatchPrefix")}{userSearch ? <> "<strong>{userSearch}</strong>"</> : ""}{userRoleFilter ? ` ${t("ad.users.inRole", { role: ROLE_LABELS[userRoleFilter] })}` : ""}.{" "}
                               <button className="ad-linkbtn" onClick={() => { setUserSearchInput(""); setUserRoleFilter(""); setUserPage(0); }}>
-                                Clear filters
+                                {t("ad.clearFilters")}
                               </button>
                             </>
-                          ) : "No users yet."}
+                          ) : t("ad.users.empty")}
                         </td>
                       </tr>
                     )}
@@ -1242,11 +1239,11 @@ export default function AdminDashboard() {
               </div>
 
               <div className="ad-pagination">
-                <button disabled={userPage === 0} onClick={() => setUserPage((p) => p - 1)}>Previous</button>
+                <button disabled={userPage === 0} onClick={() => setUserPage((p) => p - 1)}>{t("ad.prev")}</button>
                 <span>
-                  {userTotal === 0 ? "0 users" : `${userPage * PAGE_SIZE + 1}\u2013${Math.min((userPage + 1) * PAGE_SIZE, userTotal)} of ${userTotal} user${userTotal === 1 ? "" : "s"}`}
+                  {userTotal === 0 ? t("ad.page.usersZero") : t(userTotal === 1 ? "ad.page.usersOne" : "ad.page.users", { a: userPage * PAGE_SIZE + 1, b: Math.min((userPage + 1) * PAGE_SIZE, userTotal), total: userTotal })}
                 </span>
-                <button disabled={(userPage + 1) * PAGE_SIZE >= userTotal} onClick={() => setUserPage((p) => p + 1)}>Next</button>
+                <button disabled={(userPage + 1) * PAGE_SIZE >= userTotal} onClick={() => setUserPage((p) => p + 1)}>{t("ad.next")}</button>
               </div>
 
               {creatingUser && (
@@ -1301,7 +1298,7 @@ export default function AdminDashboard() {
                       await API.adminDeleteUser(deleteUser._id);
                       setDeleteUser(null);
                       loadUsers();
-                    } catch (e) { notify.error(e.message, { title: "Action failed" }); }
+                    } catch (e) { notify.error(e.message, { title: t("ad.actionFailed") }); }
                   }}
                 />
               )}
@@ -1316,12 +1313,12 @@ export default function AdminDashboard() {
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                   <input
                     type="text"
-                    placeholder="Search by class, code, or teacher..."
+                    placeholder={t("ad.classes.searchPh")}
                     value={classSearchInput}
                     onChange={(e) => setClassSearchInput(e.target.value)}
                   />
                   {classSearchInput && (
-                    <button className="ad-search__clear" title="Clear search" onClick={() => setClassSearchInput("")}>&times;</button>
+                    <button className="ad-search__clear" title={t("td.clearSearch")} onClick={() => setClassSearchInput("")}>&times;</button>
                   )}
                 </div>
                 <select
@@ -1329,34 +1326,34 @@ export default function AdminDashboard() {
                   value={classTeacherFilter}
                   onChange={(e) => setClassTeacherFilter(e.target.value)}
                 >
-                  <option value="">All teachers</option>
-                  {classTeachers.map((t) => (
-                    <option key={t.id} value={t.id}>{t.name || t.email || "Unknown"}</option>
+                  <option value="">{t("ad.classes.allTeachers")}</option>
+                  {classTeachers.map((tc) => (
+                    <option key={tc.id} value={tc.id}>{tc.name || tc.email || t("ad.unknown")}</option>
                   ))}
                 </select>
                 <span className="ad-glossary__count">
-                  {shownClasses.length} of {classes.length} class{classes.length === 1 ? "" : "es"}
+                  {t(classes.length === 1 ? "ad.classes.countOne" : "ad.classes.count", { shown: shownClasses.length, total: classes.length })}
                 </span>
                 <button className="td-btn td-btn--primary td-btn--sm" onClick={() => { setCreatingClass(true); setClassModalError(""); }}>
-                  + Create Class
+                  {t("ad.classes.create")}
                 </button>
               </div>
 
-              {classesLoading && <div className="ad-loading">Loading classes...</div>}
+              {classesLoading && <div className="ad-loading">{t("td.loadingClasses")}</div>}
 
               {!classesLoading && (
               <div className="td-table-wrap">
                 <table className="td-table">
                   <thead>
                     <tr>
-                      <SortTh label="Class" col="class_name" sort={classSort} onSort={toggleClassSort} />
-                      <SortTh label="Teacher" col="teacher_name" sort={classSort} onSort={toggleClassSort} />
-                      <SortTh label="Students" col="students" sort={classSort} onSort={toggleClassSort} />
-                      <SortTh label="Progress" col="avg_progress" sort={classSort} onSort={toggleClassSort} />
-                      <th>AI</th>
-                      <SortTh label="Last Activity" col="last_activity" sort={classSort} onSort={toggleClassSort} />
-                      <SortTh label="Created" col="created_at" sort={classSort} onSort={toggleClassSort} />
-                      <th>Actions</th>
+                      <SortTh label={t("td.thClass")} col="class_name" sort={classSort} onSort={toggleClassSort} />
+                      <SortTh label={t("ad.th.teacher")} col="teacher_name" sort={classSort} onSort={toggleClassSort} />
+                      <SortTh label={t("td.students")} col="students" sort={classSort} onSort={toggleClassSort} />
+                      <SortTh label={t("td.thProgress")} col="avg_progress" sort={classSort} onSort={toggleClassSort} />
+                      <th>{t("ad.th.ai")}</th>
+                      <SortTh label={t("td.thLastActivity")} col="last_activity" sort={classSort} onSort={toggleClassSort} />
+                      <SortTh label={t("ad.th.created")} col="created_at" sort={classSort} onSort={toggleClassSort} />
+                      <th>{t("ad.th.actions")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1380,20 +1377,20 @@ export default function AdminDashboard() {
                         </td>
                         <td>
                           <span className={`ad-pill ${c.settings?.ai_enabled === false ? "ad-pill--off" : "ad-pill--ok"}`}>
-                            {c.settings?.ai_enabled === false ? "Off" : "On"}
+                            {c.settings?.ai_enabled === false ? t("td.off") : t("td.on")}
                           </span>
                         </td>
-                        <td className="td-table__muted">{c.last_activity ? timeAgo(c.last_activity) : "\u2014"}</td>
-                        <td className="td-table__muted">{c.created_at ? new Date(c.created_at).toLocaleDateString() : ""}</td>
+                        <td className="td-table__muted">{c.last_activity ? timeAgo(c.last_activity, t, lang) : "\u2014"}</td>
+                        <td className="td-table__muted">{c.created_at ? new Date(c.created_at).toLocaleDateString(dateLocale) : ""}</td>
                         <td onClick={(e) => e.stopPropagation()}>
                           <div className="ad-actions">
-                            <button className="ad-action-btn" title="Edit class" onClick={() => { setEditingClass(c); setClassModalError(""); }}>
+                            <button className="ad-action-btn" title={t("ad.action.editClass")} onClick={() => { setEditingClass(c); setClassModalError(""); }}>
                               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                             </button>
-                            <button className="ad-action-btn" title="Add students" onClick={() => { setAddStudentsClass(c); setClassModalError(""); }}>
+                            <button className="ad-action-btn" title={t("ad.action.addStudents")} onClick={() => { setAddStudentsClass(c); setClassModalError(""); }}>
                               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
                             </button>
-                            <button className="ad-action-btn ad-action-btn--danger" title="Delete class and students" onClick={() => setDeleteClass(c)}>
+                            <button className="ad-action-btn ad-action-btn--danger" title={t("ad.action.deleteClass")} onClick={() => setDeleteClass(c)}>
                               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                             </button>
                           </div>
@@ -1405,10 +1402,10 @@ export default function AdminDashboard() {
                         <td colSpan={8} className="ad-empty" style={{ textAlign: "center", padding: 32 }}>
                           {classSearchInput || classTeacherFilter ? (
                             <>
-                              No classes match your filters.{" "}
-                              <button className="ad-linkbtn" onClick={() => { setClassSearchInput(""); setClassTeacherFilter(""); }}>Clear filters</button>
+                              {t("ad.classes.noMatch")}{" "}
+                              <button className="ad-linkbtn" onClick={() => { setClassSearchInput(""); setClassTeacherFilter(""); }}>{t("ad.clearFilters")}</button>
                             </>
-                          ) : "No classes yet - teachers create them from their dashboard."}
+                          ) : t("ad.classes.empty")}
                         </td>
                       </tr>
                     )}
@@ -1420,18 +1417,18 @@ export default function AdminDashboard() {
               {deleteClass && (
                 <div className="ad-modal-backdrop" onClick={() => setDeleteClass(null)}>
                   <div className="ad-modal" onClick={(e) => e.stopPropagation()}>
-                    <h3>Delete Class</h3>
-                    <p>Are you sure you want to delete class <strong>{deleteClass.class_name}</strong> ({deleteClass.class_code})?</p>
-                    <p style={{ color: "#DC2626", fontSize: "0.85rem" }}>This will also delete all {deleteClass.actual_students} student account(s) in this class.</p>
+                    <h3>{t("ad.classes.deleteTitle")}</h3>
+                    <p>{t("ad.classes.deleteConfirmPre")} <strong>{deleteClass.class_name}</strong> ({deleteClass.class_code})?</p>
+                    <p style={{ color: "#DC2626", fontSize: "0.85rem" }}>{t("ad.classes.deleteNote", { n: deleteClass.actual_students })}</p>
                     <div className="ad-modal__actions">
-                      <button className="td-btn td-btn--outline td-btn--sm" onClick={() => setDeleteClass(null)}>Cancel</button>
+                      <button className="td-btn td-btn--outline td-btn--sm" onClick={() => setDeleteClass(null)}>{t("td.cancel")}</button>
                       <button className="td-btn td-btn--sm" style={{ background: "#DC2626", color: "#fff" }} onClick={async () => {
                         try {
                           await API.adminDeleteClass(deleteClass._id);
                           setDeleteClass(null);
                           loadClasses();
-                        } catch (e) { notify.error(e.message, { title: "Action failed" }); }
-                      }}>Delete</button>
+                        } catch (e) { notify.error(e.message, { title: t("ad.actionFailed") }); }
+                      }}>{t("ad.action.delete")}</button>
                     </div>
                   </div>
                 </div>
@@ -1448,12 +1445,12 @@ export default function AdminDashboard() {
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                   <input
                     type="text"
-                    placeholder="Search by student name, email, or username..."
+                    placeholder={t("ad.sessions.searchPh")}
                     value={sessionSearchInput}
                     onChange={(e) => setSessionSearchInput(e.target.value)}
                   />
                   {sessionSearchInput && (
-                    <button className="ad-search__clear" title="Clear search" onClick={() => setSessionSearchInput("")}>&times;</button>
+                    <button className="ad-search__clear" title={t("td.clearSearch")} onClick={() => setSessionSearchInput("")}>&times;</button>
                   )}
                 </div>
                 <select
@@ -1461,24 +1458,24 @@ export default function AdminDashboard() {
                   value={sessionStep}
                   onChange={(e) => { setSessionStep(Number(e.target.value)); setSessionPage(0); }}
                 >
-                  <option value={0}>All steps</option>
+                  <option value={0}>{t("ad.sessions.allSteps")}</option>
                   {STEP_LABELS.map((l, i) => (
-                    <option key={i} value={i + 1}>Step {i + 1}: {l}</option>
+                    <option key={i} value={i + 1}>{t("panel.stepTip", { n: i + 1, label: l })}</option>
                   ))}
                 </select>
                 <button className="td-btn td-btn--outline td-btn--sm" onClick={() => API.adminExportCSV("sessions")}>
-                  Export CSV
+                  {t("ad.exportCsv")}
                 </button>
                 {sessionStats && (sessionStats.empty > 0 || sessionStats.orphaned > 0) && (
                   <button className="td-btn td-btn--outline td-btn--sm ad-btn--warn" onClick={() => setCleanupOpen(true)}>
-                    Clean up ({sessionStats.empty + sessionStats.orphaned})
+                    {t("ad.sessions.cleanup", { n: sessionStats.empty + sessionStats.orphaned })}
                   </button>
                 )}
               </div>
 
               {/* Status filter chips */}
               <div className="ad-rolechips">
-                {[["", "All", "var(--hop-navy, #2B4C7E)"], ["active7", "Active (7d)", "#16A34A"], ["completed", "Completed", "#1A8A7D"], ["stale", "Stale (30d+)", "#F5922A"], ["empty", "Empty", "#7B8794"]].map(([id, label, color]) => (
+                {[["", t("ad.filter.all"), "var(--hop-navy, #2B4C7E)"], ["active7", t("ad.sessions.active7"), "#16A34A"], ["completed", t("ad.sessions.completed"), "#1A8A7D"], ["stale", t("ad.sessions.stale"), "#F5922A"], ["empty", t("ad.sessions.chipEmpty"), "#7B8794"]].map(([id, label, color]) => (
                   <button
                     key={id || "all"}
                     className={`ad-rolechip${sessionStatus === id ? " ad-rolechip--active" : ""}`}
@@ -1495,14 +1492,14 @@ export default function AdminDashboard() {
                 <table className="td-table">
                   <thead>
                     <tr>
-                      <th>User</th>
-                      <th>Progress</th>
-                      <SortTh label="Step" col="active_step" sort={sessionSort} onSort={toggleSessionSort} />
-                      <th>Worldview</th>
-                      <th>Path</th>
-                      <SortTh label="Created" col="created_at" sort={sessionSort} onSort={toggleSessionSort} />
-                      <SortTh label="Updated" col="updated_at" sort={sessionSort} onSort={toggleSessionSort} />
-                      <th>Actions</th>
+                      <th>{t("ad.th.user")}</th>
+                      <th>{t("td.thProgress")}</th>
+                      <SortTh label={t("ad.th.step")} col="active_step" sort={sessionSort} onSort={toggleSessionSort} />
+                      <th>{t("td.thWorldview")}</th>
+                      <th>{t("td.thPath")}</th>
+                      <SortTh label={t("ad.th.created")} col="created_at" sort={sessionSort} onSort={toggleSessionSort} />
+                      <SortTh label={t("ad.th.updated")} col="updated_at" sort={sessionSort} onSort={toggleSessionSort} />
+                      <th>{t("ad.th.actions")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1513,34 +1510,34 @@ export default function AdminDashboard() {
                             <div>
                               <div className="td-table__name">
                                 {s.user_name || "\u2014"}
-                                {s.orphaned && <span className="ad-pill ad-pill--off" style={{ marginLeft: 6 }}>deleted user</span>}
+                                {s.orphaned && <span className="ad-pill ad-pill--off" style={{ marginLeft: 6 }}>{t("ad.sessions.deletedUser")}</span>}
                               </div>
                               <div className="td-table__mono">{s.user_email || ""}</div>
                             </div>
                           </div>
                         </td>
                         <td>
-                          <div className="td-table__muted">{s.steps_done || 0}/9 steps</div>
+                          <div className="td-table__muted">{t("ad.sessions.stepsOf", { n: s.steps_done || 0 })}</div>
                           <div className="ad-minibar"><div className="ad-minibar__fill ad-minibar__fill--progress" style={{ width: `${Math.round(((s.steps_done || 0) / 9) * 100)}%` }} /></div>
                         </td>
                         <td>
                           <span className="ad-role-badge" style={{ background: STEP_COLORS[(s.active_step || 1) - 1] || "#999" }}>
-                            Step {s.active_step || 1}
+                            {t("chat.step", { n: s.active_step || 1 })}
                           </span>
                         </td>
                         <td className="td-table__muted">{s.worldview_label || "\u2014"}</td>
                         <td className="td-table__muted">{s.resolved_path || "\u2014"}</td>
-                        <td className="td-table__muted">{timeAgo(s.created_at)}</td>
-                        <td className="td-table__muted">{timeAgo(s.updated_at)}</td>
+                        <td className="td-table__muted">{timeAgo(s.created_at, t, lang)}</td>
+                        <td className="td-table__muted">{timeAgo(s.updated_at, t, lang)}</td>
                         <td>
                           <div className="ad-actions">
                             <button
                               className="td-btn td-btn--outline td-btn--sm"
                               onClick={() => setViewingSession({ sessionId: s.session_id, name: s.user_name })}
                             >
-                              View
+                              {t("td.view")}
                             </button>
-                            <button className="ad-action-btn ad-action-btn--danger" title="Delete session" onClick={() => handleDeleteSession(s)}>
+                            <button className="ad-action-btn ad-action-btn--danger" title={t("ad.action.deleteSession")} onClick={() => handleDeleteSession(s)}>
                               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                             </button>
                           </div>
@@ -1552,12 +1549,12 @@ export default function AdminDashboard() {
                         <td colSpan={8} className="ad-empty" style={{ textAlign: "center", padding: 32 }}>
                           {sessionSearch || sessionStatus || sessionStep ? (
                             <>
-                              No sessions match your filters.{" "}
+                              {t("ad.sessions.noMatch")}{" "}
                               <button className="ad-linkbtn" onClick={() => { setSessionSearchInput(""); setSessionStatus(""); setSessionStep(0); setSessionPage(0); }}>
-                                Clear filters
+                                {t("ad.clearFilters")}
                               </button>
                             </>
-                          ) : "No sessions yet."}
+                          ) : t("ad.sessions.empty")}
                         </td>
                       </tr>
                     )}
@@ -1566,43 +1563,43 @@ export default function AdminDashboard() {
               </div>
 
               <div className="ad-pagination">
-                <button disabled={sessionPage === 0} onClick={() => setSessionPage((p) => p - 1)}>Previous</button>
+                <button disabled={sessionPage === 0} onClick={() => setSessionPage((p) => p - 1)}>{t("ad.prev")}</button>
                 <span>
-                  {sessionTotal === 0 ? "0 sessions" : `${sessionPage * PAGE_SIZE + 1}\u2013${Math.min((sessionPage + 1) * PAGE_SIZE, sessionTotal)} of ${sessionTotal} session${sessionTotal === 1 ? "" : "s"}`}
+                  {sessionTotal === 0 ? t("ad.page.sessionsZero") : t(sessionTotal === 1 ? "ad.page.sessionsOne" : "ad.page.sessions", { a: sessionPage * PAGE_SIZE + 1, b: Math.min((sessionPage + 1) * PAGE_SIZE, sessionTotal), total: sessionTotal })}
                 </span>
-                <button disabled={(sessionPage + 1) * PAGE_SIZE >= sessionTotal} onClick={() => setSessionPage((p) => p + 1)}>Next</button>
+                <button disabled={(sessionPage + 1) * PAGE_SIZE >= sessionTotal} onClick={() => setSessionPage((p) => p + 1)}>{t("ad.next")}</button>
               </div>
 
               {cleanupOpen && sessionStats && (
                 <div className="ad-modal-backdrop" onClick={() => setCleanupOpen(false)}>
                   <div className="ad-modal" onClick={(e) => e.stopPropagation()}>
-                    <h3>Clean Up Sessions</h3>
+                    <h3>{t("ad.cleanup.title")}</h3>
                     <p style={{ fontSize: "0.9rem" }}>
-                      {sessionStats.empty > 0 && <>\u2022 <strong>{sessionStats.empty}</strong> empty session{sessionStats.empty === 1 ? "" : "s"} (created but no step work)<br /></>}
-                      {sessionStats.orphaned > 0 && <>\u2022 <strong>{sessionStats.orphaned}</strong> orphaned session{sessionStats.orphaned === 1 ? "" : "s"} (owner account deleted)</>}
+                      {sessionStats.empty > 0 && <>\u2022 <strong>{sessionStats.empty}</strong> {t(sessionStats.empty === 1 ? "ad.cleanup.emptyOne" : "ad.cleanup.empty")}<br /></>}
+                      {sessionStats.orphaned > 0 && <>\u2022 <strong>{sessionStats.orphaned}</strong> {t(sessionStats.orphaned === 1 ? "ad.cleanup.orphanedOne" : "ad.cleanup.orphaned")}</>}
                     </p>
-                    <p style={{ color: "#DC2626", fontSize: "0.85rem" }}>Deletion is permanent and is recorded in the audit log.</p>
+                    <p style={{ color: "#DC2626", fontSize: "0.85rem" }}>{t("ad.cleanup.note")}</p>
                     <div className="ad-modal__actions">
-                      <button className="td-btn td-btn--outline td-btn--sm" onClick={() => setCleanupOpen(false)}>Cancel</button>
+                      <button className="td-btn td-btn--outline td-btn--sm" onClick={() => setCleanupOpen(false)}>{t("td.cancel")}</button>
                       {sessionStats.empty > 0 && (
                         <button className="td-btn td-btn--sm" style={{ background: "#DC2626", color: "#fff" }} onClick={async () => {
                           try {
                             const r = await API.adminCleanupSessions("empty");
-                            notify.success(`Deleted ${r.deleted} empty session${r.deleted === 1 ? "" : "s"}.`);
+                            notify.success(t(r.deleted === 1 ? "ad.cleanup.deletedEmptyOne" : "ad.cleanup.deletedEmpty", { n: r.deleted }));
                             setCleanupOpen(false);
                             loadSessions();
-                          } catch (e) { notify.error(e.message, { title: "Cleanup failed" }); }
-                        }}>Delete empty</button>
+                          } catch (e) { notify.error(e.message, { title: t("ad.cleanup.failed") }); }
+                        }}>{t("ad.cleanup.deleteEmpty")}</button>
                       )}
                       {sessionStats.orphaned > 0 && (
                         <button className="td-btn td-btn--sm" style={{ background: "#DC2626", color: "#fff" }} onClick={async () => {
                           try {
                             const r = await API.adminCleanupSessions("orphaned");
-                            notify.success(`Deleted ${r.deleted} orphaned session${r.deleted === 1 ? "" : "s"}.`);
+                            notify.success(t(r.deleted === 1 ? "ad.cleanup.deletedOrphanedOne" : "ad.cleanup.deletedOrphaned", { n: r.deleted }));
                             setCleanupOpen(false);
                             loadSessions();
-                          } catch (e) { notify.error(e.message, { title: "Cleanup failed" }); }
-                        }}>Delete orphaned</button>
+                          } catch (e) { notify.error(e.message, { title: t("ad.cleanup.failed") }); }
+                        }}>{t("ad.cleanup.deleteOrphaned")}</button>
                       )}
                     </div>
                   </div>
@@ -1619,28 +1616,28 @@ export default function AdminDashboard() {
                 <div className="ad-geo__tiles">
                   <div className="ad-geo__tile">
                     <span className="ad-geo__tile-num">{geoCountries.length}</span>
-                    <span className="ad-geo__tile-cap">countr{geoCountries.length === 1 ? "y" : "ies"}</span>
+                    <span className="ad-geo__tile-cap">{t(geoCountries.length === 1 ? "ad.geo.countryOne" : "ad.geo.countries")}</span>
                   </div>
                   <div className="ad-geo__tile">
                     <span className="ad-geo__tile-num">{geoRegions.length}</span>
-                    <span className="ad-geo__tile-cap">cit{geoRegions.length === 1 ? "y" : "ies"}</span>
+                    <span className="ad-geo__tile-cap">{t(geoRegions.length === 1 ? "ad.geo.cityOne" : "ad.geo.cities")}</span>
                   </div>
                   <div className="ad-geo__tile">
                     <span className="ad-geo__tile-num">{geoCountries.reduce((s, c) => s + (c.logins || 0), 0)}</span>
-                    <span className="ad-geo__tile-cap">logins</span>
+                    <span className="ad-geo__tile-cap">{t("ad.geo.logins")}</span>
                   </div>
                   {geoCountries.length > 0 && (() => {
                     const top = [...geoCountries].sort((a, b) => (b.unique_users || 0) - (a.unique_users || 0))[0];
                     return (
                       <div className="ad-geo__tile">
                         <span className="ad-geo__tile-num">{top.country}</span>
-                        <span className="ad-geo__tile-cap">top country · {top.unique_users} users</span>
+                        <span className="ad-geo__tile-cap">{t("ad.geo.topCountry", { n: top.unique_users })}</span>
                       </div>
                     );
                   })()}
                 </div>
                 <div className="ad-seg ad-seg--sm">
-                  {[[0, "All time"], [90, "90d"], [30, "30d"], [7, "7d"]].map(([d, label]) => (
+                  {[[0, t("ad.seg.allTime")], [90, t("ad.seg.90d")], [30, t("ad.seg.30d")], [7, t("ad.seg.7d")]].map(([d, label]) => (
                     <button
                       key={d}
                       className={`ad-seg__btn${geoDays === d ? " ad-seg__btn--active" : ""}`}
@@ -1658,10 +1655,10 @@ export default function AdminDashboard() {
                   <span className="ad-chart-card__ic" style={{ color: "#16A34A", background: "rgba(22,163,74,0.10)" }}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
                   </span>
-                  Login Activity
-                  {failedTotal > 0 && <span className="ad-chart-count" style={{ color: "#DC2626" }}>{failedTotal} failed</span>}
+                  {t("ad.geo.loginActivity")}
+                  {failedTotal > 0 && <span className="ad-chart-count" style={{ color: "#DC2626" }}>{t("ad.geo.failedCount", { n: failedTotal })}</span>}
                 </h4>
-                <p className="ad-chart-card__desc">Logins per day{geoDays ? ` over the last ${geoDays} days` : " since launch"} - spikes in failures are worth a look at the Activity tab</p>
+                <p className="ad-chart-card__desc">{geoDays ? t("ad.geo.loginActivityDescRange", { n: geoDays }) : t("ad.geo.loginActivityDescAll")}</p>
                 {loginSeries.length > 0 ? (
                   <ResponsiveContainer width="100%" height={200}>
                     <ComposedChart data={loginSeries} margin={{ top: 8, right: 8, bottom: 0, left: -18 }}>
@@ -1676,12 +1673,12 @@ export default function AdminDashboard() {
                       <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
                       <Tooltip contentStyle={tipStyle} labelStyle={tipLabelStyle} itemStyle={{ color: tipStyle.color }} />
                       <Legend iconType="circle" wrapperStyle={{ fontSize: 11 }} />
-                      <Area type="monotone" dataKey="success" name="Successful" stroke="#16A34A" strokeWidth={2} fill="url(#adLoginGrad)" dot={false} activeDot={{ r: 4 }} />
-                      <Line type="monotone" dataKey="failed" name="Failed" stroke="#DC2626" strokeWidth={1.6} dot={false} activeDot={{ r: 4 }} />
+                      <Area type="monotone" dataKey="success" name={t("ad.geo.successful")} stroke="#16A34A" strokeWidth={2} fill="url(#adLoginGrad)" dot={false} activeDot={{ r: 4 }} />
+                      <Line type="monotone" dataKey="failed" name={t("ad.geo.failed")} stroke="#DC2626" strokeWidth={1.6} dot={false} activeDot={{ r: 4 }} />
                     </ComposedChart>
                   </ResponsiveContainer>
                 ) : (
-                  <p className="ad-empty">{geoDays ? `No logins in the last ${geoDays} days.` : "No login data yet."}</p>
+                  <p className="ad-empty">{geoDays ? t("ad.geo.noLoginsRange", { n: geoDays }) : t("ad.geo.noLoginData")}</p>
                 )}
               </div>
 
@@ -1692,7 +1689,7 @@ export default function AdminDashboard() {
                     <span className="ad-chart-card__ic" style={{ color: "#2B5EA7", background: "rgba(43,94,167,0.10)" }}>
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
                     </span>
-                    Login Heatmap
+                    {t("ad.geo.heatmap")}
                   </h4>
                   {geoCountryFilter && (
                     <button className="ad-rolechip ad-rolechip--active" style={{ "--chip": "var(--hop-navy, #2B4C7E)" }} onClick={() => focusCountry("")}>
@@ -1701,7 +1698,7 @@ export default function AdminDashboard() {
                   )}
                 </div>
                 <p className="ad-chart-card__desc">
-                  Where logins happen{geoDays ? ` in the last ${geoDays} days` : " (all time)"} - click a country or city in the charts below and the map flies there
+                  {geoDays ? t("ad.geo.heatmapDescRange", { n: geoDays }) : t("ad.geo.heatmapDescAll")}
                 </p>
                 <UserLocationMap locations={shownMapLocations} focusBounds={geoFocus} />
               </div>
@@ -1713,39 +1710,40 @@ export default function AdminDashboard() {
                     <span className="ad-chart-card__ic" style={{ color: "#1A8A7D", background: "rgba(26,138,125,0.10)" }}>
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
                     </span>
-                    Users by Country
+                    {t("ad.geo.usersByCountry")}
                   </h4>
-                  <p className="ad-chart-card__desc">Click a slice to focus the map on that country</p>
+                  <p className="ad-chart-card__desc">{t("ad.geo.usersByCountryDesc")}</p>
                   {geoCountries.length > 0 ? (() => {
                     // Top 7 + grouped "Other" so the donut stays readable and still totals 100%
                     const sorted = [...geoCountries].sort((a, b) => (b.unique_users || 0) - (a.unique_users || 0));
                     const TOP = 7;
                     const pie = sorted.slice(0, TOP).map((c) => ({ name: c.country, value: c.unique_users }));
                     const rest = sorted.slice(TOP);
-                    if (rest.length) pie.push({ name: `Other · ${rest.length} countries`, value: rest.reduce((s, c) => s + (c.unique_users || 0), 0) });
+                    const otherName = t("ad.geo.otherCountries", { n: rest.length });
+                    if (rest.length) pie.push({ name: otherName, value: rest.reduce((s, c) => s + (c.unique_users || 0), 0) });
                     return (
                       <ResponsiveContainer width="100%" height={280}>
                         <PieChart>
                           <Pie
                             data={pie} dataKey="value" nameKey="name" cx="50%" cy="48%" innerRadius={54} outerRadius={92} paddingAngle={2}
-                            onClick={(d) => d && !String(d.name).startsWith("Other") && focusCountry(d.name)}
+                            onClick={(d) => d && d.name !== otherName && focusCountry(d.name)}
                           >
                             {pie.map((d, i) => (
                               <Cell
                                 key={i}
-                                fill={d.name.startsWith("Other") ? "#94a3b8" : GEO_PALETTE[i % GEO_PALETTE.length]}
-                                cursor={d.name.startsWith("Other") ? "default" : "pointer"}
+                                fill={d.name === otherName ? "#94a3b8" : GEO_PALETTE[i % GEO_PALETTE.length]}
+                                cursor={d.name === otherName ? "default" : "pointer"}
                                 opacity={geoCountryFilter && d.name !== geoCountryFilter ? 0.35 : 1}
                               />
                             ))}
                           </Pie>
-                          <Tooltip contentStyle={tipStyle} labelStyle={tipLabelStyle} itemStyle={{ color: tipStyle.color }} formatter={(v) => [`${v} users`]} />
+                          <Tooltip contentStyle={tipStyle} labelStyle={tipLabelStyle} itemStyle={{ color: tipStyle.color }} formatter={(v) => [t("ad.chart.users", { n: v })]} />
                           <Legend iconType="circle" wrapperStyle={{ fontSize: 11 }} />
                         </PieChart>
                       </ResponsiveContainer>
                     );
                   })() : (
-                    <p className="ad-empty">{geoDays ? `No logins in the last ${geoDays} days.` : "No country data yet."}</p>
+                    <p className="ad-empty">{geoDays ? t("ad.geo.noLoginsRange", { n: geoDays }) : t("ad.geo.noCountryData")}</p>
                   )}
                 </div>
 
@@ -1754,10 +1752,10 @@ export default function AdminDashboard() {
                     <span className="ad-chart-card__ic" style={{ color: "#7C3AED", background: "rgba(124,58,237,0.10)" }}>
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
                     </span>
-                    Logins by Country
+                    {t("ad.geo.loginsByCountry")}
                     <span className="ad-chart-count">{geoCountries.length}</span>
                   </h4>
-                  <p className="ad-chart-card__desc">Click a bar to focus the map - click again to clear</p>
+                  <p className="ad-chart-card__desc">{t("ad.geo.loginsByCountryDesc")}</p>
                   {geoCountries.length > 0 ? (
                     <div className="td-chart-scroll" style={{ maxHeight: 320, overflowY: geoCountries.length > 8 ? "auto" : "visible" }}>
                       <ResponsiveContainer width="100%" height={Math.max(180, geoCountries.length * 34 + 16)}>
@@ -1766,13 +1764,13 @@ export default function AdminDashboard() {
                           <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
                           <YAxis type="category" dataKey="country" width={90} interval={0} tick={{ fontSize: 11 }} tickFormatter={(n) => (n && n.length > 14 ? n.slice(0, 13) + "…" : n)} />
                           <Tooltip contentStyle={tipStyle} labelStyle={tipLabelStyle} itemStyle={{ color: tipStyle.color }} />
-                          <Bar dataKey="logins" name="Logins" fill="#2B5EA7" radius={[0, 4, 4, 0]} maxBarSize={18} cursor="pointer" onClick={(d) => d && focusCountry(d.payload.country)} />
-                          <Bar dataKey="unique_users" name="Users" fill="#1A8A7D" radius={[0, 4, 4, 0]} maxBarSize={18} cursor="pointer" onClick={(d) => d && focusCountry(d.payload.country)} />
+                          <Bar dataKey="logins" name={t("ad.geo.loginsName")} fill="#2B5EA7" radius={[0, 4, 4, 0]} maxBarSize={18} cursor="pointer" onClick={(d) => d && focusCountry(d.payload.country)} />
+                          <Bar dataKey="unique_users" name={t("ad.geo.usersName")} fill="#1A8A7D" radius={[0, 4, 4, 0]} maxBarSize={18} cursor="pointer" onClick={(d) => d && focusCountry(d.payload.country)} />
                         </BarChart>
                       </ResponsiveContainer>
                     </div>
                   ) : (
-                    <p className="ad-empty">{geoDays ? `No logins in the last ${geoDays} days.` : "No country data yet."}</p>
+                    <p className="ad-empty">{geoDays ? t("ad.geo.noLoginsRange", { n: geoDays }) : t("ad.geo.noCountryData")}</p>
                   )}
                 </div>
               </div>
@@ -1783,11 +1781,11 @@ export default function AdminDashboard() {
                   <span className="ad-chart-card__ic" style={{ color: "#E8618C", background: "rgba(232,97,140,0.10)" }}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/></svg>
                   </span>
-                  Cities / Regions
-                  {geoCountryFilter && <span style={{ fontWeight: 500, color: "var(--hop-muted)", fontSize: "0.82rem" }}>in {geoCountryFilter}</span>}
+                  {t("ad.geo.citiesRegions")}
+                  {geoCountryFilter && <span style={{ fontWeight: 500, color: "var(--hop-muted)", fontSize: "0.82rem" }}>{t("ad.geo.inCountry", { country: geoCountryFilter })}</span>}
                   <span className="ad-chart-count">{shownRegions.length}</span>
                 </h4>
-                <p className="ad-chart-card__desc">Click a city to fly the map to it</p>
+                <p className="ad-chart-card__desc">{t("ad.geo.citiesDesc")}</p>
                 {shownRegions.length > 0 ? (
                   <div className="td-chart-scroll" style={{ maxHeight: 420, overflowY: shownRegions.length > 11 ? "auto" : "visible" }}>
                     <ResponsiveContainer width="100%" height={Math.max(200, shownRegions.length * 32 + 16)}>
@@ -1804,13 +1802,13 @@ export default function AdminDashboard() {
                         <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
                         <YAxis type="category" dataKey="label" width={190} interval={0} tick={{ fontSize: 10 }} tickFormatter={(n) => (n && n.length > 30 ? n.slice(0, 29) + "…" : n)} />
                         <Tooltip contentStyle={tipStyle} labelStyle={tipLabelStyle} itemStyle={{ color: tipStyle.color }} />
-                        <Bar dataKey="logins" name="Logins" fill="#E8618C" radius={[0, 4, 4, 0]} maxBarSize={16} cursor="pointer" onClick={(d) => d && focusCity(d.payload)} />
-                        <Bar dataKey="unique_users" name="Users" fill="#F0B429" radius={[0, 4, 4, 0]} maxBarSize={16} cursor="pointer" onClick={(d) => d && focusCity(d.payload)} />
+                        <Bar dataKey="logins" name={t("ad.geo.loginsName")} fill="#E8618C" radius={[0, 4, 4, 0]} maxBarSize={16} cursor="pointer" onClick={(d) => d && focusCity(d.payload)} />
+                        <Bar dataKey="unique_users" name={t("ad.geo.usersName")} fill="#F0B429" radius={[0, 4, 4, 0]} maxBarSize={16} cursor="pointer" onClick={(d) => d && focusCity(d.payload)} />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
                 ) : (
-                  <p className="ad-empty">{geoDays ? `No logins in the last ${geoDays} days.` : "No region data yet."}</p>
+                  <p className="ad-empty">{geoDays ? t("ad.geo.noLoginsRange", { n: geoDays }) : t("ad.geo.noRegionData")}</p>
                 )}
               </div>
             </div>
@@ -1825,11 +1823,11 @@ export default function AdminDashboard() {
                     <span className="ad-chart-card__ic" style={{ color: "#16A34A", background: "rgba(22,163,74,0.10)" }}>
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
                     </span>
-                    Login History
+                    {t("ad.act.loginHistory")}
                     <span className="ad-chart-count">{loginTotal}</span>
                   </h4>
                   <button className="td-btn td-btn--outline td-btn--sm" onClick={() => API.adminExportCSV("logins")}>
-                    Export CSV
+                    {t("ad.exportCsv")}
                   </button>
                 </div>
                 <div className="ad-users__toolbar" style={{ marginTop: 10 }}>
@@ -1837,16 +1835,16 @@ export default function AdminDashboard() {
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                     <input
                       type="text"
-                      placeholder="Search by email, IP, or location..."
+                      placeholder={t("ad.act.searchPh")}
                       value={loginSearchInput}
                       onChange={(e) => setLoginSearchInput(e.target.value)}
                     />
                     {loginSearchInput && (
-                      <button className="ad-search__clear" title="Clear search" onClick={() => setLoginSearchInput("")}>&times;</button>
+                      <button className="ad-search__clear" title={t("td.clearSearch")} onClick={() => setLoginSearchInput("")}>&times;</button>
                     )}
                   </div>
                   <div className="ad-rolechips" style={{ margin: 0 }}>
-                    {[["", "All", "var(--hop-navy, #2B4C7E)"], ["ok", "OK", "#16A34A"], ["fail", "Failed", "#DC2626"]].map(([id, label, color]) => (
+                    {[["", t("ad.filter.all"), "var(--hop-navy, #2B4C7E)"], ["ok", t("ad.act.ok"), "#16A34A"], ["fail", t("ad.act.failed"), "#DC2626"]].map(([id, label, color]) => (
                       <button
                         key={id || "all"}
                         className={`ad-rolechip${loginStatus === id ? " ad-rolechip--active" : ""}`}
@@ -1863,11 +1861,11 @@ export default function AdminDashboard() {
                   <table className="td-table">
                     <thead>
                       <tr>
-                        <th>User</th>
-                        <th>IP</th>
-                        <th>Location</th>
-                        <th>Time</th>
-                        <th>Status</th>
+                        <th>{t("ad.th.user")}</th>
+                        <th>{t("ad.th.ip")}</th>
+                        <th>{t("ad.th.location")}</th>
+                        <th>{t("ad.th.time")}</th>
+                        <th>{t("ad.th.status")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1876,10 +1874,10 @@ export default function AdminDashboard() {
                           <td className="td-table__mono">{l.email}</td>
                           <td className="td-table__mono" style={{ fontSize: "0.75rem" }}>{l.ip}</td>
                           <td className="td-table__muted">{[l.city, l.region, l.country].filter(Boolean).join(", ") || "\u2014"}</td>
-                          <td className="td-table__muted" title={l.login_at ? new Date(l.login_at).toLocaleString() : ""}>{timeAgo(l.login_at)}</td>
+                          <td className="td-table__muted" title={l.login_at ? new Date(l.login_at).toLocaleString(dateLocale) : ""}>{timeAgo(l.login_at, t, lang)}</td>
                           <td>
                             <span className={`ad-pill ${l.success ? "ad-pill--ok" : "ad-pill--fail"}`}>
-                              {l.success ? "OK" : "FAIL"}
+                              {l.success ? t("ad.pill.ok") : t("ad.pill.fail")}
                             </span>
                           </td>
                         </tr>
@@ -1889,10 +1887,10 @@ export default function AdminDashboard() {
                           <td colSpan={5} className="ad-empty" style={{ textAlign: "center", padding: 24 }}>
                             {loginSearch || loginStatus ? (
                               <>
-                                No logins match your filters.{" "}
-                                <button className="ad-linkbtn" onClick={() => { setLoginSearchInput(""); setLoginStatus(""); setLoginPage(0); }}>Clear filters</button>
+                                {t("ad.act.noMatch")}{" "}
+                                <button className="ad-linkbtn" onClick={() => { setLoginSearchInput(""); setLoginStatus(""); setLoginPage(0); }}>{t("ad.clearFilters")}</button>
                               </>
-                            ) : "No login activity yet."}
+                            ) : t("ad.act.empty")}
                           </td>
                         </tr>
                       )}
@@ -1900,11 +1898,11 @@ export default function AdminDashboard() {
                   </table>
                 </div>
                 <div className="ad-pagination">
-                  <button disabled={loginPage === 0} onClick={() => setLoginPage((p) => p - 1)}>Previous</button>
+                  <button disabled={loginPage === 0} onClick={() => setLoginPage((p) => p - 1)}>{t("ad.prev")}</button>
                   <span>
-                    {loginTotal === 0 ? "0 logins" : `${loginPage * ACT_PAGE + 1}\u2013${Math.min((loginPage + 1) * ACT_PAGE, loginTotal)} of ${loginTotal} login${loginTotal === 1 ? "" : "s"}`}
+                    {loginTotal === 0 ? t("ad.page.loginsZero") : t(loginTotal === 1 ? "ad.page.loginsOne" : "ad.page.logins", { a: loginPage * ACT_PAGE + 1, b: Math.min((loginPage + 1) * ACT_PAGE, loginTotal), total: loginTotal })}
                   </span>
-                  <button disabled={(loginPage + 1) * ACT_PAGE >= loginTotal} onClick={() => setLoginPage((p) => p + 1)}>Next</button>
+                  <button disabled={(loginPage + 1) * ACT_PAGE >= loginTotal} onClick={() => setLoginPage((p) => p + 1)}>{t("ad.next")}</button>
                 </div>
               </div>
 
@@ -1914,7 +1912,7 @@ export default function AdminDashboard() {
                     <span className="ad-chart-card__ic" style={{ color: "#7C3AED", background: "rgba(124,58,237,0.10)" }}>
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
                     </span>
-                    Admin Audit Log
+                    {t("ad.act.auditLog")}
                     <span className="ad-chart-count">{auditTotal}</span>
                   </h4>
                   <select
@@ -1922,22 +1920,22 @@ export default function AdminDashboard() {
                     value={auditAction}
                     onChange={(e) => { setAuditAction(e.target.value); setAuditPage(0); }}
                   >
-                    <option value="">All actions</option>
+                    <option value="">{t("ad.act.allActions")}</option>
                     {auditActions.map((a) => (
-                      <option key={a} value={a}>{auditLabel(a)}</option>
+                      <option key={a} value={a}>{auditLabel(a, t)}</option>
                     ))}
                   </select>
                 </div>
-                <p className="ad-chart-card__desc">Every admin change on the platform - who did what, to whom, and when</p>
+                <p className="ad-chart-card__desc">{t("ad.act.auditDesc")}</p>
                 <div className="td-table-wrap" style={{ maxHeight: 480, overflowY: "auto" }}>
                   <table className="td-table">
                     <thead>
                       <tr>
-                        <th>Admin</th>
-                        <th>Action</th>
-                        <th>Target</th>
-                        <th>Details</th>
-                        <th>Time</th>
+                        <th>{t("ad.th.admin")}</th>
+                        <th>{t("ad.th.action")}</th>
+                        <th>{t("ad.th.target")}</th>
+                        <th>{t("ad.th.details")}</th>
+                        <th>{t("ad.th.time")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1945,7 +1943,7 @@ export default function AdminDashboard() {
                         <tr key={i}>
                           <td className="td-table__mono">{a.admin_email}</td>
                           <td>
-                            <span className="ad-role-badge" style={{ background: auditColor(a.action) }}>{auditLabel(a.action)}</span>
+                            <span className="ad-role-badge" style={{ background: auditColor(a.action) }}>{auditLabel(a.action, t)}</span>
                           </td>
                           <td className="td-table__mono">{a.target_email || "\u2014"}</td>
                           <td>
@@ -1955,7 +1953,7 @@ export default function AdminDashboard() {
                               ))}
                             </div>
                           </td>
-                          <td className="td-table__muted" title={a.timestamp ? new Date(a.timestamp).toLocaleString() : ""}>{timeAgo(a.timestamp)}</td>
+                          <td className="td-table__muted" title={a.timestamp ? new Date(a.timestamp).toLocaleString(dateLocale) : ""}>{timeAgo(a.timestamp, t, lang)}</td>
                         </tr>
                       ))}
                       {auditLog.length === 0 && (
@@ -1963,10 +1961,10 @@ export default function AdminDashboard() {
                           <td colSpan={5} className="ad-empty" style={{ textAlign: "center", padding: 24 }}>
                             {auditAction ? (
                               <>
-                                No "{auditLabel(auditAction)}" actions yet.{" "}
-                                <button className="ad-linkbtn" onClick={() => { setAuditAction(""); setAuditPage(0); }}>Show all</button>
+                                {t("ad.act.noActionsOf", { label: auditLabel(auditAction, t) })}{" "}
+                                <button className="ad-linkbtn" onClick={() => { setAuditAction(""); setAuditPage(0); }}>{t("ad.act.showAll")}</button>
                               </>
-                            ) : "No admin actions yet."}
+                            ) : t("ad.act.emptyAudit")}
                           </td>
                         </tr>
                       )}
@@ -1974,11 +1972,11 @@ export default function AdminDashboard() {
                   </table>
                 </div>
                 <div className="ad-pagination">
-                  <button disabled={auditPage === 0} onClick={() => setAuditPage((p) => p - 1)}>Previous</button>
+                  <button disabled={auditPage === 0} onClick={() => setAuditPage((p) => p - 1)}>{t("ad.prev")}</button>
                   <span>
-                    {auditTotal === 0 ? "0 actions" : `${auditPage * ACT_PAGE + 1}\u2013${Math.min((auditPage + 1) * ACT_PAGE, auditTotal)} of ${auditTotal} action${auditTotal === 1 ? "" : "s"}`}
+                    {auditTotal === 0 ? t("ad.page.actionsZero") : t(auditTotal === 1 ? "ad.page.actionsOne" : "ad.page.actions", { a: auditPage * ACT_PAGE + 1, b: Math.min((auditPage + 1) * ACT_PAGE, auditTotal), total: auditTotal })}
                   </span>
-                  <button disabled={(auditPage + 1) * ACT_PAGE >= auditTotal} onClick={() => setAuditPage((p) => p + 1)}>Next</button>
+                  <button disabled={(auditPage + 1) * ACT_PAGE >= auditTotal} onClick={() => setAuditPage((p) => p + 1)}>{t("ad.next")}</button>
                 </div>
               </div>
             </div>
@@ -1992,31 +1990,31 @@ export default function AdminDashboard() {
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                   <input
                     type="text"
-                    placeholder="Search terms or definitions..."
+                    placeholder={t("ad.glossary.searchPh")}
                     value={glossarySearch}
                     onChange={(e) => setGlossarySearch(e.target.value)}
                   />
                   {glossarySearch && (
-                    <button className="ad-search__clear" title="Clear search" onClick={() => setGlossarySearch("")}>&times;</button>
+                    <button className="ad-search__clear" title={t("td.clearSearch")} onClick={() => setGlossarySearch("")}>&times;</button>
                   )}
                 </div>
                 <span className="ad-glossary__count">
-                  {glossaryTerms.length} term{glossaryTerms.length === 1 ? "" : "s"}
+                  {t(glossaryTerms.length === 1 ? "ad.glossary.countOne" : "ad.glossary.count", { n: glossaryTerms.length })}
                   {(() => {
-                    const missing = glossaryTerms.filter((t) => !t.has_es).length;
-                    return missing > 0 ? ` · ${missing} without Spanish` : "";
+                    const missing = glossaryTerms.filter((g) => !g.has_es).length;
+                    return missing > 0 ? ` · ${t("ad.glossary.missingEs", { n: missing })}` : "";
                   })()}
                 </span>
-                {glossaryTerms.some((t) => !t.has_es) && (
+                {glossaryTerms.some((g) => !g.has_es) && (
                   <button className="td-btn td-btn--ghost td-btn--sm" onClick={handleTranslateMissing}>
-                    Translate missing to Spanish
+                    {t("ad.glossary.translateBtn")}
                   </button>
                 )}
                 <button
                   className="td-btn td-btn--primary td-btn--sm"
                   onClick={() => { setGlossaryEditor({ term: "", def: "", steps: [] }); setGlossaryModalError(""); }}
                 >
-                  + Add Term
+                  {t("ad.glossary.add")}
                 </button>
               </div>
 
@@ -2027,7 +2025,7 @@ export default function AdminDashboard() {
                   style={{ "--chip": "var(--hop-navy, #2B4C7E)" }}
                   onClick={() => setGlossaryStep(0)}
                 >
-                  All steps
+                  {t("ad.sessions.allSteps")}
                 </button>
                 {STEP_LABELS.map((l, i) => (
                   <button
@@ -2038,50 +2036,50 @@ export default function AdminDashboard() {
                     title={l}
                   >
                     <span className="ad-rolechip__dot" />
-                    S{i + 1}
+                    {t("td.stepAbbr", { n: i + 1 })}
                   </button>
                 ))}
               </div>
 
-              {glossaryLoading && <div className="ad-loading">Loading glossary...</div>}
+              {glossaryLoading && <div className="ad-loading">{t("ad.glossary.loading")}</div>}
 
               <div className="ad-glossary__list">
                 {(() => {
                   const q = glossarySearch.trim().toLowerCase();
                   let shown = q
-                    ? glossaryTerms.filter((t) =>
-                        t.term.toLowerCase().includes(q) || (t.def || "").toLowerCase().includes(q))
+                    ? glossaryTerms.filter((g) =>
+                        g.term.toLowerCase().includes(q) || (g.def || "").toLowerCase().includes(q))
                     : glossaryTerms;
-                  if (glossaryStep) shown = shown.filter((t) => (t.steps || []).includes(glossaryStep));
+                  if (glossaryStep) shown = shown.filter((g) => (g.steps || []).includes(glossaryStep));
                   if (!glossaryLoading && shown.length === 0) {
                     return (
                       <div className="ad-empty">
-                        No terms {q || glossaryStep ? "match your filters" : "yet"}.{" "}
+                        {q || glossaryStep ? t("ad.glossary.noMatch") : t("ad.glossary.empty")}{" "}
                         {(q || glossaryStep) && (
-                          <button className="ad-linkbtn" onClick={() => { setGlossarySearch(""); setGlossaryStep(0); }}>Clear filters</button>
+                          <button className="ad-linkbtn" onClick={() => { setGlossarySearch(""); setGlossaryStep(0); }}>{t("ad.clearFilters")}</button>
                         )}
                       </div>
                     );
                   }
-                  return shown.map((t) => (
-                    <div className="ad-glossary__row" key={t.id}>
+                  return shown.map((g) => (
+                    <div className="ad-glossary__row" key={g.id}>
                       <div className="ad-glossary__main">
                         <div className="ad-glossary__term">
-                          {t.term}
-                          {!t.has_es && <span className="ad-glossary__noes" title="No Spanish translation yet - students using Spanish see the English text">ES pending</span>}
+                          {g.term}
+                          {!g.has_es && <span className="ad-glossary__noes" title={t("ad.glossary.esPendingTitle")}>{t("ad.glossary.esPending")}</span>}
                         </div>
-                        <div className="ad-glossary__def">{t.def}</div>
-                        {t.steps && t.steps.length > 0 && (
+                        <div className="ad-glossary__def">{g.def}</div>
+                        {g.steps && g.steps.length > 0 && (
                           <div className="ad-glossary__steps">
-                            {t.steps.map((s) => (
-                              <span className="ad-glossary__step" key={s}>Step {s}</span>
+                            {g.steps.map((s) => (
+                              <span className="ad-glossary__step" key={s}>{t("chat.step", { n: s })}</span>
                             ))}
                           </div>
                         )}
                       </div>
                       <div className="ad-glossary__actions">
-                        <button className="td-btn td-btn--ghost td-btn--sm" onClick={() => { setGlossaryEditor(t); setGlossaryModalError(""); }}>Edit</button>
-                        <button className="td-btn td-btn--ghost td-btn--sm" onClick={() => handleDeleteTerm(t)}>Delete</button>
+                        <button className="td-btn td-btn--ghost td-btn--sm" onClick={() => { setGlossaryEditor(g); setGlossaryModalError(""); }}>{t("ad.action.edit")}</button>
+                        <button className="td-btn td-btn--ghost td-btn--sm" onClick={() => handleDeleteTerm(g)}>{t("ad.action.delete")}</button>
                       </div>
                     </div>
                   ));
@@ -2112,8 +2110,7 @@ export default function AdminDashboard() {
             <div className="ad-res">
               <div className="ad-res__intro">
                 <p className="ad-res__lead">
-                  Documents the AI assistant draws on when answering students. Upload PDF, TXT, or Markdown
-                  files, then rebuild the knowledge base to make changes take effect.
+                  {t("ad.res.lead")}
                 </p>
                 <div className="ad-res__toolbar">
                   <input
@@ -2128,14 +2125,14 @@ export default function AdminDashboard() {
                     disabled={uploadingResource || rebuildingIndex}
                     onClick={() => resourceFileRef.current?.click()}
                   >
-                    {uploadingResource ? "Uploading…" : "+ Upload document"}
+                    {uploadingResource ? t("ad.res.uploading") : t("ad.res.upload")}
                   </button>
                   <button
                     className="td-btn td-btn--primary td-btn--sm"
                     disabled={rebuildingIndex || uploadingResource}
                     onClick={handleRebuildIndex}
                   >
-                    {rebuildingIndex ? "Rebuilding…" : "Rebuild knowledge base"}
+                    {rebuildingIndex ? t("ad.res.rebuilding") : t("ad.res.rebuild")}
                   </button>
                 </div>
               </div>
@@ -2143,29 +2140,29 @@ export default function AdminDashboard() {
               {resourceIndex && (
                 <div className={`ad-res__status${resourceIndex.stale ? " ad-res__status--stale" : ""}`}>
                   {!resourceIndex.rag_available ? (
-                    <span>Retrieval engine unavailable on this server.</span>
+                    <span>{t("ad.res.ragUnavailable")}</span>
                   ) : resourceIndex.stale ? (
-                    <span><strong>Changes pending.</strong> Files have changed since the last build - click “Rebuild knowledge base” to apply them to the AI.</span>
+                    <span><strong>{t("ad.res.staleBold")}</strong> {t("ad.res.staleText")}</span>
                   ) : (
-                    <span><strong>Up to date.</strong> {resourceIndex.sources} document{resourceIndex.sources === 1 ? "" : "s"} · {resourceIndex.total_chunks} chunks indexed.</span>
+                    <span><strong>{t("ad.res.upToDateBold")}</strong> {t(resourceIndex.sources === 1 ? "ad.res.indexSummaryOne" : "ad.res.indexSummary", { sources: resourceIndex.sources, chunks: resourceIndex.total_chunks })}</span>
                   )}
                 </div>
               )}
 
               {resourceMsg && <div className="ad-res__msg">{resourceMsg}</div>}
-              {rebuildingIndex && <div className="ad-res__msg">Re-embedding all documents… this can take up to a minute.</div>}
+              {rebuildingIndex && <div className="ad-res__msg">{t("ad.res.reembedding")}</div>}
 
-              {resourcesLoading && <div className="ad-loading">Loading documents…</div>}
+              {resourcesLoading && <div className="ad-loading">{t("ad.res.loadingDocs")}</div>}
 
               {!resourcesLoading && resources.length > 0 && (
                 <h4 className="ad-chart-card__title" style={{ margin: "18px 0 8px" }}>
-                  Documents
+                  {t("ad.res.documents")}
                   <span className="ad-chart-count">{resources.length}</span>
                 </h4>
               )}
               <div className="ad-res__list">
                 {!resourcesLoading && resources.length === 0 && (
-                  <div className="ad-empty">No documents yet. Upload a PDF, TXT, or Markdown file.</div>
+                  <div className="ad-empty">{t("ad.res.emptyDocs")}</div>
                 )}
                 {resources.map((f) => (
                   <div className="ad-res__row" key={f.name}>
@@ -2176,14 +2173,14 @@ export default function AdminDashboard() {
                         {fmtBytes(f.size)}
                         <span className="ad-res__dot">·</span>
                         {f.indexed
-                          ? <span className="ad-res__indexed">{f.chunks} chunk{f.chunks === 1 ? "" : "s"} indexed</span>
-                          : <span className="ad-res__pending">not yet indexed</span>}
+                          ? <span className="ad-res__indexed">{t(f.chunks === 1 ? "ad.res.chunksIndexedOne" : "ad.res.chunksIndexed", { n: f.chunks })}</span>
+                          : <span className="ad-res__pending">{t("ad.res.notIndexed")}</span>}
                       </div>
                     </div>
                     <div className="ad-res__actions">
-                      <button className="td-btn td-btn--ghost td-btn--sm" onClick={() => handleViewResource(f.name)}>View</button>
-                      <button className="td-btn td-btn--ghost td-btn--sm" onClick={() => handleDownloadResource(f.name)}>Download</button>
-                      <button className="td-btn td-btn--ghost td-btn--sm" onClick={() => handleDeleteResource(f.name)}>Delete</button>
+                      <button className="td-btn td-btn--ghost td-btn--sm" onClick={() => handleViewResource(f.name)}>{t("td.view")}</button>
+                      <button className="td-btn td-btn--ghost td-btn--sm" onClick={() => handleDownloadResource(f.name)}>{t("ad.res.download")}</button>
+                      <button className="td-btn td-btn--ghost td-btn--sm" onClick={() => handleDeleteResource(f.name)}>{t("ad.action.delete")}</button>
                     </div>
                   </div>
                 ))}
@@ -2195,15 +2192,11 @@ export default function AdminDashboard() {
           {tab === "stepres" && (
             <div className="ad-stepres">
               <p className="ad-res__lead">
-                The <strong>Video</strong> and <strong>Interactive</strong> (e.g. Genially) resources shown to
-                students in each step's Resources panel. Edit them per education level and language - changes go
-                live immediately (students see them next time they open the panel). Students using Spanish get
-                the Spanish URL when one is set; a blank Spanish field falls back to the English resource, so
-                you only need to fill in the steps that have a translated version.
+                {t("ad.stepres.lead1")}<strong>{t("ad.stepres.leadVideo")}</strong>{t("ad.stepres.lead2")}<strong>{t("ad.stepres.leadInteractive")}</strong>{t("ad.stepres.lead3")}
               </p>
 
               <label className="ad-stepres__langpick">
-                <span>Language</span>
+                <span>{t("profile.language")}</span>
                 <select
                   className="ad-users__filter"
                   value={stepResLang}
@@ -2216,7 +2209,7 @@ export default function AdminDashboard() {
                     );
                     return (
                       <option key={id} value={id}>
-                        {label}{stepRes ? ` (${filled}/18 filled)` : ""}
+                        {label}{stepRes ? ` ${t("ad.stepres.filled18", { n: filled })}` : ""}
                       </option>
                     );
                   })}
@@ -2224,7 +2217,7 @@ export default function AdminDashboard() {
               </label>
 
               <div className="ad-seg ad-stepres__levels">
-                {[["high_school", "High / Middle School"], ["higher_ed", "Higher Ed"]].map(([id, label]) => {
+                {[["high_school", t("ad.stepres.highSchool")], ["higher_ed", t("ad.edu.higherEd")]].map(([id, label]) => {
                   const filled = stepRes
                     ? Object.values(stepRes[stepResLang]?.[id] || {}).filter((e) => e?.video_url || e?.interactive_url).length
                     : 0;
@@ -2241,7 +2234,7 @@ export default function AdminDashboard() {
                 })}
               </div>
 
-              {stepResLoading && <div className="ad-loading">Loading step resources…</div>}
+              {stepResLoading && <div className="ad-loading">{t("ad.stepres.loading")}</div>}
 
               {stepRes && (
                 <div className="ad-stepres__list">
@@ -2259,31 +2252,31 @@ export default function AdminDashboard() {
                         </div>
                         <div className="ad-stepres__fields">
                           <label className="ad-stepres__field">
-                            <span>Video URL</span>
+                            <span>{t("ad.stepres.videoUrl")}</span>
                             <input
                               value={e.video_url || ""}
                               onChange={(ev) => setStepField(stepResLang, stepResLevel, step, "video_url", ev.target.value)}
-                              placeholder={isEs && en.video_url ? "Blank = English video" : "Video embed URL (optional)"}
+                              placeholder={isEs && en.video_url ? t("ad.stepres.blankEnVideo") : t("ad.stepres.videoPh")}
                             />
                           </label>
                           <label className="ad-stepres__field">
-                            <span>Interactive URL</span>
+                            <span>{t("ad.stepres.interactiveUrl")}</span>
                             <input
                               value={e.interactive_url || ""}
                               onChange={(ev) => setStepField(stepResLang, stepResLevel, step, "interactive_url", ev.target.value)}
-                              placeholder={isEs && en.interactive_url ? "Blank = English interactive" : "Genially / interactive embed URL"}
+                              placeholder={isEs && en.interactive_url ? t("ad.stepres.blankEnInteractive") : t("ad.stepres.interactivePh")}
                             />
                           </label>
                         </div>
                         <div className="ad-stepres__rowactions">
-                          {e.video_url && <a className="ad-stepres__open" href={e.video_url} target="_blank" rel="noopener noreferrer">video ↗</a>}
-                          {e.interactive_url && <a className="ad-stepres__open" href={e.interactive_url} target="_blank" rel="noopener noreferrer">interactive ↗</a>}
+                          {e.video_url && <a className="ad-stepres__open" href={e.video_url} target="_blank" rel="noopener noreferrer">{t("ad.stepres.videoLink")}</a>}
+                          {e.interactive_url && <a className="ad-stepres__open" href={e.interactive_url} target="_blank" rel="noopener noreferrer">{t("ad.stepres.interactiveLink")}</a>}
                           <button
                             className="td-btn td-btn--primary td-btn--sm"
                             disabled={stepResSaving === key}
                             onClick={() => saveStepRes(stepResLang, stepResLevel, step)}
                           >
-                            {stepResSaving === key ? "Saving…" : stepResSaved === key ? "Saved ✓" : "Save"}
+                            {stepResSaving === key ? t("common.saving") : stepResSaved === key ? t("ad.stepres.saved") : t("ad.save")}
                           </button>
                         </div>
                       </div>
@@ -2300,31 +2293,31 @@ export default function AdminDashboard() {
               <div className="ad-users__toolbar" style={{ marginBottom: 16 }}>
                 {healthCheckedAt && (
                   <span className="td-table__muted" style={{ fontSize: "0.82rem" }}>
-                    Last checked {healthCheckedAt.toLocaleTimeString()}
+                    {t("ad.health.lastChecked", { time: healthCheckedAt.toLocaleTimeString(dateLocale) })}
                   </span>
                 )}
                 <label className="ad-modal__checkbox" style={{ margin: 0, fontSize: "0.84rem" }}>
                   <input type="checkbox" checked={healthAuto} onChange={(e) => setHealthAuto(e.target.checked)} />
-                  Auto-refresh (30s)
+                  {t("ad.health.autoRefresh")}
                 </label>
                 <button className="td-btn td-btn--outline td-btn--sm" disabled={healthLoading} onClick={() => reloadHealth()}>
-                  {healthLoading ? "Checking…" : "Refresh"}
+                  {healthLoading ? t("ad.health.checking") : t("ad.health.refresh")}
                 </button>
               </div>
 
-              {healthLoading && !health && <div className="ad-loading">Checking system health...</div>}
+              {healthLoading && !health && <div className="ad-loading">{t("ad.health.checkingSystem")}</div>}
               {health && (
                 <div className="ad-health__grid">
                   <HealthCard
-                    title="Server"
+                    title={t("ad.health.server")}
                     status={health.server === "ok" ? "ok" : "error"}
                     items={[
-                      { label: "Uptime", value: formatUptime(health.uptime_seconds) },
-                      { label: "Load Avg", value: (health.load_avg || []).join(" / ") || "—" },
+                      { label: t("ad.health.uptime"), value: formatUptime(health.uptime_seconds) },
+                      { label: t("ad.health.loadAvg"), value: (health.load_avg || []).join(" / ") || "—" },
                     ]}
                   >
                     {health.cpu_percent != null && (
-                      <Meter label="CPU" pct={health.cpu_percent} text={`${health.cpu_percent}% of ${health.cpu_count} cores`} />
+                      <Meter label="CPU" pct={health.cpu_percent} text={t("ad.health.cpuText", { pct: health.cpu_percent, n: health.cpu_count })} />
                     )}
                     {health.ram_percent != null && (
                       <Meter label="RAM" pct={health.ram_percent} text={`${health.ram_used_gb} / ${health.ram_total_gb} GB`} />
@@ -2334,30 +2327,30 @@ export default function AdminDashboard() {
                     title="MongoDB"
                     status={health.mongodb === "ok" ? "ok" : "error"}
                     items={[
-                      { label: "Connection", value: health.mongodb },
-                      { label: "Users", value: health.db_users ?? "—" },
-                      { label: "Sessions", value: health.db_sessions ?? "—" },
+                      { label: t("ad.health.connection"), value: health.mongodb },
+                      { label: t("ad.health.users"), value: health.db_users ?? "—" },
+                      { label: t("ad.tile.sessions"), value: health.db_sessions ?? "—" },
                     ]}
                   />
                   <HealthCard
                     title="LLM"
                     status={health.ollama === "ok" ? "ok" : "error"}
                     items={[
-                      { label: "Backend", value: health.llm_backend || "—" },
+                      { label: t("ad.health.backend"), value: health.llm_backend || "—" },
                       { label: "Ollama", value: health.ollama },
                       { label: "vLLM", value: health.vllm || "—" },
-                      { label: "Models", value: (health.ollama_models || []).join(", ") || "None" },
+                      { label: t("ad.health.models"), value: (health.ollama_models || []).join(", ") || t("ad.health.none") },
                     ]}
                   >
                     <div className="ad-llmtest">
                       <button className="td-btn td-btn--outline td-btn--sm" disabled={llmTesting} onClick={runLlmTest}>
-                        {llmTesting ? "Testing…" : "Test latency"}
+                        {llmTesting ? t("ad.health.testing") : t("ad.health.testLatency")}
                       </button>
                       {llmTest && (
                         <span className={`ad-llmtest__result${llmTest.ok ? "" : " ad-llmtest__result--fail"}`}>
                           {llmTest.ok
-                            ? `${llmTest.latency_seconds}s round-trip`
-                            : `Failed: ${llmTest.error || "no response"}`}
+                            ? t("ad.health.roundTrip", { s: llmTest.latency_seconds })
+                            : t("ad.health.failedErr", { err: llmTest.error || t("ad.health.noResponse") })}
                         </span>
                       )}
                     </div>
@@ -2366,12 +2359,12 @@ export default function AdminDashboard() {
                     title="GPUs"
                     status={(health.gpus || []).length > 0 ? "ok" : "warn"}
                     items={(health.gpus || []).length === 0
-                      ? [{ label: "nvidia-smi", value: "unavailable" }]
+                      ? [{ label: "nvidia-smi", value: t("ad.health.unavailable") }]
                       : []}
                   >
                     {(health.gpus || []).length === 0 && (
                       <p className="ad-health-card__note">
-                        No GPUs visible - if this machine has GPUs, the driver may need a reboot and Ollama is likely running on CPU (slow chat).
+                        {t("ad.health.gpuNote")}
                       </p>
                     )}
                     {(health.gpus || []).map((g, i) => (
@@ -2384,22 +2377,22 @@ export default function AdminDashboard() {
                     ))}
                   </HealthCard>
                   <HealthCard
-                    title="RAG System"
+                    title={t("ad.health.ragSystem")}
                     status={health.rag_available && health.rag_index_loaded ? "ok" : "warn"}
                     items={[
-                      { label: "Available", value: health.rag_available ? "Yes" : "No" },
-                      { label: "Index Loaded", value: health.rag_index_loaded ? "Yes" : "No" },
+                      { label: t("ad.health.available"), value: health.rag_available ? t("ad.yes") : t("ad.no") },
+                      { label: t("ad.health.indexLoaded"), value: health.rag_index_loaded ? t("ad.yes") : t("ad.no") },
                     ]}
                   />
                   <HealthCard
-                    title="Disk Space"
+                    title={t("ad.health.disk")}
                     status={health.disk_free_gb > 5 ? "ok" : health.disk_free_gb > 1 ? "warn" : "error"}
-                    items={[{ label: "Free", value: `${health.disk_free_gb} GB of ${health.disk_total_gb} GB` }]}
+                    items={[{ label: t("ad.health.free"), value: t("ad.health.gbOf", { free: health.disk_free_gb, total: health.disk_total_gb }) }]}
                   >
                     <Meter
-                      label="Used"
+                      label={t("ad.health.used")}
                       pct={Math.round(((health.disk_total_gb - health.disk_free_gb) / health.disk_total_gb) * 100)}
-                      text={`${(health.disk_total_gb - health.disk_free_gb).toFixed(1)} GB used`}
+                      text={t("ad.health.gbUsed", { n: (health.disk_total_gb - health.disk_free_gb).toFixed(1) })}
                     />
                   </HealthCard>
                 </div>
@@ -2420,7 +2413,7 @@ export default function AdminDashboard() {
       await API.adminUpdateUser(u._id, { is_active: newActive });
       loadUsers();
     } catch (e) {
-      notify.error(e.message, { title: "Action failed" });
+      notify.error(e.message, { title: t("ad.actionFailed") });
     }
   }
 }
@@ -2429,9 +2422,10 @@ export default function AdminDashboard() {
 /* ===== Sub-components ===== */
 
 function SortTh({ label, col, sort, onSort }) {
+  const { t } = useLang();
   const active = sort.by === col;
   return (
-    <th className={`ad-sort-th${active ? " ad-sort-th--active" : ""}`} onClick={() => onSort(col)} title={`Sort by ${label.toLowerCase()}`}>
+    <th className={`ad-sort-th${active ? " ad-sort-th--active" : ""}`} onClick={() => onSort(col)} title={t("ad.sortBy", { label: label.toLowerCase() })}>
       {label}
       <span className="ad-sort-th__arrow">{active ? (sort.dir === "asc" ? "▲" : "▼") : "↕"}</span>
     </th>
@@ -2439,6 +2433,8 @@ function SortTh({ label, col, sort, onSort }) {
 }
 
 function ClassDetailView({ detail: c, onViewSession, onEdit, onAddStudents, onResetPw, onRemoveStudent }) {
+  const { lang, t } = useLang();
+  const dateLocale = lang === "es" ? "es-ES" : "en-US";
   const [showPw, setShowPw] = useState(false);
   return (
     <div className="ad-user-detail">
@@ -2451,13 +2447,13 @@ function ClassDetailView({ detail: c, onViewSession, onEdit, onAddStudents, onRe
           <h2>{c.class_name}</h2>
           <p className="td-table__mono">{c.class_code}</p>
           <div className="ad-user-detail__meta">
-            <span>Teacher: <strong>{c.teacher_name || "—"}</strong>{c.teacher_email ? ` (${c.teacher_email})` : ""}</span>
+            <span>{t("ad.th.teacher")}: <strong>{c.teacher_name || "—"}</strong>{c.teacher_email ? ` (${c.teacher_email})` : ""}</span>
             <span className={`ad-pill ${c.settings?.ai_enabled === false ? "ad-pill--off" : "ad-pill--ok"}`}>
-              AI {c.settings?.ai_enabled === false ? "Off" : "On"}
+              AI {c.settings?.ai_enabled === false ? t("td.off") : t("td.on")}
             </span>
-            <span className="ad-edu-chip">Access: {c.settings?.access_mode || "full"}</span>
+            <span className="ad-edu-chip">{t("ad.class.access")}: {c.settings?.access_mode || "full"}</span>
             {c.password && (
-              <button className="ad-ccard__pw" title={showPw ? "Hide password" : "Show class password"} onClick={() => setShowPw((s) => !s)}>
+              <button className="ad-ccard__pw" title={showPw ? t("login.hidePassword") : t("ad.class.showPw")} onClick={() => setShowPw((s) => !s)}>
                 {showPw ? c.password : "••••••"}
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   {showPw
@@ -2466,30 +2462,30 @@ function ClassDetailView({ detail: c, onViewSession, onEdit, onAddStudents, onRe
                 </svg>
               </button>
             )}
-            <span>Created {c.created_at ? new Date(c.created_at).toLocaleDateString() : "—"}</span>
+            <span>{t("ad.class.createdOn", { date: c.created_at ? new Date(c.created_at).toLocaleDateString(dateLocale) : "—" })}</span>
           </div>
         </div>
         <div className="ad-actions" style={{ marginLeft: "auto", flexShrink: 0 }}>
-          <button className="td-btn td-btn--outline td-btn--sm" onClick={onAddStudents}>+ Add Students</button>
-          <button className="td-btn td-btn--primary td-btn--sm" onClick={onEdit}>Edit Class</button>
+          <button className="td-btn td-btn--outline td-btn--sm" onClick={onAddStudents}>{t("ad.class.addStudentsBtn")}</button>
+          <button className="td-btn td-btn--primary td-btn--sm" onClick={onEdit}>{t("ad.class.editBtn")}</button>
         </div>
       </div>
 
       {/* Students */}
       <div className="ad-chart-card" style={{ marginTop: 20 }}>
-        <h4>Students ({c.students.length})</h4>
+        <h4>{t("ad.class.students", { n: c.students.length })}</h4>
         {c.students.length > 0 ? (
           <div className="td-table-wrap" style={{ maxHeight: 480, overflowY: "auto" }}>
             <table className="td-table">
               <thead>
                 <tr>
-                  <th>Username</th>
-                  <th>Name</th>
-                  <th>Progress</th>
-                  <th>Working on</th>
-                  <th>Last Login</th>
-                  <th>Last Activity</th>
-                  <th>Actions</th>
+                  <th>{t("login.username")}</th>
+                  <th>{t("ad.th.name")}</th>
+                  <th>{t("td.thProgress")}</th>
+                  <th>{t("ad.class.workingOn")}</th>
+                  <th>{t("ad.th.lastLogin")}</th>
+                  <th>{t("td.thLastActivity")}</th>
+                  <th>{t("ad.th.actions")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -2498,29 +2494,29 @@ function ClassDetailView({ detail: c, onViewSession, onEdit, onAddStudents, onRe
                     <td className="td-table__mono">{s.username}</td>
                     <td>{s.name}</td>
                     <td>
-                      <div className="td-table__muted">{s.steps_done}/9 steps</div>
+                      <div className="td-table__muted">{t("ad.sessions.stepsOf", { n: s.steps_done })}</div>
                       <div className="ad-minibar"><div className="ad-minibar__fill ad-minibar__fill--progress" style={{ width: `${Math.round((s.steps_done / 9) * 100)}%` }} /></div>
                     </td>
                     <td>
                       {s.active_step ? (
                         <span className="ad-role-badge" style={{ background: STEP_COLORS[(s.active_step || 1) - 1] || "#999" }}>
-                          Step {s.active_step}
+                          {t("chat.step", { n: s.active_step })}
                         </span>
-                      ) : <span className="td-table__muted">Not started</span>}
+                      ) : <span className="td-table__muted">{t("ad.class.notStarted")}</span>}
                     </td>
-                    <td className="td-table__muted">{timeAgo(s.last_login_at) || "Never"}</td>
-                    <td className="td-table__muted">{s.last_activity ? timeAgo(s.last_activity) : "—"}</td>
+                    <td className="td-table__muted">{timeAgo(s.last_login_at, t, lang) || t("td.never")}</td>
+                    <td className="td-table__muted">{s.last_activity ? timeAgo(s.last_activity, t, lang) : "—"}</td>
                     <td>
                       <div className="ad-actions">
                         {s.session_id && (
                           <button className="td-btn td-btn--outline td-btn--sm" onClick={() => onViewSession(s.session_id, s.name || s.username)}>
-                            View
+                            {t("td.view")}
                           </button>
                         )}
-                        <button className="ad-action-btn" title="Reset password" onClick={() => onResetPw(s)}>
+                        <button className="ad-action-btn" title={t("ad.action.resetPw")} onClick={() => onResetPw(s)}>
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                         </button>
-                        <button className="ad-action-btn ad-action-btn--danger" title="Remove student" onClick={() => onRemoveStudent(s)}>
+                        <button className="ad-action-btn ad-action-btn--danger" title={t("ad.class.removeStudent")} onClick={() => onRemoveStudent(s)}>
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                         </button>
                       </div>
@@ -2531,7 +2527,7 @@ function ClassDetailView({ detail: c, onViewSession, onEdit, onAddStudents, onRe
             </table>
           </div>
         ) : (
-          <p className="ad-empty">No student accounts in this class.</p>
+          <p className="ad-empty">{t("ad.class.noStudents")}</p>
         )}
       </div>
     </div>
@@ -2540,6 +2536,7 @@ function ClassDetailView({ detail: c, onViewSession, onEdit, onAddStudents, onRe
 
 
 function EditClassModal({ cls, teachers, error, onClose, onSave }) {
+  const { t } = useLang();
   const [form, setForm] = useState({
     class_name: cls.class_name || "",
     password: "",
@@ -2551,41 +2548,41 @@ function EditClassModal({ cls, teachers, error, onClose, onSave }) {
   return (
     <div className="ad-modal-backdrop" onClick={onClose}>
       <div className="ad-modal" onClick={(e) => e.stopPropagation()}>
-        <h3>Edit Class: {cls.class_code}</h3>
+        <h3>{t("ad.modal.editClassTitle", { code: cls.class_code })}</h3>
         {error && <div className="ad-modal__error">{error}</div>}
-        <label>Class Name<input value={form.class_name} onChange={(e) => set("class_name", e.target.value)} /></label>
-        <label>New Class Password
+        <label>{t("ad.modal.className")}<input value={form.class_name} onChange={(e) => set("class_name", e.target.value)} /></label>
+        <label>{t("ad.modal.newClassPw")}
           <input
             value={form.password}
             onChange={(e) => set("password", e.target.value)}
-            placeholder="Leave blank to keep current password"
+            placeholder={t("ad.modal.keepPwPh")}
           />
         </label>
         {form.password && (
           <p style={{ margin: "-6px 0 10px", fontSize: "0.78rem", color: "#C0842A" }}>
-            Changing the password updates the login for every student in this class.
+            {t("ad.modal.pwWarn")}
           </p>
         )}
-        <label>Teacher
+        <label>{t("ad.th.teacher")}
           <select value={form.teacher_id} onChange={(e) => set("teacher_id", e.target.value)}>
-            {teachers.map((t) => (
-              <option key={t._id} value={t._id}>{t.name || t.email}</option>
+            {teachers.map((tc) => (
+              <option key={tc._id} value={tc._id}>{tc.name || tc.email}</option>
             ))}
           </select>
         </label>
-        <label>AI Access Mode
+        <label>{t("ad.modal.aiAccessMode")}
           <select value={form.access_mode} onChange={(e) => set("access_mode", e.target.value)}>
-            <option value="full">Full (all steps)</option>
-            <option value="step">Step-limited</option>
-            <option value="phase">Phase-limited</option>
+            <option value="full">{t("ad.modal.accessFull")}</option>
+            <option value="step">{t("ad.modal.accessStep")}</option>
+            <option value="phase">{t("ad.modal.accessPhase")}</option>
           </select>
         </label>
         <label className="ad-modal__checkbox">
           <input type="checkbox" checked={form.ai_enabled} onChange={(e) => set("ai_enabled", e.target.checked)} />
-          AI assistant enabled
+          {t("ad.modal.aiEnabled")}
         </label>
         <div className="ad-modal__actions">
-          <button className="td-btn td-btn--outline td-btn--sm" onClick={onClose}>Cancel</button>
+          <button className="td-btn td-btn--outline td-btn--sm" onClick={onClose}>{t("td.cancel")}</button>
           <button
             className="td-btn td-btn--primary td-btn--sm"
             disabled={!form.class_name.trim()}
@@ -2597,7 +2594,7 @@ function EditClassModal({ cls, teachers, error, onClose, onSave }) {
               onSave(fields);
             }}
           >
-            Save
+            {t("ad.save")}
           </button>
         </div>
       </div>
@@ -2607,27 +2604,28 @@ function EditClassModal({ cls, teachers, error, onClose, onSave }) {
 
 
 function AddStudentsModal({ cls, error, onClose, onSave }) {
+  const { t } = useLang();
   const [count, setCount] = useState(5);
+  const example = `${cls.class_code}_${String((cls.actual_students || cls.students?.length || 0) + 1).padStart(2, "0")}`;
   return (
     <div className="ad-modal-backdrop" onClick={onClose}>
       <div className="ad-modal" onClick={(e) => e.stopPropagation()}>
-        <h3>Add Students: {cls.class_name}</h3>
+        <h3>{t("ad.modal.addStudentsTitle", { name: cls.class_name })}</h3>
         {error && <div className="ad-modal__error">{error}</div>}
         <p style={{ fontSize: "0.85rem", color: "var(--hop-muted)" }}>
-          New accounts continue the numbering (e.g. {cls.class_code}_{String((cls.actual_students || cls.students?.length || 0) + 1).padStart(2, "0")})
-          and use the current class password.
+          {t("ad.modal.addStudentsNote", { example })}
         </p>
-        <label>How many students?
+        <label>{t("ad.modal.howMany")}
           <input type="number" min={1} max={100} value={count} onChange={(e) => setCount(Number(e.target.value))} />
         </label>
         <div className="ad-modal__actions">
-          <button className="td-btn td-btn--outline td-btn--sm" onClick={onClose}>Cancel</button>
+          <button className="td-btn td-btn--outline td-btn--sm" onClick={onClose}>{t("td.cancel")}</button>
           <button
             className="td-btn td-btn--primary td-btn--sm"
             disabled={!(count >= 1 && count <= 100)}
             onClick={() => onSave(count)}
           >
-            Add
+            {t("ad.modal.add")}
           </button>
         </div>
       </div>
@@ -2637,6 +2635,7 @@ function AddStudentsModal({ cls, error, onClose, onSave }) {
 
 
 function CreateClassModal({ teachers, error, onClose, onSave }) {
+  const { t } = useLang();
   const [form, setForm] = useState({ teacher_id: "", class_name: "", password: "", student_count: 10 });
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
   const canSave = form.teacher_id && form.class_name.trim() && form.password.length >= 4 &&
@@ -2644,25 +2643,25 @@ function CreateClassModal({ teachers, error, onClose, onSave }) {
   return (
     <div className="ad-modal-backdrop" onClick={onClose}>
       <div className="ad-modal" onClick={(e) => e.stopPropagation()}>
-        <h3>Create Class</h3>
+        <h3>{t("ad.modal.createClassTitle")}</h3>
         {error && <div className="ad-modal__error">{error}</div>}
-        <label>On behalf of teacher
+        <label>{t("ad.modal.onBehalf")}
           <select value={form.teacher_id} onChange={(e) => set("teacher_id", e.target.value)}>
-            <option value="">Select a teacher...</option>
-            {teachers.map((t) => (
-              <option key={t._id} value={t._id}>{t.name || t.email}</option>
+            <option value="">{t("ad.modal.selectTeacher")}</option>
+            {teachers.map((tc) => (
+              <option key={tc._id} value={tc._id}>{tc.name || tc.email}</option>
             ))}
           </select>
         </label>
-        <label>Class Name<input value={form.class_name} onChange={(e) => set("class_name", e.target.value)} placeholder="e.g. AP Research Period 2" /></label>
-        <label>Class Password<input value={form.password} onChange={(e) => set("password", e.target.value)} placeholder="Students use this to log in (min 4 chars)" /></label>
-        <label>Number of Students
+        <label>{t("ad.modal.className")}<input value={form.class_name} onChange={(e) => set("class_name", e.target.value)} placeholder={t("ad.modal.classNamePh")} /></label>
+        <label>{t("ad.modal.classPw")}<input value={form.password} onChange={(e) => set("password", e.target.value)} placeholder={t("ad.modal.classPwPh")} /></label>
+        <label>{t("ad.modal.numStudents")}
           <input type="number" min={1} max={100} value={form.student_count} onChange={(e) => set("student_count", Number(e.target.value))} />
         </label>
         <div className="ad-modal__actions">
-          <button className="td-btn td-btn--outline td-btn--sm" onClick={onClose}>Cancel</button>
+          <button className="td-btn td-btn--outline td-btn--sm" onClick={onClose}>{t("td.cancel")}</button>
           <button className="td-btn td-btn--primary td-btn--sm" disabled={!canSave} onClick={() => onSave({ ...form, class_name: form.class_name.trim() })}>
-            Create
+            {t("ad.modal.create")}
           </button>
         </div>
       </div>
@@ -2686,8 +2685,9 @@ function StatTile({ label, value, hint, color, icon, onClick }) {
 
 
 function HealthCard({ title, status, items = [], children }) {
+  const { t } = useLang();
   const colors = { ok: "#16A34A", warn: "#F0B429", error: "#DC2626" };
-  const labels = { ok: "Healthy", warn: "Warning", error: "Error" };
+  const labels = { ok: t("ad.health.ok"), warn: t("ad.health.warn"), error: t("ad.health.error") };
   return (
     <div className="ad-health-card">
       <div className="ad-health-card__header">
@@ -2728,6 +2728,9 @@ function Meter({ label, pct, text }) {
 
 
 function UserDetailView({ detail, onViewSession }) {
+  const { lang, t } = useLang();
+  const dateLocale = lang === "es" ? "es-ES" : "en-US";
+  const ROLE_LABELS = roleLabels(t);
   const { user, sessions, logins } = detail;
   return (
     <div className="ad-user-detail">
@@ -2743,28 +2746,28 @@ function UserDetailView({ detail, onViewSession }) {
             <span className="ad-role-badge" style={{ background: ROLE_COLORS[user.role] || "#999" }}>
               {ROLE_LABELS[user.role] || user.role}
             </span>
-            <span>{user.education_level === "higher_ed" ? "Higher Ed" : "High School"}</span>
+            <span>{user.education_level === "higher_ed" ? t("ad.edu.higherEd") : t("ad.edu.highSchool")}</span>
             <span className={`ad-status-dot ${user.is_active === false ? "ad-status-dot--inactive" : "ad-status-dot--active"}`} />
-            <span>{user.is_active === false ? "Inactive" : "Active"}</span>
-            <span>Joined {user.created_at ? new Date(user.created_at).toLocaleDateString() : "N/A"}</span>
+            <span>{user.is_active === false ? t("ad.status.inactive") : t("ad.status.active")}</span>
+            <span>{t("ad.user.joined", { date: user.created_at ? new Date(user.created_at).toLocaleDateString(dateLocale) : "N/A" })}</span>
           </div>
         </div>
       </div>
 
       {/* Sessions */}
       <div className="ad-chart-card" style={{ marginTop: 20 }}>
-        <h4>Sessions ({sessions.length})</h4>
+        <h4>{t("ad.user.sessions", { n: sessions.length })}</h4>
         {sessions.length > 0 ? (
           <div className="td-table-wrap" style={{ maxHeight: 300, overflowY: "auto" }}>
             <table className="td-table">
               <thead>
                 <tr>
-                  <th>Session ID</th>
-                  <th>Step</th>
-                  <th>Worldview</th>
-                  <th>Path</th>
-                  <th>Created</th>
-                  <th>Updated</th>
+                  <th>{t("ad.th.sessionId")}</th>
+                  <th>{t("ad.th.step")}</th>
+                  <th>{t("td.thWorldview")}</th>
+                  <th>{t("td.thPath")}</th>
+                  <th>{t("ad.th.created")}</th>
+                  <th>{t("ad.th.updated")}</th>
                   <th></th>
                 </tr>
               </thead>
@@ -2774,16 +2777,16 @@ function UserDetailView({ detail, onViewSession }) {
                     <td className="td-table__mono" style={{ fontSize: "0.75rem" }}>{s.session_id?.slice(0, 8)}...</td>
                     <td>
                       <span className="ad-role-badge" style={{ background: STEP_COLORS[(s.active_step || 1) - 1] || "#999" }}>
-                        Step {s.active_step || 1}
+                        {t("chat.step", { n: s.active_step || 1 })}
                       </span>
                     </td>
                     <td className="td-table__muted">{s.worldview_label || "\u2014"}</td>
                     <td className="td-table__muted">{s.resolved_path || "\u2014"}</td>
-                    <td className="td-table__muted">{timeAgo(s.created_at)}</td>
-                    <td className="td-table__muted">{timeAgo(s.updated_at)}</td>
+                    <td className="td-table__muted">{timeAgo(s.created_at, t, lang)}</td>
+                    <td className="td-table__muted">{timeAgo(s.updated_at, t, lang)}</td>
                     <td>
                       <button className="td-btn td-btn--outline td-btn--sm" onClick={() => onViewSession(s.session_id, user.name || user.username)}>
-                        View
+                        {t("td.view")}
                       </button>
                     </td>
                   </tr>
@@ -2792,22 +2795,22 @@ function UserDetailView({ detail, onViewSession }) {
             </table>
           </div>
         ) : (
-          <p className="ad-empty">No sessions for this user.</p>
+          <p className="ad-empty">{t("ad.user.noSessions")}</p>
         )}
       </div>
 
       {/* Login history */}
       <div className="ad-chart-card" style={{ marginTop: 20 }}>
-        <h4>Login History ({logins.length})</h4>
+        <h4>{t("ad.user.loginHistory", { n: logins.length })}</h4>
         {logins.length > 0 ? (
           <div className="td-table-wrap" style={{ maxHeight: 300, overflowY: "auto" }}>
             <table className="td-table">
               <thead>
                 <tr>
-                  <th>IP</th>
-                  <th>Location</th>
-                  <th>Time</th>
-                  <th>Status</th>
+                  <th>{t("ad.th.ip")}</th>
+                  <th>{t("ad.th.location")}</th>
+                  <th>{t("ad.th.time")}</th>
+                  <th>{t("ad.th.status")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -2815,10 +2818,10 @@ function UserDetailView({ detail, onViewSession }) {
                   <tr key={i}>
                     <td className="td-table__mono" style={{ fontSize: "0.75rem" }}>{l.ip}</td>
                     <td className="td-table__muted">{[l.city, l.region, l.country].filter(Boolean).join(", ") || "\u2014"}</td>
-                    <td className="td-table__muted">{timeAgo(l.login_at)}</td>
+                    <td className="td-table__muted">{timeAgo(l.login_at, t, lang)}</td>
                     <td>
                       <span className={l.success ? "ad-role-badge" : "ad-role-badge ad-role-badge--fail"} style={l.success ? { background: "#16A34A" } : {}}>
-                        {l.success ? "OK" : "FAIL"}
+                        {l.success ? t("ad.pill.ok") : t("ad.pill.fail")}
                       </span>
                     </td>
                   </tr>
@@ -2827,7 +2830,7 @@ function UserDetailView({ detail, onViewSession }) {
             </table>
           </div>
         ) : (
-          <p className="ad-empty">No login history for this user.</p>
+          <p className="ad-empty">{t("ad.user.noLogins")}</p>
         )}
       </div>
     </div>
@@ -2836,32 +2839,33 @@ function UserDetailView({ detail, onViewSession }) {
 
 
 function CreateUserModal({ onClose, onSave, error }) {
+  const { t } = useLang();
   const [form, setForm] = useState({ email: "", password: "", name: "", role: "student", education_level: "high_school" });
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
   return (
     <div className="ad-modal-backdrop" onClick={onClose}>
       <div className="ad-modal" onClick={(e) => e.stopPropagation()}>
-        <h3>Create User</h3>
+        <h3>{t("ad.users.createTitle")}</h3>
         {error && <div className="ad-modal__error">{error}</div>}
-        <label>Email<input value={form.email} onChange={(e) => set("email", e.target.value)} /></label>
-        <label>Password<input type="password" value={form.password} onChange={(e) => set("password", e.target.value)} /></label>
-        <label>Name<input value={form.name} onChange={(e) => set("name", e.target.value)} /></label>
-        <label>Role
+        <label>{t("login.email")}<input value={form.email} onChange={(e) => set("email", e.target.value)} /></label>
+        <label>{t("login.password")}<input type="password" value={form.password} onChange={(e) => set("password", e.target.value)} /></label>
+        <label>{t("ad.th.name")}<input value={form.name} onChange={(e) => set("name", e.target.value)} /></label>
+        <label>{t("ad.th.role")}
           <select value={form.role} onChange={(e) => set("role", e.target.value)}>
-            <option value="student">Student</option>
-            <option value="teacher">Teacher</option>
-            <option value="admin">Admin</option>
+            <option value="student">{t("td.thStudent")}</option>
+            <option value="teacher">{t("td.roleTeacher")}</option>
+            <option value="admin">{t("ad.role.admin")}</option>
           </select>
         </label>
-        <label>Education Level
+        <label>{t("ad.modal.eduLevel")}
           <select value={form.education_level} onChange={(e) => set("education_level", e.target.value)}>
-            <option value="high_school">High School</option>
-            <option value="higher_ed">Higher Ed</option>
+            <option value="high_school">{t("ad.edu.highSchool")}</option>
+            <option value="higher_ed">{t("ad.edu.higherEd")}</option>
           </select>
         </label>
         <div className="ad-modal__actions">
-          <button className="td-btn td-btn--outline td-btn--sm" onClick={onClose}>Cancel</button>
-          <button className="td-btn td-btn--primary td-btn--sm" onClick={() => onSave(form)}>Create</button>
+          <button className="td-btn td-btn--outline td-btn--sm" onClick={onClose}>{t("td.cancel")}</button>
+          <button className="td-btn td-btn--primary td-btn--sm" onClick={() => onSave(form)}>{t("ad.modal.create")}</button>
         </div>
       </div>
     </div>
@@ -2870,6 +2874,7 @@ function CreateUserModal({ onClose, onSave, error }) {
 
 
 function EditUserModal({ user: u, onClose, onSave, error }) {
+  const { t } = useLang();
   const [form, setForm] = useState({
     name: u.name || "",
     role: u.role || "student",
@@ -2880,30 +2885,30 @@ function EditUserModal({ user: u, onClose, onSave, error }) {
   return (
     <div className="ad-modal-backdrop" onClick={onClose}>
       <div className="ad-modal" onClick={(e) => e.stopPropagation()}>
-        <h3>Edit User: {u.email || u.username}</h3>
+        <h3>{t("ad.modal.editUserTitle", { id: u.email || u.username })}</h3>
         {error && <div className="ad-modal__error">{error}</div>}
-        <label>Name<input value={form.name} onChange={(e) => set("name", e.target.value)} /></label>
-        <label>Role
+        <label>{t("ad.th.name")}<input value={form.name} onChange={(e) => set("name", e.target.value)} /></label>
+        <label>{t("ad.th.role")}
           <select value={form.role} onChange={(e) => set("role", e.target.value)}>
-            <option value="student">Student</option>
-            <option value="teacher">Teacher</option>
-            <option value="classroom_student">Classroom Student</option>
-            <option value="admin">Admin</option>
+            <option value="student">{t("td.thStudent")}</option>
+            <option value="teacher">{t("td.roleTeacher")}</option>
+            <option value="classroom_student">{t("ad.role.classroomStudent")}</option>
+            <option value="admin">{t("ad.role.admin")}</option>
           </select>
         </label>
-        <label>Education Level
+        <label>{t("ad.modal.eduLevel")}
           <select value={form.education_level} onChange={(e) => set("education_level", e.target.value)}>
-            <option value="high_school">High School</option>
-            <option value="higher_ed">Higher Ed</option>
+            <option value="high_school">{t("ad.edu.highSchool")}</option>
+            <option value="higher_ed">{t("ad.edu.higherEd")}</option>
           </select>
         </label>
         <label className="ad-modal__checkbox">
           <input type="checkbox" checked={form.is_active} onChange={(e) => set("is_active", e.target.checked)} />
-          Active
+          {t("ad.status.active")}
         </label>
         <div className="ad-modal__actions">
-          <button className="td-btn td-btn--outline td-btn--sm" onClick={onClose}>Cancel</button>
-          <button className="td-btn td-btn--primary td-btn--sm" onClick={() => onSave(form)}>Save</button>
+          <button className="td-btn td-btn--outline td-btn--sm" onClick={onClose}>{t("td.cancel")}</button>
+          <button className="td-btn td-btn--primary td-btn--sm" onClick={() => onSave(form)}>{t("ad.save")}</button>
         </div>
       </div>
     </div>
@@ -2911,12 +2916,9 @@ function EditUserModal({ user: u, onClose, onSave, error }) {
 }
 
 
-const GLOSSARY_STEP_LABELS = [
-  "Worldview", "Topic", "Framework", "Design", "Research Questions",
-  "Data", "Analysis", "Trustworthiness", "Ethics",
-];
-
 function GlossaryEditorModal({ term, onClose, onSave, error }) {
+  const { t } = useLang();
+  const GLOSSARY_STEP_LABELS = stepLabels(t);
   const [form, setForm] = useState({
     term: term.term || "",
     definition: term.def || "",
@@ -2932,20 +2934,20 @@ function GlossaryEditorModal({ term, onClose, onSave, error }) {
   return (
     <div className="ad-modal-backdrop" onClick={onClose}>
       <div className="ad-modal ad-modal--wide" onClick={(e) => e.stopPropagation()}>
-        <h3>{term.id ? "Edit Term" : "Add Term"}</h3>
+        <h3>{term.id ? t("ad.glossary.editTerm") : t("ad.glossary.addTerm")}</h3>
         {error && <div className="ad-modal__error">{error}</div>}
-        <label>Term<input value={form.term} onChange={(e) => set("term", e.target.value)} placeholder="e.g. Conceptual Framework" /></label>
-        <label>Definition
+        <label>{t("ad.glossary.term")}<input value={form.term} onChange={(e) => set("term", e.target.value)} placeholder={t("ad.glossary.termPh")} /></label>
+        <label>{t("ad.glossary.definition")}
           <textarea
             className="ad-glossary__textarea"
             rows={4}
             value={form.definition}
             onChange={(e) => set("definition", e.target.value)}
-            placeholder="A plain-language, student-friendly explanation."
+            placeholder={t("ad.glossary.defPh")}
           />
         </label>
         <div className="ad-glossary__stepfield">
-          <span className="ad-glossary__stepfield-label">Related steps</span>
+          <span className="ad-glossary__stepfield-label">{t("ad.glossary.relatedSteps")}</span>
           <div className="ad-glossary__stepgrid">
             {GLOSSARY_STEP_LABELS.map((label, i) => {
               const n = i + 1;
@@ -2964,13 +2966,13 @@ function GlossaryEditorModal({ term, onClose, onSave, error }) {
           </div>
         </div>
         <div className="ad-modal__actions">
-          <button className="td-btn td-btn--outline td-btn--sm" onClick={onClose}>Cancel</button>
+          <button className="td-btn td-btn--outline td-btn--sm" onClick={onClose}>{t("td.cancel")}</button>
           <button
             className="td-btn td-btn--primary td-btn--sm"
             disabled={!canSave}
             onClick={() => onSave({ term: form.term.trim(), definition: form.definition.trim(), steps: form.steps })}
           >
-            Save
+            {t("ad.save")}
           </button>
         </div>
       </div>
@@ -2980,16 +2982,17 @@ function GlossaryEditorModal({ term, onClose, onSave, error }) {
 
 
 function ResetPasswordModal({ user: u, onClose, onSave, error }) {
+  const { t } = useLang();
   const [pw, setPw] = useState("");
   return (
     <div className="ad-modal-backdrop" onClick={onClose}>
       <div className="ad-modal" onClick={(e) => e.stopPropagation()}>
-        <h3>Reset Password: {u.email || u.username}</h3>
+        <h3>{t("ad.modal.resetPwTitle", { id: u.email || u.username })}</h3>
         {error && <div className="ad-modal__error">{error}</div>}
-        <label>New Password<input type="password" value={pw} onChange={(e) => setPw(e.target.value)} /></label>
+        <label>{t("login.newPassword")}<input type="password" value={pw} onChange={(e) => setPw(e.target.value)} /></label>
         <div className="ad-modal__actions">
-          <button className="td-btn td-btn--outline td-btn--sm" onClick={onClose}>Cancel</button>
-          <button className="td-btn td-btn--primary td-btn--sm" onClick={() => onSave(pw)} disabled={pw.length < 6}>Reset</button>
+          <button className="td-btn td-btn--outline td-btn--sm" onClick={onClose}>{t("td.cancel")}</button>
+          <button className="td-btn td-btn--primary td-btn--sm" onClick={() => onSave(pw)} disabled={pw.length < 6}>{t("ad.modal.reset")}</button>
         </div>
       </div>
     </div>
@@ -2998,15 +3001,16 @@ function ResetPasswordModal({ user: u, onClose, onSave, error }) {
 
 
 function DeleteConfirmModal({ user: u, onClose, onConfirm }) {
+  const { t } = useLang();
   return (
     <div className="ad-modal-backdrop" onClick={onClose}>
       <div className="ad-modal" onClick={(e) => e.stopPropagation()}>
-        <h3>Delete User</h3>
-        <p>Are you sure you want to permanently delete <strong>{u.email || u.username || u.name}</strong>?</p>
-        <p style={{ color: "#DC2626", fontSize: "0.85rem" }}>This action cannot be undone.</p>
+        <h3>{t("ad.modal.deleteUserTitle")}</h3>
+        <p>{t("ad.modal.deleteUserPre")} <strong>{u.email || u.username || u.name}</strong>?</p>
+        <p style={{ color: "#DC2626", fontSize: "0.85rem" }}>{t("ad.modal.cannotUndo")}</p>
         <div className="ad-modal__actions">
-          <button className="td-btn td-btn--outline td-btn--sm" onClick={onClose}>Cancel</button>
-          <button className="td-btn td-btn--sm" style={{ background: "#DC2626", color: "#fff" }} onClick={onConfirm}>Delete</button>
+          <button className="td-btn td-btn--outline td-btn--sm" onClick={onClose}>{t("td.cancel")}</button>
+          <button className="td-btn td-btn--sm" style={{ background: "#DC2626", color: "#fff" }} onClick={onConfirm}>{t("ad.action.delete")}</button>
         </div>
       </div>
     </div>
