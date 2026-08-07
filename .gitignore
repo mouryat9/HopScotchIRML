@@ -29,3 +29,6 @@ server/index/
 # Temporary / runtime files
 nohup.out
 .env
+
+# Dubbed step videos (large media, deployed by copy - not in git)
+hopscotch-ui/public/videos/
