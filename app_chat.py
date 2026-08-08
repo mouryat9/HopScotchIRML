@@ -966,6 +966,37 @@ def build_ollama_payload(worldview_profile, step_context, user_msg, passages,
             f"refocus them on Step {cur} — the point is for them to think each step through "
             f"themselves, in order.\n"
         )
+        # Step 5 needs its own hard rule: the generic "don't author their content"
+        # rule alone doesn't stop the model from proposing ready-made research
+        # questions on the student's topic disguised as "guiding questions".
+        if cur == 5:
+            system_msg += (
+                "\n==================================================================\n"
+                "STEP 5 HARD RULE — NEVER WRITE RESEARCH QUESTIONS ON THE STUDENT'S TOPIC\n"
+                "==================================================================\n"
+                "The student must author their own research question(s). You must NOT "
+                "present any question about the student's topic that could serve as their "
+                "research question — not as a suggestion, not as 'options to choose from', "
+                "not as a numbered list of 'guiding questions' that are themselves "
+                "formulated research questions, not as a 'for example'. If a sentence you "
+                "are about to write is a research-question-style question containing the "
+                "student's topic, participants, or setting, DELETE it and ask the student "
+                "to draft it instead.\n"
+                "What you SHOULD do:\n"
+                "1. Explain the qualities of a good research question for their design "
+                "(open-ended 'how/what' for qualitative; specific, testable for "
+                "quantitative).\n"
+                "2. If an example helps, give EXACTLY ONE example research question from a "
+                "clearly UNRELATED field (if their study is about education, use e.g. "
+                "nursing or urban planning), and label it: 'Example from a different field "
+                "— a model for the FORM, not your question.'\n"
+                "3. Ask guiding questions ABOUT their thinking, addressed to the student "
+                "(e.g. 'What exactly do you want to understand?', 'Who is at the center of "
+                "the experience?') — these are questions for them to answer in chat, never "
+                "draft research questions.\n"
+                "4. When the student drafts a question, give specific feedback and help "
+                "them refine THEIR wording — do not rewrite it wholesale.\n"
+            )
         if step_llm_guidance:
             system_msg += f"\nStep-specific instructions for Step {cur}:\n{step_llm_guidance}\n"
 
@@ -2455,14 +2486,61 @@ def _fix_signoff(s: str) -> str:
     return s
 
 
-def _sanitize_stream(raw_iter):
+# ---- Step 5 guard: never let a ready-made research question on the student's
+# own topic through, even inline (prompt rules alone don't guarantee this on a
+# local 14B model). Deterministic: question-shaped line + enough of the
+# student's own topic words + not addressed to the student ("you") → dropped.
+_TOPIC_GUARD_STOPWORDS = {
+    "about", "among", "with", "within", "from", "into", "onto", "over", "under",
+    "their", "there", "these", "those", "this", "that", "what", "when", "where",
+    "which", "while", "how", "why", "who", "does", "will", "would", "could",
+    "should", "have", "has", "been", "being", "and", "the", "for", "between",
+    "study", "research", "entre", "para", "sobre", "como", "cómo", "las", "los",
+    "una", "unos", "unas", "del", "que", "qué", "estudio", "investigación",
+}
+# A question aimed AT the student (coaching) is fine; one about their topic in
+# the third person is a handed-over research question.
+_SECOND_PERSON_TOKENS = ("you", "your", "tú", "usted", "ustedes", "你", "您")
+
+
+def _topic_guard_terms(sess) -> list:
+    """Salient words from the student's Step 2 topic, for the Step 5 guard."""
+    d = (getattr(sess, "step_notes", None) or {}).get("2") or {}
+    topic = str(d.get("topic") or "").lower()
+    words = re.findall(r"[\w'-]+", topic, flags=re.UNICODE)
+    out, seen = [], set()
+    for w in words:
+        if len(w) >= 4 and w not in _TOPIC_GUARD_STOPWORDS and w not in seen:
+            seen.add(w)
+            out.append(w)
+    # CJK topics have no space-separated words; fall back to the whole phrase.
+    if not out and topic.strip():
+        out.append(topic.strip())
+    return out
+
+
+def _is_own_topic_question(line: str, terms: list) -> bool:
+    if not terms:
+        return False
+    s = re.sub(r"^[\s>*#\-•·\d.)(]+", "", line.strip()).strip("*_").lower()
+    if "?" not in s and "？" not in s:
+        return False
+    words = set(re.findall(r"[\w'-]+", s, flags=re.UNICODE))
+    if any(tok in words or (len(tok) == 1 and tok in s) for tok in _SECOND_PERSON_TOKENS):
+        return False
+    hits = sum(1 for t in terms if t in s)
+    return hits >= (1 if len(terms) <= 2 else 2)
+
+
+def _sanitize_stream(raw_iter, own_q_terms=None, own_q_nudge=None):
     """Output guard: drops handed-over deliverable blocks and normalizes
     AI-looking punctuation (em/en dashes) in everything the student sees."""
-    for piece in _sanitize_stream_blocks(raw_iter):
+    for piece in _sanitize_stream_blocks(raw_iter, own_q_terms=own_q_terms,
+                                         own_q_nudge=own_q_nudge):
         yield piece.replace("—", "-").replace("–", "-")
 
 
-def _sanitize_stream_blocks(raw_iter):
+def _sanitize_stream_blocks(raw_iter, own_q_terms=None, own_q_nudge=None):
     """Line-buffer a token stream and drop 'handed-over deliverable' blocks, emitting a
     single coaching nudge in their place. Yields sanitized text pieces."""
     pending = ""
@@ -2492,6 +2570,13 @@ def _sanitize_stream_blocks(raw_iter):
                 return ""         # the handed-over value itself → drop
         if is_label:
             return start_block()
+        if own_q_terms and _is_own_topic_question(line, own_q_terms):
+            # A ready-made research question about the student's own topic —
+            # drop it; the first time, replace it with a coaching nudge.
+            if st["nudges"] == 0 and own_q_nudge:
+                st["nudges"] += 1
+                return own_q_nudge + "\n"
+            return ""
         return _fix_signoff(line) + "\n"
 
     for delta in raw_iter:
@@ -2507,11 +2592,33 @@ def _sanitize_stream_blocks(raw_iter):
             yield out.rstrip("\n") if not pending.endswith("\n") else out
 
 
-def _strip_handed_answers(text: str) -> str:
+def _strip_handed_answers(text: str, own_q_terms=None, own_q_nudge=None) -> str:
     """Non-streaming version of the output guard."""
     if not text:
         return text
-    return "".join(_sanitize_stream(iter([text]))).rstrip("\n")
+    return "".join(_sanitize_stream(iter([text]), own_q_terms=own_q_terms,
+                                    own_q_nudge=own_q_nudge)).rstrip("\n")
+
+
+_OWN_Q_NUDGE = {
+    "en": "I'll leave the actual research question for you to draft - tell me what "
+          "you most want to understand about your topic, and I'll give you feedback "
+          "on your wording.",
+    "es": "La redacción de la pregunta de investigación te corresponde a ti: "
+          "cuéntame qué es lo que más quieres comprender sobre tu tema y te daré "
+          "retroalimentación sobre tu propuesta.",
+    "zh": "研究问题需要由你自己来草拟——告诉我你最想理解的是什么，我会对你的表述给出反馈。",
+}
+
+
+def _own_question_guard_args(sess, active_step, chat_lang):
+    """Guard params for the Step 5 own-topic-question filter (None elsewhere)."""
+    if active_step != 5:
+        return None, None
+    terms = _topic_guard_terms(sess)
+    if not terms:
+        return None, None
+    return terms, _OWN_Q_NUDGE.get(chat_lang, _OWN_Q_NUDGE["en"])
 
 
 def _coach_redirect_message(active_step) -> str:
@@ -2631,7 +2738,8 @@ def chat_send(req: ChatSendReq = Body(...), user: dict = Depends(get_current_use
         chat_history=history, language=chat_lang,
     )
     # Output guard: strip any handed-over deliverable blocks the model slipped in.
-    answer = _strip_handed_answers(answer)
+    oq_terms, oq_nudge = _own_question_guard_args(sess, req.active_step, chat_lang)
+    answer = _strip_handed_answers(answer, own_q_terms=oq_terms, own_q_nudge=oq_nudge)
 
     history.append(ChatTurn(role="assistant", content=answer, step=req.active_step))
     _persist_session(sess)
@@ -2783,11 +2891,13 @@ def chat_send_stream(req: ChatSendReq = Body(...), user: dict = Depends(get_curr
             for delta in fallback_fn():
                 yield delta
 
+    oq_terms, oq_nudge = _own_question_guard_args(sess, req.active_step, chat_lang)
+
     def event_stream():
         assistant_text_parts: List[str] = []
         try:
             # Output guard: sanitized, line-buffered stream (drops handed-over answers).
-            for piece in _sanitize_stream(_raw_deltas()):
+            for piece in _sanitize_stream(_raw_deltas(), own_q_terms=oq_terms, own_q_nudge=oq_nudge):
                 assistant_text_parts.append(piece)
                 yield piece
         except GeneratorExit:
