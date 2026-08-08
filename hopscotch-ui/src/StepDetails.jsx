@@ -374,14 +374,7 @@ export default function StepDetails({ step, sessionId, onChatRefresh, onAutoSend
 
         {/* Inputs card */}
         <section className="hop-card">
-          <p className="hop-desc">
-            After reviewing the interactive resources on the left side, please
-            describe your initial topical research in terms of the field's broad
-            context, identify and define relevant key concepts or theories, and
-            include citations from relevant articles from your initial literature
-            search. Then use the AI Assistant to help you refine and develop
-            strategies for your literature search.
-          </p>
+          <p className="hop-desc">{t("step3.intro")}</p>
 
           <label className="hop-desc" style={{ display: "block", marginTop: 4 }}>{t("step3.topicalLabel")}</label>
           <textarea
