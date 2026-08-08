@@ -138,6 +138,10 @@ OLLAMA_BASE = os.environ.get("OLLAMA_BASE", "http://127.0.0.1:11434")
 LLM_MODEL = os.environ.get("LLM_MODEL", "qwen2.5:14b")
 VLLM_MODEL = os.environ.get("VLLM_MODEL", "Qwen/Qwen2.5-14B-Instruct")
 LLM_TEMP = float(os.environ.get("LLM_TEMP", "0.4"))
+# How long Ollama keeps models in VRAM after a request. Ollama's default of 5m
+# means every chat after a short idle pays a 10-30s cold model reload (students
+# see this as "assistant is slow" / timeouts). Set to e.g. "30m" or "-1" via env.
+OLLAMA_KEEP_ALIVE = os.environ.get("OLLAMA_KEEP_ALIVE", "24h")
 
 # Harmful-content moderation (Llama Guard 3 via Ollama). Runs locally/free.
 # Set MODERATION_ENABLED=0 to disable, or point MODERATION_MODEL at another guard model.
@@ -720,6 +724,7 @@ def _warm_llm():
                 "model": LLM_MODEL,
                 "messages": [{"role": "user", "content": "hi"}],
                 "stream": False,
+                "keep_alive": OLLAMA_KEEP_ALIVE,
                 "options": {"num_predict": 1},
             }, timeout=300)
             resp.raise_for_status()
@@ -920,6 +925,12 @@ def build_ollama_payload(worldview_profile, step_context, user_msg, passages,
         "what the student wrote — but per the CORE RULE, still never author their research "
         "question, hypothesis, data-collection, analysis, trustworthiness, or ethics "
         "content for them. Guide them to write it; then critique and refine it.\n"
+        "- ILLUSTRATIVE EXAMPLES: when you illustrate a concept with an example (e.g. a "
+        "sample research question or hypothesis), NEVER build the example around the "
+        "student's own topic or design — a tailored example does the work for them. Use a "
+        "clearly different topic from another field, label it as an example to model the "
+        "process, and then prompt the student to formulate their own version for their "
+        "topic.\n"
         "- Reference specific methodologies, frameworks, and scholars when relevant "
         "(only in response to what the student has already written, not as suggestions).\n"
         "- Use a warm, encouraging tone — the student may be new to research.\n"
@@ -1013,6 +1024,7 @@ def build_ollama_payload(worldview_profile, step_context, user_msg, passages,
     return {
         "model": LLM_MODEL,
         "stream": stream,
+        "keep_alive": OLLAMA_KEEP_ALIVE,
         "options": {"temperature": LLM_TEMP},
         "messages": messages,
     }
@@ -1043,6 +1055,7 @@ def _call_vllm(messages: list, temperature: float = LLM_TEMP,
 def _call_ollama(payload: dict, timeout: int = 120) -> Optional[str]:
     """Call Ollama. Returns content string or None on failure."""
     try:
+        payload.setdefault("keep_alive", OLLAMA_KEEP_ALIVE)
         resp = requests.post(OLLAMA_URL, json=payload, timeout=timeout)
         resp.raise_for_status()
         data = resp.json()
@@ -2281,6 +2294,7 @@ def _moderate_input(user_msg: str) -> tuple:
             "model": MODERATION_MODEL,
             "messages": [{"role": "user", "content": user_msg}],
             "stream": False,
+            "keep_alive": OLLAMA_KEEP_ALIVE,
             "options": {"temperature": 0.0, "num_predict": 20},
         }, timeout=20)
         r.raise_for_status()
@@ -3490,7 +3504,7 @@ def _structure_vd_via_llm(design_label: str, central_label: str, raw_fields: dic
         "- 'strategies': design/analysis strategies (sampling, cycles, analysis approach).\n"
         "- 'process_support': supports for rigor (trustworthiness strategies, ethics safeguards, tools).\n"
         "- 'question': the central research question or issue, lightly condensed.\n"
-        "- 'topics': up to 4 short topic titles from their topical research, joined with newlines.\n"
+        "- 'topics': always return an empty string; the student defines their own topics (topical research is a distinct concept).\n"
         "- 'minicases': mini-cases or sub-units of analysis, if any.\n\n"
         f"STUDENT'S DATA:\n{data_block}\n\n"
         "Respond with ONLY valid JSON, no markdown:\n"
@@ -3680,15 +3694,14 @@ def _vd_raw_fields(sess: SessionData) -> dict:
 
 def _vd_prefill(raw_fields: dict) -> dict:
     """Direct (no-LLM) prefill of the visual design fields from step data."""
-    topics_fallback = "\n".join(
-        l.strip(" -•·\t") for l in raw_fields["Topical Research"].split("\n") if l.strip(" -•·\t")
-    )[:300]
     sample_parts = [p for p in (raw_fields["Participants"].strip(), raw_fields["Sampling Method"].strip()) if p]
     return {
         "central_item": raw_fields["Topic"].strip(),
         "context": "",
         "question": (raw_fields["Research Question / Central Issue"] or raw_fields["Research Aim"]).strip(),
-        "topics": topics_fallback,
+        # "Topics" in the visual design is a distinct concept from Step 3's
+        # topical research, so it is never pre-populated from step data.
+        "topics": "",
         "informants": raw_fields["Participants"].strip(),
         "data_gathering": raw_fields["Collection Method"].strip(),
         "other_documents": "",

@@ -100,19 +100,19 @@ const CF_FIELDS_ES = {
     help: "Describe tu posicionalidad y cosmovisión (p. ej., constructivista, pospositivista, transformativa, pragmatista) y cómo tu identidad se relaciona con el estudio.",
   },
   topics: {
-    label: "Investigación temática", hint: "Hasta 5 áreas de tu revisión de literatura", placeholder: "Un tema por línea (hasta 5)",
-    help: "¿Qué áreas de investigación temática informan tu estudio? Enumera hasta cinco: cada una aparece como su propio mosaico en el marco.",
+    label: "Investigaciones previas en el campo", hint: "Hasta 5 áreas de tu revisión de literatura", placeholder: "Un tema por línea (hasta 5)",
+    help: "¿Qué investigaciones previas en el campo informan tu estudio? Enumera hasta cinco: cada una aparece como su propio mosaico en el marco.",
   },
   frameworks: {
     label: "Marcos teóricos", hint: "Hasta 5 marcos con sus autores", placeholder: "Un marco por línea (hasta 5)",
     help: "¿Qué marcos teóricos fundamentan tu estudio? Incluye autor y año cuando puedas (p. ej., Comunidades de práctica - Wenger, 1998). Enumera hasta cinco.",
   },
   gaps: {
-    label: "Vacíos encontrados", hint: "¿Qué falta en la literatura?",
-    help: "¿Qué vacío o vacíos reveló tu revisión de la literatura? El vacío es lo que tu estudio ayudará a llenar.",
+    label: "Espacios sin cubrir en la literatura", hint: "¿Qué falta en la literatura?",
+    help: "¿Qué espacio o espacios sin cubrir reveló tu revisión de la literatura? Ese espacio es lo que tu estudio ayudará a llenar.",
   },
   problem_statement: {
-    label: "Planteamiento del problema", hint: "El problema que aborda tu estudio",
+    label: "Definición del problema de investigación", hint: "El problema que aborda tu estudio",
     help: "Enuncia el problema que surge del vacío: el asunto concreto que aborda tu estudio y para quién importa.",
   },
   research_questions: {

@@ -306,7 +306,12 @@ export default function ChatBox({ sessionId, activeStep, refreshKey, autoMessage
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-        if (!gotFirstChunk) gotFirstChunk = true;
+        if (!gotFirstChunk) {
+          gotFirstChunk = true;
+          // The response is streaming — stop the watchdog so a long answer
+          // isn't aborted mid-stream at the 2-minute mark.
+          clearTimeout(timeoutId);
+        }
         accumulated += decoder.decode(value, { stream: true });
         // Throttle UI updates to every 80ms to avoid excessive re-renders
         const now = Date.now();

@@ -41,7 +41,7 @@
             {"field_key": "research_aim", "label": "Research Aim", "type": "textarea", "placeholder": "State the aim of your study..."},
             {"field_key": "hypothesis", "label": "Hypothesis", "type": "textarea", "placeholder": "State your testable hypothesis..."}
           ],
-          "llm_guidance": "Help the student formulate a clear, testable research question and hypothesis aligned with their quantitative design. The hypothesis should be specific, measurable, and falsifiable. Guide them to connect their aim back to their topic and goals from Step 2."
+          "llm_guidance": "Help the student formulate a clear, testable research question and hypothesis aligned with their quantitative design. The hypothesis should be specific, measurable, and falsifiable. Guide them to connect their aim back to their topic and goals from Step 2. If you illustrate with an example research question or hypothesis, it MUST come from a different topic in another field — never from the student's own topic — so the student remains responsible for formulating their own."
         },
         "6": {
           "title": "Step 6: What data will I collect? (Quantitative Collection)",
@@ -151,7 +151,7 @@
           "fields": [
             {"field_key": "research_question", "label": "Research Question / Central Issue", "type": "textarea", "placeholder": "State your qualitative research question or central issue..."}
           ],
-          "llm_guidance": "Help the student formulate an open-ended, exploratory qualitative research question aligned with their design. Qualitative questions typically start with 'How' or 'What' and seek to explore, describe, or understand rather than measure. Connect the question to their topic, goals, and chosen design."
+          "llm_guidance": "Help the student formulate an open-ended, exploratory qualitative research question aligned with their design. Qualitative questions typically start with 'How' or 'What' and seek to explore, describe, or understand rather than measure. Connect the question to their topic, goals, and chosen design. If you illustrate with an example research question, it MUST come from a different topic in another field — never from the student's own topic — so the student remains responsible for formulating their own."
         },
         "6": {
           "title": "Step 6: What data will I collect? (Qualitative Collection)",

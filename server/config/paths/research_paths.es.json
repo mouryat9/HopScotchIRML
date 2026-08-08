@@ -173,8 +173,8 @@
           "input_prompt": "Después de revisar los recursos interactivos del lado izquierdo, describe los pasos que tomarás para asegurar que tu estudio sea confiable. Luego usa el Asistente de IA para refinar tu plan y explorar las estrategias disponibles según tu diseño, recolección y análisis de datos.",
           "options": [
             {"id": "credibility", "label": "Credibilidad"},
-            {"id": "transferability", "label": "Transferibilidad"},
-            {"id": "dependability", "label": "Dependabilidad (consistencia)"},
+            {"id": "transferability", "label": "Transferencia"},
+            {"id": "dependability", "label": "Consistencia"},
             {"id": "confirmability", "label": "Confirmabilidad"}
           ]
         },

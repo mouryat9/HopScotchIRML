@@ -404,7 +404,7 @@ export default function StepDetails({ step, sessionId, onChatRefresh, onAutoSend
           />
 
           <label className="hop-desc" style={{ display: "block", marginTop: 10 }}>
-            Gaps identified in the literature
+            {t("step3.gapsLabel")}
           </label>
           <textarea
             className="textarea"

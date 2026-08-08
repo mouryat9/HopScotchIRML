@@ -656,7 +656,18 @@ function StudentApp({ onBackToDashboard }) {
     window.open(url, "_blank", "noopener");
   }
 
+  // Open the Visual Design editor in a NEW TAB, same pattern as the
+  // Conceptual Framework. The page itself explains if the chosen design
+  // doesn't support the visual editor yet.
+  function handleOpenVisualDesign() {
+    setDownloadOpen(false);
+    if (!sessionId) return;
+    const url = `${window.location.origin}${window.location.pathname}?view=vd&session=${encodeURIComponent(sessionId)}`;
+    window.open(url, "_blank", "noopener");
+  }
+
   const step3Completed = completedSteps.includes(3);
+  const step4Completed = completedSteps.includes(4);
 
   return (
     <div className={`hop-wrap${tourActive ? " hop-wrap--touring" : ""}`}>
@@ -745,6 +756,26 @@ function StudentApp({ onBackToDashboard }) {
                   {t("dl.cf")}
                   {!step3Completed ? (
                     <span className="hop-download__lock">{t("dl.step3")}</span>
+                  ) : (
+                    <span className="hop-download__newtab" aria-hidden="true" title="Opens in a new tab">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                        <polyline points="15 3 21 3 21 9"/>
+                        <line x1="10" y1="14" x2="21" y2="3"/>
+                      </svg>
+                    </span>
+                  )}
+                </button>
+                <button
+                  className={`hop-download__item${!step4Completed ? " hop-download__item--disabled" : ""}`}
+                  onClick={step4Completed ? handleOpenVisualDesign : undefined}
+                  disabled={!step4Completed}
+                  title={!step4Completed ? t("dl.vdLocked") : t("dl.vdReady")}
+                >
+                  <span className="hop-download__icon" style={{ background: "#3D6CB3" }}>VD</span>
+                  {t("dl.vd")}
+                  {!step4Completed ? (
+                    <span className="hop-download__lock">{t("dl.step4")}</span>
                   ) : (
                     <span className="hop-download__newtab" aria-hidden="true" title="Opens in a new tab">
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

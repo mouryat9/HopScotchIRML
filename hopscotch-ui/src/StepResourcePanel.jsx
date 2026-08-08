@@ -40,6 +40,12 @@ const STEP_GENIALLY_HIGHER_ED = {
   9: "https://view.genially.com/5f614e378cc8340d8feec824",
 };
 
+// Self-hosted/dubbed videos are direct media files; embed platforms (Synthesia,
+// YouTube, …) need an iframe. Direct files must use a <video> element — Safari
+// misrenders raw media documents inside iframes and may autoplay them.
+const isDirectMediaUrl = (url) =>
+  /\.(mp4|m4v|webm|mov|ogv)(\?|#|$)/i.test(url || "");
+
 /* ---- Dictionary tab: searchable, step-aware glossary (works with AI off) ---- */
 function TermCard({ term, def, related }) {
   return (
@@ -194,13 +200,23 @@ export default function StepResourcePanel({ activeStep, educationLevel = "high_s
       ) : (
         <div className={`embed-frame-wrap${activeTab === "video" ? " embed-frame-wrap--video" : ""}`}>
           {activeTab === "video" && videoUrl && (
-            <iframe
-              src={videoUrl}
-              title={`Step ${activeStep} video`}
-              loading="lazy"
-              allowFullScreen
-              allow="encrypted-media; fullscreen; microphone; screen-wake-lock;"
-            />
+            isDirectMediaUrl(videoUrl) ? (
+              <video
+                key={videoUrl}
+                src={videoUrl}
+                controls
+                playsInline
+                preload="metadata"
+              />
+            ) : (
+              <iframe
+                src={videoUrl}
+                title={`Step ${activeStep} video`}
+                loading="lazy"
+                allowFullScreen
+                allow="encrypted-media; fullscreen; microphone; screen-wake-lock;"
+              />
+            )
           )}
           {activeTab === "resource" && geniallyUrl && (
             <iframe
