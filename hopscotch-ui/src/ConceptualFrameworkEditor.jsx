@@ -10,6 +10,10 @@ import { jsPDF } from "jspdf";
 import { API } from "./api";
 import { notify } from "./Toast";
 import { useLang } from "./i18n.jsx";
+import { useAuth } from "./AuthContext";
+import { useTheme } from "./ThemeContext";
+import ProfileMenu from "./ProfileMenu";
+import SettingsModal from "./SettingsModal";
 import CFTemplatePolygon from "./CFTemplatePolygon";
 import CFTemplateBoxed from "./CFTemplateBoxed";
 import CFTemplateExtended from "./CFTemplateExtended";
@@ -172,6 +176,9 @@ export default function ConceptualFrameworkEditor({ data, sessionId, onClose }) 
   }));
   const [template, setTemplate] = useState("boxed");
   const [printing, setPrinting] = useState(false);
+  const { user, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [saveState, setSaveState] = useState("saved"); // saved | dirty | saving | error
   const [activeKey, setActiveKey] = useState(null);
   const [showIdentity, setShowIdentity] = useState(true);
@@ -368,8 +375,17 @@ export default function ConceptualFrameworkEditor({ data, sessionId, onClose }) 
           <button className="vd-btn vd-btn--primary" onClick={handlePrint} disabled={printing}>
             {printing ? t("vd.capturing") : t("vd.savePdf")}
           </button>
+          {user && (
+            <ProfileMenu
+              user={user}
+              onSignOut={logout}
+              onOpenSettings={() => setSettingsOpen(true)}
+            />
+          )}
         </div>
       </div>
+
+      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} theme={theme} toggleTheme={toggleTheme} />
 
       {/* Body: form (left) + diagram (right) */}
       <div className="vd-body">

@@ -841,15 +841,15 @@ function StudentApp({ onBackToDashboard }) {
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/></svg>
                   </span>
                   <div className="hop-settings__section-hettext">
-                    <span className="hop-settings__section-title">Step navigation</span>
-                    <span className="hop-settings__section-desc">How the 9 research steps appear at the top of your workspace.</span>
+                    <span className="hop-settings__section-title">{t("settings.stepNav")}</span>
+                    <span className="hop-settings__section-desc">{t("settings.stepNavDesc")}</span>
                   </div>
                 </div>
                 <div className="hop-settings__section-body">
                   <div className="hop-settings__choices">
                     {[
-                      { id: "board", title: "Hopscotch Board", desc: "The classic board - squares light up as you progress." },
-                      { id: "strip", title: "Step Strip", desc: "A compact single row of labelled step chips." },
+                      { id: "board", title: t("settings.navBoard"), desc: t("settings.navBoardDesc") },
+                      { id: "strip", title: t("settings.navStrip"), desc: t("settings.navStripDesc") },
                     ].map((opt) => (
                       <button key={opt.id} className={`hop-settings__choice${navStyle === opt.id ? " hop-settings__choice--active" : ""}`} onClick={() => chooseNavStyle(opt.id)}>
                         <span className={`hop-settings__preview hop-settings__preview--${opt.id}`} aria-hidden="true">

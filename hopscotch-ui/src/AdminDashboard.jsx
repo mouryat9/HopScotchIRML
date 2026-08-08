@@ -8,6 +8,7 @@ import UserLocationMap from "./UserLocationMap";
 import StudentDesignView from "./StudentDesignView";
 import ProfileMenu from "./ProfileMenu";
 import SettingsModal from "./SettingsModal";
+import ModalShell from "./ModalShell";
 import { useLang, LANGS, LOCALE_TAGS } from "./i18n.jsx";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -1415,12 +1416,12 @@ export default function AdminDashboard() {
               )}
 
               {deleteClass && (
-                <div className="ad-modal-backdrop" onClick={() => setDeleteClass(null)}>
-                  <div className="ad-modal" onClick={(e) => e.stopPropagation()}>
-                    <h3>{t("ad.classes.deleteTitle")}</h3>
-                    <p>{t("ad.classes.deleteConfirmPre")} <strong>{deleteClass.class_name}</strong> ({deleteClass.class_code})?</p>
-                    <p style={{ color: "#DC2626", fontSize: "0.85rem" }}>{t("ad.classes.deleteNote", { n: deleteClass.actual_students })}</p>
-                    <div className="ad-modal__actions">
+                <ModalShell
+                  onClose={() => setDeleteClass(null)}
+                  title={t("ad.classes.deleteTitle")}
+                  bodyClassName="ad-form"
+                  footer={
+                    <>
                       <button className="td-btn td-btn--outline td-btn--sm" onClick={() => setDeleteClass(null)}>{t("td.cancel")}</button>
                       <button className="td-btn td-btn--sm" style={{ background: "#DC2626", color: "#fff" }} onClick={async () => {
                         try {
@@ -1429,9 +1430,12 @@ export default function AdminDashboard() {
                           loadClasses();
                         } catch (e) { notify.error(e.message, { title: t("ad.actionFailed") }); }
                       }}>{t("ad.action.delete")}</button>
-                    </div>
-                  </div>
-                </div>
+                    </>
+                  }
+                >
+                  <p>{t("ad.classes.deleteConfirmPre")} <strong>{deleteClass.class_name}</strong> ({deleteClass.class_code})?</p>
+                  <p style={{ color: "#DC2626", fontSize: "0.85rem" }}>{t("ad.classes.deleteNote", { n: deleteClass.actual_students })}</p>
+                </ModalShell>
               )}
               {renderClassModals()}
             </div>
@@ -1571,15 +1575,12 @@ export default function AdminDashboard() {
               </div>
 
               {cleanupOpen && sessionStats && (
-                <div className="ad-modal-backdrop" onClick={() => setCleanupOpen(false)}>
-                  <div className="ad-modal" onClick={(e) => e.stopPropagation()}>
-                    <h3>{t("ad.cleanup.title")}</h3>
-                    <p style={{ fontSize: "0.9rem" }}>
-                      {sessionStats.empty > 0 && <>\u2022 <strong>{sessionStats.empty}</strong> {t(sessionStats.empty === 1 ? "ad.cleanup.emptyOne" : "ad.cleanup.empty")}<br /></>}
-                      {sessionStats.orphaned > 0 && <>\u2022 <strong>{sessionStats.orphaned}</strong> {t(sessionStats.orphaned === 1 ? "ad.cleanup.orphanedOne" : "ad.cleanup.orphaned")}</>}
-                    </p>
-                    <p style={{ color: "#DC2626", fontSize: "0.85rem" }}>{t("ad.cleanup.note")}</p>
-                    <div className="ad-modal__actions">
+                <ModalShell
+                  onClose={() => setCleanupOpen(false)}
+                  title={t("ad.cleanup.title")}
+                  bodyClassName="ad-form"
+                  footer={
+                    <>
                       <button className="td-btn td-btn--outline td-btn--sm" onClick={() => setCleanupOpen(false)}>{t("td.cancel")}</button>
                       {sessionStats.empty > 0 && (
                         <button className="td-btn td-btn--sm" style={{ background: "#DC2626", color: "#fff" }} onClick={async () => {
@@ -1601,9 +1602,15 @@ export default function AdminDashboard() {
                           } catch (e) { notify.error(e.message, { title: t("ad.cleanup.failed") }); }
                         }}>{t("ad.cleanup.deleteOrphaned")}</button>
                       )}
-                    </div>
-                  </div>
-                </div>
+                    </>
+                  }
+                >
+                  <p style={{ fontSize: "0.9rem" }}>
+                    {sessionStats.empty > 0 && <>\u2022 <strong>{sessionStats.empty}</strong> {t(sessionStats.empty === 1 ? "ad.cleanup.emptyOne" : "ad.cleanup.empty")}<br /></>}
+                    {sessionStats.orphaned > 0 && <>\u2022 <strong>{sessionStats.orphaned}</strong> {t(sessionStats.orphaned === 1 ? "ad.cleanup.orphanedOne" : "ad.cleanup.orphaned")}</>}
+                  </p>
+                  <p style={{ color: "#DC2626", fontSize: "0.85rem" }}>{t("ad.cleanup.note")}</p>
+                </ModalShell>
               )}
             </div>
           )}
@@ -2301,7 +2308,7 @@ export default function AdminDashboard() {
                     {t("ad.health.lastChecked", { time: healthCheckedAt.toLocaleTimeString(dateLocale) })}
                   </span>
                 )}
-                <label className="ad-modal__checkbox" style={{ margin: 0, fontSize: "0.84rem" }}>
+                <label className="ad-form__checkbox" style={{ margin: 0, fontSize: "0.84rem" }}>
                   <input type="checkbox" checked={healthAuto} onChange={(e) => setHealthAuto(e.target.checked)} />
                   {t("ad.health.autoRefresh")}
                 </label>
@@ -2551,42 +2558,12 @@ function EditClassModal({ cls, teachers, error, onClose, onSave }) {
   });
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
   return (
-    <div className="ad-modal-backdrop" onClick={onClose}>
-      <div className="ad-modal" onClick={(e) => e.stopPropagation()}>
-        <h3>{t("ad.modal.editClassTitle", { code: cls.class_code })}</h3>
-        {error && <div className="ad-modal__error">{error}</div>}
-        <label>{t("ad.modal.className")}<input value={form.class_name} onChange={(e) => set("class_name", e.target.value)} /></label>
-        <label>{t("ad.modal.newClassPw")}
-          <input
-            value={form.password}
-            onChange={(e) => set("password", e.target.value)}
-            placeholder={t("ad.modal.keepPwPh")}
-          />
-        </label>
-        {form.password && (
-          <p style={{ margin: "-6px 0 10px", fontSize: "0.78rem", color: "#C0842A" }}>
-            {t("ad.modal.pwWarn")}
-          </p>
-        )}
-        <label>{t("ad.th.teacher")}
-          <select value={form.teacher_id} onChange={(e) => set("teacher_id", e.target.value)}>
-            {teachers.map((tc) => (
-              <option key={tc._id} value={tc._id}>{tc.name || tc.email}</option>
-            ))}
-          </select>
-        </label>
-        <label>{t("ad.modal.aiAccessMode")}
-          <select value={form.access_mode} onChange={(e) => set("access_mode", e.target.value)}>
-            <option value="full">{t("ad.modal.accessFull")}</option>
-            <option value="step">{t("ad.modal.accessStep")}</option>
-            <option value="phase">{t("ad.modal.accessPhase")}</option>
-          </select>
-        </label>
-        <label className="ad-modal__checkbox">
-          <input type="checkbox" checked={form.ai_enabled} onChange={(e) => set("ai_enabled", e.target.checked)} />
-          {t("ad.modal.aiEnabled")}
-        </label>
-        <div className="ad-modal__actions">
+    <ModalShell
+      onClose={onClose}
+      title={t("ad.modal.editClassTitle", { code: cls.class_code })}
+      bodyClassName="ad-form"
+      footer={
+        <>
           <button className="td-btn td-btn--outline td-btn--sm" onClick={onClose}>{t("td.cancel")}</button>
           <button
             className="td-btn td-btn--primary td-btn--sm"
@@ -2601,9 +2578,42 @@ function EditClassModal({ cls, teachers, error, onClose, onSave }) {
           >
             {t("ad.save")}
           </button>
-        </div>
-      </div>
-    </div>
+        </>
+      }
+    >
+      {error && <div className="ad-form__error">{error}</div>}
+      <label>{t("ad.modal.className")}<input value={form.class_name} onChange={(e) => set("class_name", e.target.value)} /></label>
+      <label>{t("ad.modal.newClassPw")}
+        <input
+          value={form.password}
+          onChange={(e) => set("password", e.target.value)}
+          placeholder={t("ad.modal.keepPwPh")}
+        />
+      </label>
+      {form.password && (
+        <p style={{ margin: "-6px 0 10px", fontSize: "0.78rem", color: "#C0842A" }}>
+          {t("ad.modal.pwWarn")}
+        </p>
+      )}
+      <label>{t("ad.th.teacher")}
+        <select value={form.teacher_id} onChange={(e) => set("teacher_id", e.target.value)}>
+          {teachers.map((tc) => (
+            <option key={tc._id} value={tc._id}>{tc.name || tc.email}</option>
+          ))}
+        </select>
+      </label>
+      <label>{t("ad.modal.aiAccessMode")}
+        <select value={form.access_mode} onChange={(e) => set("access_mode", e.target.value)}>
+          <option value="full">{t("ad.modal.accessFull")}</option>
+          <option value="step">{t("ad.modal.accessStep")}</option>
+          <option value="phase">{t("ad.modal.accessPhase")}</option>
+        </select>
+      </label>
+      <label className="ad-form__checkbox">
+        <input type="checkbox" checked={form.ai_enabled} onChange={(e) => set("ai_enabled", e.target.checked)} />
+        {t("ad.modal.aiEnabled")}
+      </label>
+    </ModalShell>
   );
 }
 
@@ -2613,17 +2623,12 @@ function AddStudentsModal({ cls, error, onClose, onSave }) {
   const [count, setCount] = useState(5);
   const example = `${cls.class_code}_${String((cls.actual_students || cls.students?.length || 0) + 1).padStart(2, "0")}`;
   return (
-    <div className="ad-modal-backdrop" onClick={onClose}>
-      <div className="ad-modal" onClick={(e) => e.stopPropagation()}>
-        <h3>{t("ad.modal.addStudentsTitle", { name: cls.class_name })}</h3>
-        {error && <div className="ad-modal__error">{error}</div>}
-        <p style={{ fontSize: "0.85rem", color: "var(--hop-muted)" }}>
-          {t("ad.modal.addStudentsNote", { example })}
-        </p>
-        <label>{t("ad.modal.howMany")}
-          <input type="number" min={1} max={100} value={count} onChange={(e) => setCount(Number(e.target.value))} />
-        </label>
-        <div className="ad-modal__actions">
+    <ModalShell
+      onClose={onClose}
+      title={t("ad.modal.addStudentsTitle", { name: cls.class_name })}
+      bodyClassName="ad-form"
+      footer={
+        <>
           <button className="td-btn td-btn--outline td-btn--sm" onClick={onClose}>{t("td.cancel")}</button>
           <button
             className="td-btn td-btn--primary td-btn--sm"
@@ -2632,9 +2637,17 @@ function AddStudentsModal({ cls, error, onClose, onSave }) {
           >
             {t("ad.modal.add")}
           </button>
-        </div>
-      </div>
-    </div>
+        </>
+      }
+    >
+      {error && <div className="ad-form__error">{error}</div>}
+      <p style={{ fontSize: "0.85rem", color: "var(--hop-muted)" }}>
+        {t("ad.modal.addStudentsNote", { example })}
+      </p>
+      <label>{t("ad.modal.howMany")}
+        <input type="number" min={1} max={100} value={count} onChange={(e) => setCount(Number(e.target.value))} />
+      </label>
+    </ModalShell>
   );
 }
 
@@ -2646,31 +2659,34 @@ function CreateClassModal({ teachers, error, onClose, onSave }) {
   const canSave = form.teacher_id && form.class_name.trim() && form.password.length >= 4 &&
     form.student_count >= 1 && form.student_count <= 100;
   return (
-    <div className="ad-modal-backdrop" onClick={onClose}>
-      <div className="ad-modal" onClick={(e) => e.stopPropagation()}>
-        <h3>{t("ad.modal.createClassTitle")}</h3>
-        {error && <div className="ad-modal__error">{error}</div>}
-        <label>{t("ad.modal.onBehalf")}
-          <select value={form.teacher_id} onChange={(e) => set("teacher_id", e.target.value)}>
-            <option value="">{t("ad.modal.selectTeacher")}</option>
-            {teachers.map((tc) => (
-              <option key={tc._id} value={tc._id}>{tc.name || tc.email}</option>
-            ))}
-          </select>
-        </label>
-        <label>{t("ad.modal.className")}<input value={form.class_name} onChange={(e) => set("class_name", e.target.value)} placeholder={t("ad.modal.classNamePh")} /></label>
-        <label>{t("ad.modal.classPw")}<input value={form.password} onChange={(e) => set("password", e.target.value)} placeholder={t("ad.modal.classPwPh")} /></label>
-        <label>{t("ad.modal.numStudents")}
-          <input type="number" min={1} max={100} value={form.student_count} onChange={(e) => set("student_count", Number(e.target.value))} />
-        </label>
-        <div className="ad-modal__actions">
+    <ModalShell
+      onClose={onClose}
+      title={t("ad.modal.createClassTitle")}
+      bodyClassName="ad-form"
+      footer={
+        <>
           <button className="td-btn td-btn--outline td-btn--sm" onClick={onClose}>{t("td.cancel")}</button>
           <button className="td-btn td-btn--primary td-btn--sm" disabled={!canSave} onClick={() => onSave({ ...form, class_name: form.class_name.trim() })}>
             {t("ad.modal.create")}
           </button>
-        </div>
-      </div>
-    </div>
+        </>
+      }
+    >
+      {error && <div className="ad-form__error">{error}</div>}
+      <label>{t("ad.modal.onBehalf")}
+        <select value={form.teacher_id} onChange={(e) => set("teacher_id", e.target.value)}>
+          <option value="">{t("ad.modal.selectTeacher")}</option>
+          {teachers.map((tc) => (
+            <option key={tc._id} value={tc._id}>{tc.name || tc.email}</option>
+          ))}
+        </select>
+      </label>
+      <label>{t("ad.modal.className")}<input value={form.class_name} onChange={(e) => set("class_name", e.target.value)} placeholder={t("ad.modal.classNamePh")} /></label>
+      <label>{t("ad.modal.classPw")}<input value={form.password} onChange={(e) => set("password", e.target.value)} placeholder={t("ad.modal.classPwPh")} /></label>
+      <label>{t("ad.modal.numStudents")}
+        <input type="number" min={1} max={100} value={form.student_count} onChange={(e) => set("student_count", Number(e.target.value))} />
+      </label>
+    </ModalShell>
   );
 }
 
@@ -2848,32 +2864,35 @@ function CreateUserModal({ onClose, onSave, error }) {
   const [form, setForm] = useState({ email: "", password: "", name: "", role: "student", education_level: "high_school" });
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
   return (
-    <div className="ad-modal-backdrop" onClick={onClose}>
-      <div className="ad-modal" onClick={(e) => e.stopPropagation()}>
-        <h3>{t("ad.users.createTitle")}</h3>
-        {error && <div className="ad-modal__error">{error}</div>}
-        <label>{t("login.email")}<input value={form.email} onChange={(e) => set("email", e.target.value)} /></label>
-        <label>{t("login.password")}<input type="password" value={form.password} onChange={(e) => set("password", e.target.value)} /></label>
-        <label>{t("ad.th.name")}<input value={form.name} onChange={(e) => set("name", e.target.value)} /></label>
-        <label>{t("ad.th.role")}
-          <select value={form.role} onChange={(e) => set("role", e.target.value)}>
-            <option value="student">{t("td.thStudent")}</option>
-            <option value="teacher">{t("td.roleTeacher")}</option>
-            <option value="admin">{t("ad.role.admin")}</option>
-          </select>
-        </label>
-        <label>{t("ad.modal.eduLevel")}
-          <select value={form.education_level} onChange={(e) => set("education_level", e.target.value)}>
-            <option value="high_school">{t("ad.edu.highSchool")}</option>
-            <option value="higher_ed">{t("ad.edu.higherEd")}</option>
-          </select>
-        </label>
-        <div className="ad-modal__actions">
+    <ModalShell
+      onClose={onClose}
+      title={t("ad.users.createTitle")}
+      bodyClassName="ad-form"
+      footer={
+        <>
           <button className="td-btn td-btn--outline td-btn--sm" onClick={onClose}>{t("td.cancel")}</button>
           <button className="td-btn td-btn--primary td-btn--sm" onClick={() => onSave(form)}>{t("ad.modal.create")}</button>
-        </div>
-      </div>
-    </div>
+        </>
+      }
+    >
+      {error && <div className="ad-form__error">{error}</div>}
+      <label>{t("login.email")}<input value={form.email} onChange={(e) => set("email", e.target.value)} /></label>
+      <label>{t("login.password")}<input type="password" value={form.password} onChange={(e) => set("password", e.target.value)} /></label>
+      <label>{t("ad.th.name")}<input value={form.name} onChange={(e) => set("name", e.target.value)} /></label>
+      <label>{t("ad.th.role")}
+        <select value={form.role} onChange={(e) => set("role", e.target.value)}>
+          <option value="student">{t("td.thStudent")}</option>
+          <option value="teacher">{t("td.roleTeacher")}</option>
+          <option value="admin">{t("ad.role.admin")}</option>
+        </select>
+      </label>
+      <label>{t("ad.modal.eduLevel")}
+        <select value={form.education_level} onChange={(e) => set("education_level", e.target.value)}>
+          <option value="high_school">{t("ad.edu.highSchool")}</option>
+          <option value="higher_ed">{t("ad.edu.higherEd")}</option>
+        </select>
+      </label>
+    </ModalShell>
   );
 }
 
@@ -2888,35 +2907,38 @@ function EditUserModal({ user: u, onClose, onSave, error }) {
   });
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
   return (
-    <div className="ad-modal-backdrop" onClick={onClose}>
-      <div className="ad-modal" onClick={(e) => e.stopPropagation()}>
-        <h3>{t("ad.modal.editUserTitle", { id: u.email || u.username })}</h3>
-        {error && <div className="ad-modal__error">{error}</div>}
-        <label>{t("ad.th.name")}<input value={form.name} onChange={(e) => set("name", e.target.value)} /></label>
-        <label>{t("ad.th.role")}
-          <select value={form.role} onChange={(e) => set("role", e.target.value)}>
-            <option value="student">{t("td.thStudent")}</option>
-            <option value="teacher">{t("td.roleTeacher")}</option>
-            <option value="classroom_student">{t("ad.role.classroomStudent")}</option>
-            <option value="admin">{t("ad.role.admin")}</option>
-          </select>
-        </label>
-        <label>{t("ad.modal.eduLevel")}
-          <select value={form.education_level} onChange={(e) => set("education_level", e.target.value)}>
-            <option value="high_school">{t("ad.edu.highSchool")}</option>
-            <option value="higher_ed">{t("ad.edu.higherEd")}</option>
-          </select>
-        </label>
-        <label className="ad-modal__checkbox">
-          <input type="checkbox" checked={form.is_active} onChange={(e) => set("is_active", e.target.checked)} />
-          {t("ad.status.active")}
-        </label>
-        <div className="ad-modal__actions">
+    <ModalShell
+      onClose={onClose}
+      title={t("ad.modal.editUserTitle", { id: u.email || u.username })}
+      bodyClassName="ad-form"
+      footer={
+        <>
           <button className="td-btn td-btn--outline td-btn--sm" onClick={onClose}>{t("td.cancel")}</button>
           <button className="td-btn td-btn--primary td-btn--sm" onClick={() => onSave(form)}>{t("ad.save")}</button>
-        </div>
-      </div>
-    </div>
+        </>
+      }
+    >
+      {error && <div className="ad-form__error">{error}</div>}
+      <label>{t("ad.th.name")}<input value={form.name} onChange={(e) => set("name", e.target.value)} /></label>
+      <label>{t("ad.th.role")}
+        <select value={form.role} onChange={(e) => set("role", e.target.value)}>
+          <option value="student">{t("td.thStudent")}</option>
+          <option value="teacher">{t("td.roleTeacher")}</option>
+          <option value="classroom_student">{t("ad.role.classroomStudent")}</option>
+          <option value="admin">{t("ad.role.admin")}</option>
+        </select>
+      </label>
+      <label>{t("ad.modal.eduLevel")}
+        <select value={form.education_level} onChange={(e) => set("education_level", e.target.value)}>
+          <option value="high_school">{t("ad.edu.highSchool")}</option>
+          <option value="higher_ed">{t("ad.edu.higherEd")}</option>
+        </select>
+      </label>
+      <label className="ad-form__checkbox">
+        <input type="checkbox" checked={form.is_active} onChange={(e) => set("is_active", e.target.checked)} />
+        {t("ad.status.active")}
+      </label>
+    </ModalShell>
   );
 }
 
@@ -2937,40 +2959,13 @@ function GlossaryEditorModal({ term, onClose, onSave, error }) {
     }));
   const canSave = form.term.trim() && form.definition.trim();
   return (
-    <div className="ad-modal-backdrop" onClick={onClose}>
-      <div className="ad-modal ad-modal--wide" onClick={(e) => e.stopPropagation()}>
-        <h3>{term.id ? t("ad.glossary.editTerm") : t("ad.glossary.addTerm")}</h3>
-        {error && <div className="ad-modal__error">{error}</div>}
-        <label>{t("ad.glossary.term")}<input value={form.term} onChange={(e) => set("term", e.target.value)} placeholder={t("ad.glossary.termPh")} /></label>
-        <label>{t("ad.glossary.definition")}
-          <textarea
-            className="ad-glossary__textarea"
-            rows={4}
-            value={form.definition}
-            onChange={(e) => set("definition", e.target.value)}
-            placeholder={t("ad.glossary.defPh")}
-          />
-        </label>
-        <div className="ad-glossary__stepfield">
-          <span className="ad-glossary__stepfield-label">{t("ad.glossary.relatedSteps")}</span>
-          <div className="ad-glossary__stepgrid">
-            {GLOSSARY_STEP_LABELS.map((label, i) => {
-              const n = i + 1;
-              const on = form.steps.includes(n);
-              return (
-                <button
-                  type="button"
-                  key={n}
-                  className={`ad-glossary__stepchip${on ? " ad-glossary__stepchip--on" : ""}`}
-                  onClick={() => toggleStep(n)}
-                >
-                  <span className="ad-glossary__stepnum">{n}</span> {label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-        <div className="ad-modal__actions">
+    <ModalShell
+      onClose={onClose}
+      title={term.id ? t("ad.glossary.editTerm") : t("ad.glossary.addTerm")}
+      wide
+      bodyClassName="ad-form"
+      footer={
+        <>
           <button className="td-btn td-btn--outline td-btn--sm" onClick={onClose}>{t("td.cancel")}</button>
           <button
             className="td-btn td-btn--primary td-btn--sm"
@@ -2979,9 +2974,40 @@ function GlossaryEditorModal({ term, onClose, onSave, error }) {
           >
             {t("ad.save")}
           </button>
+        </>
+      }
+    >
+      {error && <div className="ad-form__error">{error}</div>}
+      <label>{t("ad.glossary.term")}<input value={form.term} onChange={(e) => set("term", e.target.value)} placeholder={t("ad.glossary.termPh")} /></label>
+      <label>{t("ad.glossary.definition")}
+        <textarea
+          className="ad-glossary__textarea"
+          rows={4}
+          value={form.definition}
+          onChange={(e) => set("definition", e.target.value)}
+          placeholder={t("ad.glossary.defPh")}
+        />
+      </label>
+      <div className="ad-glossary__stepfield">
+        <span className="ad-glossary__stepfield-label">{t("ad.glossary.relatedSteps")}</span>
+        <div className="ad-glossary__stepgrid">
+          {GLOSSARY_STEP_LABELS.map((label, i) => {
+            const n = i + 1;
+            const on = form.steps.includes(n);
+            return (
+              <button
+                type="button"
+                key={n}
+                className={`ad-glossary__stepchip${on ? " ad-glossary__stepchip--on" : ""}`}
+                onClick={() => toggleStep(n)}
+              >
+                <span className="ad-glossary__stepnum">{n}</span> {label}
+              </button>
+            );
+          })}
         </div>
       </div>
-    </div>
+    </ModalShell>
   );
 }
 
@@ -2990,17 +3016,20 @@ function ResetPasswordModal({ user: u, onClose, onSave, error }) {
   const { t } = useLang();
   const [pw, setPw] = useState("");
   return (
-    <div className="ad-modal-backdrop" onClick={onClose}>
-      <div className="ad-modal" onClick={(e) => e.stopPropagation()}>
-        <h3>{t("ad.modal.resetPwTitle", { id: u.email || u.username })}</h3>
-        {error && <div className="ad-modal__error">{error}</div>}
-        <label>{t("login.newPassword")}<input type="password" value={pw} onChange={(e) => setPw(e.target.value)} /></label>
-        <div className="ad-modal__actions">
+    <ModalShell
+      onClose={onClose}
+      title={t("ad.modal.resetPwTitle", { id: u.email || u.username })}
+      bodyClassName="ad-form"
+      footer={
+        <>
           <button className="td-btn td-btn--outline td-btn--sm" onClick={onClose}>{t("td.cancel")}</button>
           <button className="td-btn td-btn--primary td-btn--sm" onClick={() => onSave(pw)} disabled={pw.length < 6}>{t("ad.modal.reset")}</button>
-        </div>
-      </div>
-    </div>
+        </>
+      }
+    >
+      {error && <div className="ad-form__error">{error}</div>}
+      <label>{t("login.newPassword")}<input type="password" value={pw} onChange={(e) => setPw(e.target.value)} /></label>
+    </ModalShell>
   );
 }
 
@@ -3008,16 +3037,19 @@ function ResetPasswordModal({ user: u, onClose, onSave, error }) {
 function DeleteConfirmModal({ user: u, onClose, onConfirm }) {
   const { t } = useLang();
   return (
-    <div className="ad-modal-backdrop" onClick={onClose}>
-      <div className="ad-modal" onClick={(e) => e.stopPropagation()}>
-        <h3>{t("ad.modal.deleteUserTitle")}</h3>
-        <p>{t("ad.modal.deleteUserPre")} <strong>{u.email || u.username || u.name}</strong>?</p>
-        <p style={{ color: "#DC2626", fontSize: "0.85rem" }}>{t("ad.modal.cannotUndo")}</p>
-        <div className="ad-modal__actions">
+    <ModalShell
+      onClose={onClose}
+      title={t("ad.modal.deleteUserTitle")}
+      bodyClassName="ad-form"
+      footer={
+        <>
           <button className="td-btn td-btn--outline td-btn--sm" onClick={onClose}>{t("td.cancel")}</button>
           <button className="td-btn td-btn--sm" style={{ background: "#DC2626", color: "#fff" }} onClick={onConfirm}>{t("ad.action.delete")}</button>
-        </div>
-      </div>
-    </div>
+        </>
+      }
+    >
+      <p>{t("ad.modal.deleteUserPre")} <strong>{u.email || u.username || u.name}</strong>?</p>
+      <p style={{ color: "#DC2626", fontSize: "0.85rem" }}>{t("ad.modal.cannotUndo")}</p>
+    </ModalShell>
   );
 }

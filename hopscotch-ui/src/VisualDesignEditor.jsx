@@ -8,6 +8,10 @@ import { jsPDF } from "jspdf";
 import { API } from "./api";
 import { notify } from "./Toast";
 import { useLang } from "./i18n.jsx";
+import { useAuth } from "./AuthContext";
+import { useTheme } from "./ThemeContext";
+import ProfileMenu from "./ProfileMenu";
+import SettingsModal from "./SettingsModal";
 import { localizeVdForm } from "./vdEs.jsx";
 import VDTemplateHoneycomb from "./VDTemplateHoneycomb";
 import VDTemplatePentagonFlower from "./VDTemplatePentagonFlower";
@@ -1782,6 +1786,9 @@ export default function VisualDesignEditor({ sessionId, data, onClose, aiEnabled
   const form = localizeVdForm(VD_FORMS[formKey], formKey, lang);
   const [saveState, setSaveState] = useState("saved"); // saved | dirty | saving | error
   const [printing, setPrinting] = useState(false);
+  const { user, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [activeKey, setActiveKey] = useState(null);
   const [chatOpen, setChatOpen] = useState(false);
   const [showIdentity, setShowIdentity] = useState(true);
@@ -1940,8 +1947,17 @@ export default function VisualDesignEditor({ sessionId, data, onClose, aiEnabled
           <button className="vd-btn vd-btn--primary" onClick={handlePrint} disabled={printing}>
             {printing ? t("vd.capturing") : t("vd.savePdf")}
           </button>
+          {user && (
+            <ProfileMenu
+              user={user}
+              onSignOut={logout}
+              onOpenSettings={() => setSettingsOpen(true)}
+            />
+          )}
         </div>
       </div>
+
+      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} theme={theme} toggleTheme={toggleTheme} />
 
       {/* Body: form (left) + diagram (right) */}
       <div className="vd-body">

@@ -7,6 +7,10 @@ import { notify } from "./Toast";
 import VisualDesignReadOnly from "./VisualDesignReadOnly";
 import ConceptualFrameworkReadOnly from "./ConceptualFrameworkReadOnly";
 import { useLang, dateLocale } from "./i18n.jsx";
+import { useAuth } from "./AuthContext";
+import { useTheme } from "./ThemeContext";
+import ProfileMenu from "./ProfileMenu";
+import SettingsModal from "./SettingsModal";
 
 const STEP_COLORS = [
   "#2B5EA7", "#E8618C", "#D94040", "#1A8A7D", "#B0A47A",
@@ -99,6 +103,9 @@ export default function StudentDesignView({ sessionId, studentName, className: c
   }
 
   const [downloading, setDownloading] = useState(null); // "pdf" | "cf" | null
+  const { user, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [downloadError, setDownloadError] = useState("");
 
   // Embedded design views (teacher sees the diagrams next to feedback)
@@ -234,8 +241,17 @@ export default function StudentDesignView({ sessionId, studentName, className: c
               </>
             )}
           </button>
+          {user && (
+            <ProfileMenu
+              user={user}
+              onSignOut={logout}
+              onOpenSettings={() => setSettingsOpen(true)}
+            />
+          )}
         </div>
       </div>
+
+      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} theme={theme} toggleTheme={toggleTheme} />
 
       {loading && <div className="sdv-loading">{t("sdv.loadingDesign")}</div>}
       {error && <div className="td-alert td-alert--error" style={{ margin: 16 }}>{error}</div>}

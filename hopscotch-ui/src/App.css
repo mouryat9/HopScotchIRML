@@ -3314,21 +3314,10 @@ select.input:focus {
 }
 
 /* Modal extras */
-.td-modal__subtitle {
-  font-size: 0.8rem;
-  color: var(--hop-muted);
-}
-
 .td-modal__note {
   margin: 14px 0 0;
   font-size: 0.8rem;
   color: var(--hop-muted);
-}
-
-.td-modal__foot--inline {
-  border-top: none;
-  padding: 16px 0 0;
-  margin: 0;
 }
 
 .td-btn--ghost {
@@ -3340,80 +3329,6 @@ select.input:focus {
 .td-btn--ghost:hover {
   background: var(--hop-bg);
   color: var(--hop-ink);
-}
-
-/* ========== Class detail modal ========== */
-.td-modal {
-  position: fixed;
-  inset: 0;
-  z-index: 120;
-  background: rgba(15, 23, 42, 0.45);
-  backdrop-filter: blur(3px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px;
-  animation: dropdownFadeIn 0.15s ease-out;
-}
-
-.td-modal__card {
-  width: 100%;
-  max-width: 520px;
-  max-height: 88vh;
-  overflow-y: auto;
-  background: var(--hop-surface);
-  border: 1px solid var(--hop-border);
-  border-radius: 16px;
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
-}
-
-.td-modal__head {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 18px 20px;
-  border-bottom: 1px solid var(--hop-border-light);
-}
-
-.td-modal__headtext {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-
-.td-modal__headtext .td-class__tag { align-self: flex-start; }
-
-.td-modal__title {
-  margin: 0;
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: var(--hop-ink);
-}
-
-.td-modal__close {
-  border: none;
-  background: transparent;
-  color: var(--hop-muted);
-  cursor: pointer;
-  padding: 4px;
-  border-radius: 8px;
-  display: inline-flex;
-}
-
-.td-modal__close:hover { background: var(--hop-bg); color: var(--hop-ink); }
-
-.td-modal__body {
-  padding: 18px 20px;
-}
-
-.td-modal__foot {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  padding: 14px 20px;
-  border-top: 1px solid var(--hop-border-light);
 }
 
 /* Responsive: collapse sidebar to a top bar on narrow screens */
@@ -7641,37 +7556,15 @@ select.input:focus {
 }
 
 /* Modal */
-.ad-modal-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.4);
-  z-index: 1000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.ad-modal {
-  background: var(--hop-card, #fff);
-  border-radius: 12px;
-  padding: 28px;
-  min-width: 380px;
-  max-width: 480px;
-  box-shadow: 0 8px 30px rgba(0,0,0,0.2);
-}
-
-.ad-modal h3 {
-  margin: 0 0 16px;
-  font-size: 1.1rem;
-}
-
-.ad-modal p {
+/* Admin form fields — rendered inside the shared ModalShell body
+   (bodyClassName="ad-form") */
+.ad-form p {
   margin: 0 0 12px;
   font-size: 0.9rem;
   line-height: 1.5;
 }
 
-.ad-modal label {
+.ad-form label {
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -7681,8 +7574,9 @@ select.input:focus {
   color: var(--hop-ink-secondary, #6b7280);
 }
 
-.ad-modal input,
-.ad-modal select {
+.ad-form input,
+.ad-form select,
+.ad-form textarea {
   padding: 8px 12px;
   border: 1px solid var(--hop-border, #e5e7eb);
   border-radius: 6px;
@@ -7691,24 +7585,18 @@ select.input:focus {
   color: var(--hop-ink, #1a1a2e);
 }
 
-.ad-modal__checkbox {
+.ad-form__checkbox {
+  display: flex;
   flex-direction: row !important;
   align-items: center !important;
   gap: 8px !important;
 }
 
-.ad-modal__checkbox input {
+.ad-form__checkbox input {
   width: auto;
 }
 
-.ad-modal__actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: 20px;
-}
-
-.ad-modal__error {
+.ad-form__error {
   background: #FEE2E2;
   color: #DC2626;
   padding: 8px 12px;
@@ -7913,28 +7801,19 @@ select.input:focus {
   border-color: var(--hop-border);
   color: var(--hop-ink);
 }
-:root[data-theme="dark"] .ad-modal {
-  background: var(--hop-card);
-  box-shadow: 0 8px 30px rgba(0,0,0,0.5);
-}
-:root[data-theme="dark"] .ad-modal h3 {
-  color: var(--hop-ink);
-}
-:root[data-theme="dark"] .ad-modal p {
+:root[data-theme="dark"] .ad-form p {
   color: var(--hop-ink-secondary);
 }
-:root[data-theme="dark"] .ad-modal input,
-:root[data-theme="dark"] .ad-modal select {
+:root[data-theme="dark"] .ad-form input,
+:root[data-theme="dark"] .ad-form select,
+:root[data-theme="dark"] .ad-form textarea {
   background: var(--hop-surface);
   border-color: var(--hop-border);
   color: var(--hop-ink);
 }
-:root[data-theme="dark"] .ad-modal__error {
+:root[data-theme="dark"] .ad-form__error {
   background: #3D1A1A;
   color: #F06060;
-}
-:root[data-theme="dark"] .ad-modal-backdrop {
-  background: rgba(0,0,0,0.6);
 }
 :root[data-theme="dark"] .ad-health-card {
   background: var(--hop-card);
@@ -9093,7 +8972,6 @@ body.wl-dragging, body.wl-dragging * { cursor: grabbing !important; user-select:
 :root[data-theme="dark"] .td-mode-row,
 :root[data-theme="dark"] .td-access,
 :root[data-theme="dark"] .td-segment { background: #252b36; border-color: var(--hop-border); }
-:root[data-theme="dark"] .td-modal__card { background: var(--hop-surface); border-color: var(--hop-border); }
 :root[data-theme="dark"] .td-form__input { background: var(--hop-card); border-color: var(--hop-border); color: var(--hop-ink); }
 
 /* ========================================================
@@ -9961,33 +9839,55 @@ body.wl-dragging, body.wl-dragging * { cursor: grabbing !important; user-select:
 }
 
 /* ========================================================
-   Settings modal (staging) — per-user navigator preference
+   Modal shell — the ONE dialog chrome for the whole app
+   (ModalShell.jsx: Settings, teacher class modals, admin
+   CRUD dialogs). Backdrop, card, header, close chip, foot.
    ======================================================== */
-.hop-settings {
-  position: fixed; inset: 0; z-index: 140;
+.hop-modal {
+  position: fixed; inset: 0; z-index: 1300;
   background: rgba(15,23,42,0.45); backdrop-filter: blur(3px);
   display: flex; align-items: center; justify-content: center; padding: 24px;
   animation: dropdownFadeIn 0.15s ease-out;
 }
-.hop-settings__card {
-  width: 100%; max-width: 480px;
+.hop-modal__card {
+  width: 100%; max-width: 480px; max-height: calc(100vh - 48px);
+  display: flex; flex-direction: column;
   background: var(--hop-surface); border: 1px solid var(--hop-border);
   border-radius: 18px; box-shadow: 0 24px 60px rgba(0,0,0,0.28);
   overflow: hidden;
+  animation: modalRise 0.18s cubic-bezier(0.22, 1, 0.36, 1);
 }
-.hop-settings__head {
-  display: flex; align-items: center; justify-content: space-between;
+@keyframes modalRise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+.hop-modal__card--wide { max-width: 560px; }
+.hop-modal__head {
+  display: flex; align-items: center; gap: 12px;
   padding: 18px 20px; border-bottom: 1px solid var(--hop-border-light);
 }
-.hop-settings__title { margin: 0; font-size: 1.1rem; font-weight: 700; letter-spacing: -0.02em; color: var(--hop-ink); }
-.hop-settings__close {
-  border: none; background: var(--hop-neutral-bg, #f1f5f9); color: var(--hop-muted);
+.hop-modal__headtext { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.hop-modal__eyebrow {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.09em;
+  text-transform: uppercase; color: var(--hop-muted);
+}
+.hop-modal__title { margin: 0; font-size: 1.1rem; font-weight: 700; letter-spacing: -0.02em; color: var(--hop-ink); }
+.hop-modal__subtitle { font-size: 0.8rem; color: var(--hop-muted); }
+.hop-modal__close {
+  flex-shrink: 0; border: none; background: var(--hop-neutral-bg, #f1f5f9); color: var(--hop-muted);
   border-radius: 9px; padding: 6px; display: inline-flex; cursor: pointer;
 }
-.hop-settings__close:hover { color: var(--hop-ink); }
-.hop-settings__body { padding: 18px 20px; }
-.hop-settings__label { font-size: 0.9rem; font-weight: 700; color: var(--hop-ink); }
-.hop-settings__hint { font-size: 0.8rem; color: var(--hop-muted); margin: 2px 0 14px; }
+.hop-modal__close:hover { color: var(--hop-ink); }
+.hop-modal__body { flex: 1; padding: 18px 20px 20px; overflow-y: auto; }
+/* Stacked section-card layout (Settings, Manage class) */
+.hop-modal__body--cards { display: flex; flex-direction: column; gap: 16px; }
+.hop-modal__foot {
+  display: flex; justify-content: flex-end; gap: 10px;
+  padding: 14px 20px; border-top: 1px solid var(--hop-border-light);
+}
+/* Action row living inside a form in the body (submit buttons) */
+.hop-modal__foot--inline {
+  display: flex; justify-content: flex-end; gap: 10px;
+  margin-top: 16px; padding: 0;
+}
+
 .hop-settings__choices { display: flex; flex-direction: column; gap: 10px; }
 
 .hop-settings__choice {
@@ -10027,11 +9927,6 @@ body.wl-dragging, body.wl-dragging * { cursor: grabbing !important; user-select:
 .hop-settings__choice--active .hop-settings__radio::after {
   content: ""; position: absolute; inset: 3px; border-radius: 50%; background: var(--hop-navy);
 }
-.hop-settings__foot {
-  display: flex; justify-content: flex-end; padding: 14px 20px; border-top: 1px solid var(--hop-border-light);
-}
-
-:root[data-theme="dark"] .hop-settings__card { background: var(--hop-surface); border-color: var(--hop-border); }
 :root[data-theme="dark"] .hop-settings__preview { background: #252b36; }
 
 /* Settings: appearance segmented control + section divider */
@@ -10051,7 +9946,6 @@ body.wl-dragging, body.wl-dragging * { cursor: grabbing !important; user-select:
   background: var(--hop-surface); color: var(--hop-navy, #2B4C7E);
   box-shadow: 0 1px 4px rgba(15,23,42,0.12);
 }
-.hop-settings__divider { height: 1px; background: var(--hop-border-light); margin: 18px 0; }
 :root[data-theme="dark"] .hop-settings__seg { background: #252b36; }
 :root[data-theme="dark"] .hop-settings__seg-btn--active { background: #333a47; color: var(--hop-navy-light, #7DA6DA); }
 
@@ -10084,12 +9978,6 @@ body.wl-dragging, body.wl-dragging * { cursor: grabbing !important; user-select:
 /* ========================================================
    Settings — grouped section cards (clearer hierarchy)
    ======================================================== */
-.hop-settings__body {
-  padding: 18px 20px 20px;
-  display: flex; flex-direction: column; gap: 16px;
-  max-height: 72vh; overflow-y: auto;
-}
-
 .hop-settings__section {
   border: 1px solid var(--hop-border);
   border-radius: 14px;
@@ -10470,86 +10358,7 @@ body.wl-dragging, body.wl-dragging * { cursor: grabbing !important; user-select:
    Manage-class modal (mcm) — theme-aware redesign
    Replaces the old white-only td-modal detail view.
    ============================================================ */
-.mcm-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 1200;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px;
-  background: rgba(15, 18, 24, 0.55);
-  backdrop-filter: blur(3px);
-  animation: mcm-fade 0.16s ease-out;
-}
-@keyframes mcm-fade { from { opacity: 0; } to { opacity: 1; } }
-.mcm {
-  width: 100%;
-  max-width: 480px;
-  max-height: calc(100vh - 48px);
-  display: flex;
-  flex-direction: column;
-  background: var(--hop-surface);
-  border: 1px solid var(--hop-border);
-  border-radius: 18px;
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
-  overflow: hidden;
-  animation: mcm-rise 0.18s cubic-bezier(0.22, 1, 0.36, 1);
-}
-@keyframes mcm-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
-
-.mcm__head {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 22px 24px 18px;
-  border-bottom: 1px solid var(--hop-border);
-}
-.mcm__headtext { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
-.mcm__eyebrow {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-  color: var(--hop-muted);
-}
-.mcm__title {
-  margin: 0;
-  font-size: 21px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  color: var(--hop-ink);
-  line-height: 1.2;
-}
-.mcm__code {
-  font-size: 12.5px;
-  font-weight: 600;
-  color: var(--hop-muted);
-  font-variant-numeric: tabular-nums;
-}
-.mcm__close {
-  flex-shrink: 0;
-  width: 34px;
-  height: 34px;
-  display: grid;
-  place-items: center;
-  border: 1px solid var(--hop-border);
-  border-radius: 9px;
-  background: transparent;
-  color: var(--hop-muted);
-  cursor: pointer;
-  transition: all 0.14s ease;
-}
-.mcm__close:hover { background: color-mix(in srgb, var(--hop-border) 40%, transparent); color: var(--hop-ink); }
-
-.mcm__body {
-  flex: 1;
-  overflow-y: auto;
-  padding: 20px 24px;
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-}
+/* Manage-class modal content (shell comes from ModalShell / .hop-modal) */
 
 /* Credentials */
 .mcm-cred { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
@@ -10724,15 +10533,6 @@ body.wl-dragging, body.wl-dragging * { cursor: grabbing !important; user-select:
   font-variant-numeric: tabular-nums;
 }
 
-.mcm__foot {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  padding: 16px 24px;
-  border-top: 1px solid var(--hop-border);
-  background: color-mix(in srgb, var(--hop-border) 10%, transparent);
-}
-
 /* ============================================================
    Teacher dashboard — full-width top nav bar + sidebar below
    (matches the design page header; logo full size)
@@ -10809,7 +10609,6 @@ body.wl-dragging, body.wl-dragging * { cursor: grabbing !important; user-select:
 .ad-glossary__actions { display: flex; gap: 6px; flex-shrink: 0; }
 
 /* Editor modal extras */
-.ad-modal--wide { max-width: 560px; width: 100%; }
 .ad-glossary__textarea {
   width: 100%;
   resize: vertical;

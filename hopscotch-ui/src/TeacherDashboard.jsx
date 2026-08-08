@@ -6,6 +6,7 @@ import { API } from "./api";
 import StudentDesignView from "./StudentDesignView";
 import ProfileMenu from "./ProfileMenu";
 import SettingsModal from "./SettingsModal";
+import ModalShell from "./ModalShell";
 import { useLang, dateLocale } from "./i18n.jsx";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -1016,19 +1017,22 @@ export default function TeacherDashboard({ onOpenDesigns }) {
         const mode = live.settings?.access_mode || "full";
         const up = live.settings?.unlocked_phase || 1;
         return (
-          <div className="mcm-overlay" onMouseDown={() => setDetailClass(null)}>
-            <div className="mcm" onMouseDown={(e) => e.stopPropagation()}>
-              <header className="mcm__head">
-                <div className="mcm__headtext">
-                  <span className="mcm__eyebrow">{t("td.manageClass")}</span>
-                  <h3 className="mcm__title">{live.class_name}</h3>
-                </div>
-                <button className="mcm__close" onClick={() => setDetailClass(null)} aria-label={t("common.close")}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          <ModalShell
+            onClose={() => setDetailClass(null)}
+            eyebrow={t("td.manageClass")}
+            title={live.class_name}
+            bodyClassName="hop-modal__body--cards"
+            footer={
+              <>
+                <button className="td-btn td-btn--ghost td-btn--sm" onClick={() => handlePrintCredentials(live)}>
+                  {t("td.printCredentials")}
                 </button>
-              </header>
-
-              <div className="mcm__body">
+                <button className="td-btn td-btn--primary td-btn--sm" onClick={() => setDetailClass(null)}>
+                  {t("settings.done")}
+                </button>
+              </>
+            }
+          >
                 {/* Credentials */}
                 <div className="mcm-cred">
                   {[
@@ -1147,38 +1151,28 @@ export default function TeacherDashboard({ onOpenDesigns }) {
                     ))}
                   </div>
                 </div>
-              </div>
-
-              <footer className="mcm__foot">
-                <button className="td-btn td-btn--ghost td-btn--sm" onClick={() => handlePrintCredentials(live)}>
-                  {t("td.printCredentials")}
-                </button>
-                <button className="td-btn td-btn--primary td-btn--sm" onClick={() => setDetailClass(null)}>
-                  {t("settings.done")}
-                </button>
-              </footer>
-            </div>
-          </div>
+          </ModalShell>
         );
       })()}
 
       {/* Create class modal */}
       {showCreate && (
-        <div className="td-modal" onMouseDown={closeCreate}>
-          <div className="td-modal__card" onMouseDown={(e) => e.stopPropagation()}>
-            <div className="td-modal__head">
-              <div className="td-modal__headtext">
-                <h3 className="td-modal__title">{createResult ? t("td.classCreated") : t("td.createNewClass")}</h3>
-                {!createResult && (
-                  <span className="td-modal__subtitle">{t("td.createSubtitle")}</span>
-                )}
-              </div>
-              <button className="td-modal__close" onClick={closeCreate} aria-label={t("common.close")}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
-              </button>
-            </div>
-
-            <div className="td-modal__body">
+        <ModalShell
+          onClose={closeCreate}
+          title={createResult ? t("td.classCreated") : t("td.createNewClass")}
+          subtitle={!createResult ? t("td.createSubtitle") : undefined}
+          wide
+          footer={
+            createResult ? (
+              <>
+                <button className="td-btn td-btn--outline td-btn--sm" onClick={() => handlePrintCredentials(createResult)}>
+                  {t("td.printCredentialsCaps")}
+                </button>
+                <button className="td-btn td-btn--primary td-btn--sm" onClick={closeCreate}>{t("settings.done")}</button>
+              </>
+            ) : undefined
+          }
+        >
               {!createResult ? (
                 <form className="td-form" onSubmit={handleCreateClass}>
                   <div className="td-form__group">
@@ -1220,7 +1214,7 @@ export default function TeacherDashboard({ onOpenDesigns }) {
                     </div>
                   </div>
                   {classError && <div className="td-alert td-alert--error" style={{ marginTop: 12 }}>{classError}</div>}
-                  <div className="td-modal__foot td-modal__foot--inline">
+                  <div className="hop-modal__foot--inline">
                     <button type="button" className="td-btn td-btn--ghost td-btn--sm" onClick={closeCreate}>{t("td.cancel")}</button>
                     <button type="submit" className="td-btn td-btn--primary td-btn--sm" disabled={creating}>
                       {creating ? t("td.creating") : t("td.createClass")}
@@ -1259,18 +1253,7 @@ export default function TeacherDashboard({ onOpenDesigns }) {
                   <p className="td-modal__note">{t("td.shareNote")}</p>
                 </>
               )}
-            </div>
-
-            {createResult && (
-              <div className="td-modal__foot">
-                <button className="td-btn td-btn--outline td-btn--sm" onClick={() => handlePrintCredentials(createResult)}>
-                  {t("td.printCredentialsCaps")}
-                </button>
-                <button className="td-btn td-btn--primary td-btn--sm" onClick={closeCreate}>{t("settings.done")}</button>
-              </div>
-            )}
-          </div>
-        </div>
+        </ModalShell>
       )}
 
       <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} theme={theme} toggleTheme={toggleTheme} />
