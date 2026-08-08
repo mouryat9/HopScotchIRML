@@ -994,8 +994,12 @@ def build_ollama_payload(worldview_profile, step_context, user_msg, passages,
                 "(e.g. 'What exactly do you want to understand?', 'Who is at the center of "
                 "the experience?') — these are questions for them to answer in chat, never "
                 "draft research questions.\n"
-                "4. When the student drafts a question, give specific feedback and help "
-                "them refine THEIR wording — do not rewrite it wholesale.\n"
+                "4. When the student drafts a question, quote THEIR draft verbatim while "
+                "giving specific feedback and help them refine THEIR wording — do not "
+                "rewrite it wholesale or offer your own 'improved version'.\n"
+                "5. Never write a lead-in like 'For example:' or 'Here is a refined "
+                "version:' unless what follows is something you are allowed to write "
+                "(their own quoted draft, or the single other-field example).\n"
             )
         if step_llm_guidance:
             system_msg += f"\nStep-specific instructions for Step {cur}:\n{step_llm_guidance}\n"
@@ -2519,28 +2523,58 @@ def _topic_guard_terms(sess) -> list:
     return out
 
 
-def _is_own_topic_question(line: str, terms: list) -> bool:
+def _guard_tokens(s: str) -> set:
+    return set(re.findall(r"[\w'-]+", (s or "").lower(), flags=re.UNICODE))
+
+
+def _is_students_own_echo(candidate: str, own_token_sets: list) -> bool:
+    """True when the candidate question is substantially the student's own draft
+    (a question they typed in chat, or a saved Step 5 field) — echoing/quoting
+    their draft back for feedback is encouraged, not a handed-over question.
+    Symmetric similarity (Jaccard), so a different question that merely reuses
+    the topic words does not pass as an echo."""
+    ctoks = _guard_tokens(candidate)
+    if not ctoks:
+        return False
+    for own in own_token_sets or []:
+        if own and len(ctoks & own) / len(ctoks | own) >= 0.75:
+            return True
+    return False
+
+
+def _hits_topic(s: str, terms: list) -> bool:
+    hits = sum(1 for t in terms if t in s)
+    return hits >= (1 if len(terms) <= 2 else 2)
+
+
+def _is_own_topic_question(line: str, terms: list, own_token_sets=None) -> bool:
     if not terms:
         return False
     s = re.sub(r"^[\s>*#\-•·\d.)(]+", "", line.strip()).strip("*_").lower()
     if "?" not in s and "？" not in s:
         return False
-    words = set(re.findall(r"[\w'-]+", s, flags=re.UNICODE))
+    # Quoted question-strings are judged on their own: "you" elsewhere in the
+    # sentence must not shield a tailored question inside quotes.
+    for seg in re.findall(r'["“”\'‘’]([^"“”\'‘’]*[?？][^"“”\'‘’]*)["“”\'‘’]', s):
+        if _hits_topic(seg, terms) and not _is_students_own_echo(seg, own_token_sets):
+            return True
+    if _is_students_own_echo(s, own_token_sets):
+        return False
+    words = _guard_tokens(s)
     if any(tok in words or (len(tok) == 1 and tok in s) for tok in _SECOND_PERSON_TOKENS):
         return False
-    hits = sum(1 for t in terms if t in s)
-    return hits >= (1 if len(terms) <= 2 else 2)
+    return _hits_topic(s, terms)
 
 
-def _sanitize_stream(raw_iter, own_q_terms=None, own_q_nudge=None):
+def _sanitize_stream(raw_iter, own_q_terms=None, own_q_nudge=None, own_q_texts=None):
     """Output guard: drops handed-over deliverable blocks and normalizes
     AI-looking punctuation (em/en dashes) in everything the student sees."""
     for piece in _sanitize_stream_blocks(raw_iter, own_q_terms=own_q_terms,
-                                         own_q_nudge=own_q_nudge):
+                                         own_q_nudge=own_q_nudge, own_q_texts=own_q_texts):
         yield piece.replace("—", "-").replace("–", "-")
 
 
-def _sanitize_stream_blocks(raw_iter, own_q_terms=None, own_q_nudge=None):
+def _sanitize_stream_blocks(raw_iter, own_q_terms=None, own_q_nudge=None, own_q_texts=None):
     """Line-buffer a token stream and drop 'handed-over deliverable' blocks, emitting a
     single coaching nudge in their place. Yields sanitized text pieces."""
     pending = ""
@@ -2570,7 +2604,7 @@ def _sanitize_stream_blocks(raw_iter, own_q_terms=None, own_q_nudge=None):
                 return ""         # the handed-over value itself → drop
         if is_label:
             return start_block()
-        if own_q_terms and _is_own_topic_question(line, own_q_terms):
+        if own_q_terms and _is_own_topic_question(line, own_q_terms, own_q_texts):
             # A ready-made research question about the student's own topic —
             # drop it; the first time, replace it with a coaching nudge.
             if st["nudges"] == 0 and own_q_nudge:
@@ -2592,12 +2626,13 @@ def _sanitize_stream_blocks(raw_iter, own_q_terms=None, own_q_nudge=None):
             yield out.rstrip("\n") if not pending.endswith("\n") else out
 
 
-def _strip_handed_answers(text: str, own_q_terms=None, own_q_nudge=None) -> str:
+def _strip_handed_answers(text: str, own_q_terms=None, own_q_nudge=None, own_q_texts=None) -> str:
     """Non-streaming version of the output guard."""
     if not text:
         return text
     return "".join(_sanitize_stream(iter([text]), own_q_terms=own_q_terms,
-                                    own_q_nudge=own_q_nudge)).rstrip("\n")
+                                    own_q_nudge=own_q_nudge,
+                                    own_q_texts=own_q_texts)).rstrip("\n")
 
 
 _OWN_Q_NUDGE = {
@@ -2611,14 +2646,34 @@ _OWN_Q_NUDGE = {
 }
 
 
-def _own_question_guard_args(sess, active_step, chat_lang):
-    """Guard params for the Step 5 own-topic-question filter (None elsewhere)."""
+def _own_question_guard_args(sess, active_step, chat_lang, user_msg=None):
+    """Guard params for the Step 5 own-topic-question filter (None elsewhere).
+    Returns (terms, nudge, own_token_sets); own_token_sets holds the student's
+    own words (chat message + saved Step 5 fields) so quoting THEIR draft back
+    for feedback is never stripped."""
     if active_step != 5:
-        return None, None
+        return None, None, None
     terms = _topic_guard_terms(sess)
     if not terms:
-        return None, None
-    return terms, _OWN_Q_NUDGE.get(chat_lang, _OWN_Q_NUDGE["en"])
+        return None, None, None
+    own_sets = []
+    if user_msg:
+        # Only question-shaped spans from the student's message count as their
+        # draft — comparing against the whole message would whitelist any
+        # question built from the same topic words. Quoted spans and text after
+        # a colon are the draft without its lead-in ("Here is my draft: ...").
+        spans = re.findall(r"[^.!?？。]*[?？]", user_msg)
+        spans += re.findall(r'["“”\'‘’]([^"“”\'‘’]*[?？])["“”\'‘’]', user_msg)
+        spans += [s.rsplit(":", 1)[-1] for s in spans if ":" in s]
+        for q in spans:
+            toks = _guard_tokens(q)
+            if len(toks) >= 5:
+                own_sets.append(toks)
+    step5 = (getattr(sess, "step_notes", None) or {}).get("5") or {}
+    for v in step5.values():
+        if isinstance(v, str) and v.strip():
+            own_sets.append(_guard_tokens(v))
+    return terms, _OWN_Q_NUDGE.get(chat_lang, _OWN_Q_NUDGE["en"]), own_sets
 
 
 def _coach_redirect_message(active_step) -> str:
@@ -2738,8 +2793,9 @@ def chat_send(req: ChatSendReq = Body(...), user: dict = Depends(get_current_use
         chat_history=history, language=chat_lang,
     )
     # Output guard: strip any handed-over deliverable blocks the model slipped in.
-    oq_terms, oq_nudge = _own_question_guard_args(sess, req.active_step, chat_lang)
-    answer = _strip_handed_answers(answer, own_q_terms=oq_terms, own_q_nudge=oq_nudge)
+    oq_terms, oq_nudge, oq_texts = _own_question_guard_args(sess, req.active_step, chat_lang, user_msg)
+    answer = _strip_handed_answers(answer, own_q_terms=oq_terms, own_q_nudge=oq_nudge,
+                                   own_q_texts=oq_texts)
 
     history.append(ChatTurn(role="assistant", content=answer, step=req.active_step))
     _persist_session(sess)
@@ -2891,13 +2947,14 @@ def chat_send_stream(req: ChatSendReq = Body(...), user: dict = Depends(get_curr
             for delta in fallback_fn():
                 yield delta
 
-    oq_terms, oq_nudge = _own_question_guard_args(sess, req.active_step, chat_lang)
+    oq_terms, oq_nudge, oq_texts = _own_question_guard_args(sess, req.active_step, chat_lang, user_msg)
 
     def event_stream():
         assistant_text_parts: List[str] = []
         try:
             # Output guard: sanitized, line-buffered stream (drops handed-over answers).
-            for piece in _sanitize_stream(_raw_deltas(), own_q_terms=oq_terms, own_q_nudge=oq_nudge):
+            for piece in _sanitize_stream(_raw_deltas(), own_q_terms=oq_terms, own_q_nudge=oq_nudge,
+                                          own_q_texts=oq_texts):
                 assistant_text_parts.append(piece)
                 yield piece
         except GeneratorExit:
